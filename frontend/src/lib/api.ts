@@ -70,9 +70,29 @@ export interface Order {
   addressStreet: string;
   addressNumber?: string | null;
   totalCents: number;
-  paymentMethod: 'CASH' | 'PIX';
+  paymentMethod: PaymentMethod;
+  paymentStatus: 'PENDING' | 'PAID';
+  paidAt?: string | null;
   createdAt: string;
   items: OrderItem[];
+}
+
+export type PaymentMethod = 'CASH' | 'PIX';
+
+export interface Transaction {
+  id: string;
+  protocol: number;
+  customerName: string;
+  paymentMethod: PaymentMethod;
+  totalCents: number;
+  paidAt: string;
+}
+
+export interface DailySummary {
+  date: string;
+  count: number;
+  totalCents: number;
+  byMethod: Record<string, { count: number; totalCents: number }>;
 }
 
 // Payload reduzido do acompanhamento público (sem endereço/dados do cliente).
@@ -134,6 +154,23 @@ export const api = {
     request<{ enqueued: boolean }>(`/orders/${id}/reprint`, {
       method: 'POST',
     }),
+
+  // ---- Caixa / fechamento ----
+  payOrder: (id: string, paymentMethod?: PaymentMethod) =>
+    request<Order>(`/cash/orders/${id}/pay`, {
+      method: 'POST',
+      body: JSON.stringify(paymentMethod ? { paymentMethod } : {}),
+    }),
+  pendingPayments: () => request<Order[]>('/cash/pending'),
+  transactions: (from?: string, to?: string) => {
+    const qs = new URLSearchParams();
+    if (from) qs.set('from', from);
+    if (to) qs.set('to', to);
+    const q = qs.toString();
+    return request<Transaction[]>(`/cash/transactions${q ? `?${q}` : ''}`);
+  },
+  dailySummary: (date?: string) =>
+    request<DailySummary>(`/cash/summary${date ? `?date=${date}` : ''}`),
 };
 
 export function formatBRL(cents: number): string {
