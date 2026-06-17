@@ -75,6 +75,14 @@ export interface Order {
   items: OrderItem[];
 }
 
+// Payload reduzido do acompanhamento público (sem endereço/dados do cliente).
+export interface TrackedOrder {
+  protocol: number;
+  status: OrderStatus;
+  createdAt: string;
+  items: { nameSnapshot: string; quantity: number }[];
+}
+
 export interface CreateOrderPayload {
   customerName: string;
   customerPhone?: string;
@@ -115,6 +123,8 @@ export const api = {
     }),
   listOrders: (status?: OrderStatus) =>
     request<Order[]>(`/orders${status ? `?status=${status}` : ''}`),
+  trackOrder: (protocol: number) =>
+    request<TrackedOrder>(`/orders/track/${protocol}`),
   updateStatus: (id: string, status: OrderStatus) =>
     request<Order>(`/orders/${id}/status`, {
       method: 'PATCH',
