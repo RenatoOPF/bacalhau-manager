@@ -87,6 +87,8 @@ model Order {
 
   paymentMethod PaymentMethod
   paymentStatus PaymentStatus @default(PENDING)
+  // Momento em que o pagamento foi registrado no caixa (base do fechamento diário).
+  paidAt        DateTime?
 
   // Total em centavos (soma dos itens).
   totalCents Int    @default(0)
@@ -99,6 +101,7 @@ model Order {
 
   @@index([status])
   @@index([createdAt])
+  @@index([paidAt])
 }
 
 model OrderItem {
