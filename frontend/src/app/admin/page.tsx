@@ -61,7 +61,12 @@ export default function CaixaPage() {
 
   return (
     <main className="mx-auto max-w-5xl p-6">
-      <h1 className="text-2xl font-bold">Caixa — Fila de pedidos</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Caixa — Fila de pedidos</h1>
+        <a href="/admin/cardapio" className="text-sm text-blue-600 underline">
+          Gerenciar cardápio →
+        </a>
+      </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {(orders ?? []).map((order: Order) => {

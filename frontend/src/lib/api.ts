@@ -26,7 +26,24 @@ export interface MenuItem {
 export interface MenuCategory {
   id: string;
   name: string;
+  // Presentes no endpoint admin (/menu/admin).
+  sortOrder?: number;
+  active?: boolean;
   items: MenuItem[];
+}
+
+export interface CreateItemPayload {
+  categoryId: string;
+  name: string;
+  description?: string;
+  priceCents: number;
+}
+
+export interface UpdateItemPayload {
+  name?: string;
+  description?: string;
+  priceCents?: number;
+  available?: boolean;
 }
 
 export type OrderStatus =
@@ -58,6 +75,14 @@ export interface Order {
   items: OrderItem[];
 }
 
+// Payload reduzido do acompanhamento público (sem endereço/dados do cliente).
+export interface TrackedOrder {
+  protocol: number;
+  status: OrderStatus;
+  createdAt: string;
+  items: { nameSnapshot: string; quantity: number }[];
+}
+
 export interface CreateOrderPayload {
   customerName: string;
   customerPhone?: string;
@@ -72,6 +97,25 @@ export interface CreateOrderPayload {
 
 export const api = {
   getMenu: () => request<MenuCategory[]>('/menu'),
+
+  // ---- Gestão do cardápio (admin) ----
+  getFullMenu: () => request<MenuCategory[]>('/menu/admin'),
+  createCategory: (name: string, sortOrder?: number) =>
+    request<MenuCategory>('/menu/categories', {
+      method: 'POST',
+      body: JSON.stringify({ name, sortOrder }),
+    }),
+  createItem: (payload: CreateItemPayload) =>
+    request<MenuItem>('/menu/items', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateItem: (id: string, payload: UpdateItemPayload) =>
+    request<MenuItem>(`/menu/items/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+
   createOrder: (payload: CreateOrderPayload) =>
     request<Order>('/orders', {
       method: 'POST',
@@ -79,6 +123,8 @@ export const api = {
     }),
   listOrders: (status?: OrderStatus) =>
     request<Order[]>(`/orders${status ? `?status=${status}` : ''}`),
+  trackOrder: (protocol: number) =>
+    request<TrackedOrder>(`/orders/track/${protocol}`),
   updateStatus: (id: string, status: OrderStatus) =>
     request<Order>(`/orders/${id}/status`, {
       method: 'PATCH',

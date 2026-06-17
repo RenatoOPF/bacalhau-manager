@@ -69,6 +69,12 @@ export default function CardapioPage() {
         <p className="mt-2 text-gray-600">
           Acompanhe o status pelo número acima.
         </p>
+        <a
+          href={`/pedido/${createOrder.data.protocol}`}
+          className="mt-6 inline-block rounded bg-blue-600 px-4 py-2 font-medium text-white"
+        >
+          Acompanhar pedido
+        </a>
       </main>
     );
   }
