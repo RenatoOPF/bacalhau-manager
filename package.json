@@ -1,0 +1,18 @@
+{
+  "name": "bacalhau-manager",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sistema de gerenciamento para o restaurante Bacalhau & Cia (Fase 1 / MVP)",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm run start:dev --workspace backend",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "build": "npm run build --workspace backend && npm run build --workspace frontend"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  }
+}

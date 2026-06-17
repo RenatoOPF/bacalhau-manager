@@ -1,0 +1,119 @@
+// Schema do banco — Fase 1 / MVP (Bacalhau & Cia)
+// Cobre: cardápio, pedidos (com itens) e pagamento manual (dinheiro/PIX).
+// iFood/Gami, estoque, caixa e funcionários entram em fases futuras.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Cardápio ----------
+
+model MenuCategory {
+  id        String     @id @default(cuid())
+  name      String
+  sortOrder Int        @default(0)
+  active    Boolean    @default(true)
+  items     MenuItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model MenuItem {
+  id          String       @id @default(cuid())
+  category    MenuCategory @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  name        String
+  description String?
+  // Preço em centavos para evitar imprecisão de ponto flutuante.
+  priceCents  Int
+  available   Boolean      @default(true)
+  orderItems  OrderItem[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([categoryId])
+}
+
+// ---------- Pedidos ----------
+
+enum OrderChannel {
+  OWN // cardápio próprio
+  IFOOD // futuro
+  GAMI // futuro
+}
+
+enum OrderStatus {
+  RECEIVED // Recebido
+  IN_PREPARATION // Em preparo
+  READY // Pronto
+  OUT_FOR_DELIVERY // Saiu para entrega
+  DELIVERED // Entregue
+  CANCELED // Cancelado
+}
+
+enum PaymentMethod {
+  CASH // dinheiro
+  PIX // PIX
+  // CARD entra na fase de integração (iFood/Gami)
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
+model Order {
+  id       String @id @default(cuid())
+  // Número curto/protocolo exibido ao cliente e nos tickets.
+  protocol Int    @unique @default(autoincrement())
+
+  channel OrderChannel @default(OWN)
+  status  OrderStatus  @default(RECEIVED)
+
+  customerName  String
+  customerPhone String?
+
+  // Endereço de entrega — visível apenas no caixa, nunca no ticket da cozinha.
+  addressStreet       String
+  addressNumber       String?
+  addressComplement   String?
+  addressNeighborhood String?
+  addressReference    String?
+
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(PENDING)
+
+  // Total em centavos (soma dos itens).
+  totalCents Int    @default(0)
+  notes      String?
+
+  items OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId String
+
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  menuItemId String
+
+  // Snapshots para preservar o histórico mesmo se o cardápio mudar depois.
+  nameSnapshot String
+  priceCents   Int
+  quantity     Int     @default(1)
+  notes        String?
+
+  @@index([orderId])
+}
