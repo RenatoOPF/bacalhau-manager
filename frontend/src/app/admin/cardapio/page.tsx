@@ -39,14 +39,7 @@ export default function GestaoCardapioPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Gestão do cardápio</h1>
-        <nav className="flex gap-3 text-sm text-blue-600 underline">
-          <a href="/admin">Fila</a>
-          <a href="/admin/caixa">Caixa</a>
-          <a href="/admin/relatorios">Relatórios</a>
-        </nav>
-      </div>
+      <h1 className="text-2xl font-bold">Gestão do cardápio</h1>
 
       <div className="mt-6 flex gap-2">
         <input

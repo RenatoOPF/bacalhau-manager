@@ -11,6 +11,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ---------- Funcionários / acesso ----------
+
+enum Role {
+  ADMIN // gerente com acesso total (inclui gestão de funcionários)
+  MANAGER // opera fila, caixa, cardápio e relatórios
+  KITCHEN // cozinheiro (cadastro; sem login no MVP)
+  DELIVERY // entregador (cadastro; base para taxa de entrega)
+}
+
+model Employee {
+  id           String   @id @default(cuid())
+  name         String
+  username     String   @unique
+  passwordHash String
+  role         Role     @default(MANAGER)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 // ---------- Cardápio ----------
 
 model MenuCategory {

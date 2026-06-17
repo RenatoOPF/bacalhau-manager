@@ -35,14 +35,7 @@ export default function RelatoriosPage() {
 
   return (
     <main className="mx-auto max-w-4xl p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Relatórios</h1>
-        <nav className="flex gap-3 text-sm text-blue-600 underline">
-          <a href="/admin">Fila</a>
-          <a href="/admin/caixa">Caixa</a>
-          <a href="/admin/cardapio">Cardápio</a>
-        </nav>
-      </div>
+      <h1 className="text-2xl font-bold">Relatórios</h1>
 
       {/* Período */}
       <div className="mt-4 flex flex-wrap items-end gap-3">
@@ -64,12 +57,12 @@ export default function RelatoriosPage() {
             onChange={(e) => setTo(e.target.value)}
           />
         </label>
-        <a
-          href={api.exportUrl(from, to)}
+        <button
+          onClick={() => api.downloadTransactionsCsv(from, to)}
           className="rounded border px-3 py-1 text-sm text-blue-600"
         >
           Exportar CSV
-        </a>
+        </button>
       </div>
 
       {/* Faturamento */}

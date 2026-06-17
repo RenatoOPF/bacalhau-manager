@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
+import { EmployeesModule } from './employees/employees.module';
 import { MenuModule } from './menu/menu.module';
 import { OrdersModule } from './orders/orders.module';
 import { CashModule } from './cash/cash.module';
@@ -21,6 +23,8 @@ import { RealtimeModule } from './realtime/realtime.module';
       },
     }),
     PrismaModule,
+    AuthModule,
+    EmployeesModule,
     RealtimeModule,
     PrintingModule,
     QueueModule,
