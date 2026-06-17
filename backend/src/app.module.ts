@@ -5,6 +5,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { MenuModule } from './menu/menu.module';
 import { OrdersModule } from './orders/orders.module';
 import { CashModule } from './cash/cash.module';
+import { ReportsModule } from './reports/reports.module';
 import { QueueModule } from './queue/queue.module';
 import { PrintingModule } from './printing/printing.module';
 import { RealtimeModule } from './realtime/realtime.module';
@@ -26,6 +27,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     MenuModule,
     OrdersModule,
     CashModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}

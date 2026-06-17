@@ -66,6 +66,7 @@ export default function CaixaPage() {
         <nav className="flex gap-3 text-sm text-blue-600 underline">
           <a href="/admin/caixa">Caixa</a>
           <a href="/admin/cardapio">Cardápio</a>
+          <a href="/admin/relatorios">Relatórios</a>
         </nav>
       </div>
 

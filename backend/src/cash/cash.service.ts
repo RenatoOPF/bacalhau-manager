@@ -6,17 +6,7 @@ import {
 import { PaymentMethod, PaymentStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-
-/** Intervalo [start, end) de um dia local a partir de "YYYY-MM-DD". */
-function dayRange(date: string): { start: Date; end: Date } {
-  const start = new Date(`${date}T00:00:00`);
-  if (Number.isNaN(start.getTime())) {
-    throw new BadRequestException('Data inválida (use YYYY-MM-DD)');
-  }
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { start, end };
-}
+import { dayRange, periodFilter } from '../common/date-range';
 
 @Injectable()
 export class CashService {
@@ -64,11 +54,8 @@ export class CashService {
     const where: Prisma.OrderWhereInput = {
       paymentStatus: PaymentStatus.PAID,
     };
-    if (from || to) {
-      where.paidAt = {};
-      if (from) where.paidAt.gte = dayRange(from).start;
-      if (to) where.paidAt.lt = dayRange(to).end;
-    }
+    const paidAt = periodFilter(from, to);
+    if (paidAt) where.paidAt = paidAt;
     return this.prisma.order.findMany({
       where,
       orderBy: { paidAt: 'desc' },
