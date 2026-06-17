@@ -1,8 +1,11 @@
-# Deploy — Fase 1
+# Deploy — produção
 
 > **Onde rodar:** todo este guia roda **no notebook-servidor do restaurante**
-> (não na máquina de desenvolvimento). O backend, o banco, a fila e as
-> impressoras ficam nesse notebook; o frontend fica na Vercel.
+> (não na máquina de desenvolvimento). O backend, o banco e a fila ficam nesse
+> notebook; o frontend fica na Vercel.
+>
+> **Alvo:** Ubuntu Server (headless), instalação **nativa** (sem Docker),
+> pensado para hardware modesto (ex.: Atom 64 bits + 4GB RAM).
 
 ## Atalho: script de setup
 
@@ -12,32 +15,74 @@ Com o repositório clonado no notebook-servidor, a maior parte é automática:
 bash scripts/setup-server.sh
 ```
 
-Ele sobe Postgres/Redis, instala dependências, prepara o banco, builda o
-backend, instala e sobe o PM2 e instala o `cloudflared` — e imprime no fim os
-3 passos manuais (boot do PM2, tunnel e Vercel). As seções abaixo detalham cada
-parte caso prefira fazer na mão.
+Ele instala Node 20, PostgreSQL e Redis nativos, cria o banco, prepara um swap
+de segurança, instala dependências, builda o backend, sobe o PM2 e instala o
+`cloudflared` — e imprime no fim os 3 passos manuais (boot do PM2, tunnel e
+Vercel). As seções abaixo detalham cada parte caso prefira fazer na mão.
 
 ---
 
-Arquitetura de produção (MVP):
+## Arquitetura de produção
 
 ```
 Cliente → Vercel (frontend Next.js)
                 ↓ HTTPS / WebSocket
         Cloudflare Tunnel (URL pública)
                 ↓
-        Notebook: backend NestJS (PM2) → PostgreSQL + Redis (Docker)
+        Notebook (Ubuntu Server):
+          backend NestJS (PM2) → PostgreSQL + Redis (nativos)
                 ↓ rede local
         Impressoras térmicas (caixa + cozinha)
 ```
 
-- **Frontend**: Vercel (grátis).
+- **Frontend**: Vercel (grátis) — não roda no notebook.
 - **Backend + banco + fila + impressoras**: notebook local.
 - **Exposição**: Cloudflare Tunnel (sem abrir portas no roteador).
 
 ---
 
-## 1. Backend sempre de pé com PM2
+## 1. Sistema e serviços (instalação nativa)
+
+```bash
+# Node.js 20 LTS (a versão do apt costuma ser antiga)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# PostgreSQL + Redis nativos
+sudo apt-get update
+sudo apt-get install -y postgresql redis-server
+sudo systemctl enable --now postgresql redis-server
+
+# Banco e usuário (casa com o DATABASE_URL padrão do .env.example)
+sudo -u postgres psql -c "CREATE USER bacalhau WITH PASSWORD 'bacalhau';"
+sudo -u postgres psql -c "CREATE DATABASE bacalhau OWNER bacalhau;"
+```
+
+> Por padrão o PostgreSQL do Ubuntu já aceita conexão por senha em
+> `127.0.0.1`/`localhost` (pg_hba `scram-sha-256`), que é como o Prisma conecta.
+
+### Ajustes para 4GB de RAM
+- **Swap de segurança** (o script cria 2GB automaticamente se não houver):
+  ```bash
+  sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+  sudo mkswap /swapfile && sudo swapon /swapfile
+  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+  ```
+- **PostgreSQL** enxuto em `/etc/postgresql/<versão>/main/postgresql.conf`:
+  `shared_buffers = 256MB`, `max_connections = 20`. Reinicie:
+  `sudo systemctl restart postgresql`.
+- **Redis**: NÃO configurar `maxmemory` com despejo (eviction) — ele guarda a
+  fila de pedidos (BullMQ) e despejar jobs perderia pedidos. Deixe o padrão.
+- Use **Ubuntu Server headless** (sem ambiente gráfico) para sobrar RAM.
+
+### Cuidados com o notebook-servidor
+- Nunca suspender/hibernar; manter na tomada (nobreak de preferência).
+- Conexão via cabo de rede, não Wi-Fi.
+- Serviços configurados para subir no boot (PostgreSQL, Redis e PM2).
+
+---
+
+## 2. Backend sempre de pé com PM2
 
 ```bash
 # Banco: gera o client e aplica as migrações existentes (produção)
@@ -63,17 +108,13 @@ pm2 logs bacalhau-backend
 pm2 restart bacalhau-backend
 ```
 
-> O Postgres e o Redis sobem via `docker compose up -d` (ver README). Garanta que
-> o `backend/.env` aponta para eles (`DATABASE_URL`, `REDIS_HOST`, `REDIS_PORT`).
-
-### Cuidados com o notebook-servidor
-- Nunca suspender/hibernar; manter na tomada (nobreak de preferência).
-- Conexão via cabo de rede, não Wi-Fi.
-- Docker e PM2 configurados para subir no boot.
+> Garanta que o `backend/.env` aponta para os serviços nativos
+> (`DATABASE_URL`, `REDIS_HOST=localhost`, `REDIS_PORT=6379`) e que `JWT_SECRET`
+> e a senha do admin foram trocados.
 
 ---
 
-## 2. Expor na internet com Cloudflare Tunnel
+## 3. Expor na internet com Cloudflare Tunnel
 
 ### Agora (sem domínio): Quick Tunnel
 
@@ -100,7 +141,7 @@ serviço/PM2. Passos: `cloudflared login` → `cloudflared tunnel create bacalha
 
 ---
 
-## 3. Frontend na Vercel
+## 4. Frontend na Vercel
 
 1. Conectar o repositório na Vercel, **Root Directory = `frontend`**.
 2. Variáveis de ambiente (Project Settings → Environment Variables):
