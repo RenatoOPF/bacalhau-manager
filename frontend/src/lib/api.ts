@@ -88,6 +88,26 @@ export interface Transaction {
   paidAt: string;
 }
 
+export interface RevenueReport {
+  from?: string;
+  to?: string;
+  count: number;
+  totalCents: number;
+  byDay: { date: string; count: number; totalCents: number }[];
+}
+
+export interface ChannelReportItem {
+  channel: 'OWN' | 'IFOOD' | 'GAMI';
+  count: number;
+  totalCents: number;
+}
+
+export interface TopItem {
+  name: string;
+  quantity: number;
+  totalCents: number;
+}
+
 export interface DailySummary {
   date: string;
   count: number;
@@ -171,7 +191,32 @@ export const api = {
   },
   dailySummary: (date?: string) =>
     request<DailySummary>(`/cash/summary${date ? `?date=${date}` : ''}`),
+
+  // ---- Relatórios ----
+  revenue: (from?: string, to?: string) =>
+    request<RevenueReport>(`/reports/revenue${periodQuery(from, to)}`),
+  byChannel: (from?: string, to?: string) =>
+    request<ChannelReportItem[]>(`/reports/by-channel${periodQuery(from, to)}`),
+  topItems: (from?: string, to?: string, limit?: number) => {
+    const qs = new URLSearchParams();
+    if (from) qs.set('from', from);
+    if (to) qs.set('to', to);
+    if (limit) qs.set('limit', String(limit));
+    const q = qs.toString();
+    return request<TopItem[]>(`/reports/top-items${q ? `?${q}` : ''}`);
+  },
+  // URL de download do CSV (navegação direta, não fetch).
+  exportUrl: (from?: string, to?: string) =>
+    `${API_URL}/reports/export${periodQuery(from, to)}`,
 };
+
+function periodQuery(from?: string, to?: string): string {
+  const qs = new URLSearchParams();
+  if (from) qs.set('from', from);
+  if (to) qs.set('to', to);
+  const q = qs.toString();
+  return q ? `?${q}` : '';
+}
 
 export function formatBRL(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', {
