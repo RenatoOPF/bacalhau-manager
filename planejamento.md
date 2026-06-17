@@ -22,8 +22,8 @@ Sistema próprio de gestão para restaurante delivery, desenvolvido para substit
 | Perfil | Acesso | O que faz |
 |---|---|---|
 | **Cliente** | Link público (cardápio web) | Monta pedido, acompanha status, recebe confirmação |
-| **Cozinheiro** | Tela da cozinha (sem login inicialmente) | Visualiza fila de pedidos (itens + observações apenas), atualiza status |
-| **Gerente/Admin** | PC do caixa + painel administrativo | Visualiza fila completa (com endereços), gerencia cardápio, estoque, caixa, relatórios e funcionários |
+| **Cozinheiro** | Ticket impresso (sem acesso ao sistema no MVP) | Recebe o pedido pelo ticket da cozinha (itens + observações) e prepara |
+| **Gerente/Admin** | PC do caixa + painel administrativo | Visualiza fila completa (com endereços), atualiza status do preparo, gerencia cardápio, estoque, caixa, relatórios e funcionários |
 | **Entregador** _(futuro)_ | App/tela própria | Visualiza pedidos prontos, segue rota otimizada |
 
 ---
@@ -41,19 +41,20 @@ Sistema próprio de gestão para restaurante delivery, desenvolvido para substit
 - Previsão de tempo de entrega exibida ao cliente
 
 ### 2. Cozinha
-- Fila de pedidos em tempo real (atualização automática, sem refresh)
-- Exibe apenas: número do pedido, itens, observações e horário de entrada
-- **Não exibe** endereço do cliente (informação exclusiva do caixa)
+> No MVP **não há tela da cozinha**. A cozinha trabalha exclusivamente pelo ticket impresso, acionado pelo PC do caixa. (Tela própria da cozinha fica para uma fase futura.)
+
 - Impressão automática na impressora térmica ao receber pedido
   - Ticket da cozinha: número do pedido + itens + observações
-- Reimpressão manual em caso de falha
-- Cozinheiro atualiza status: `Em preparo` → `Pronto`
+  - **Não exibe** endereço do cliente (informação exclusiva do caixa)
+- Reimpressão manual em caso de falha (a partir do PC do caixa)
+- Atualização de status do preparo (`Em preparo` → `Pronto`) é feita pelo caixa/gerente — ver módulo Caixa
 
 ### 3. Caixa (Gerente)
 - Fila completa de pedidos com **endereço do cliente** visível
 - Impressora própria no PC do caixa — imprime ticket completo ao receber pedido:
   - Número do pedido + itens + endereço + forma de pagamento + total
 - A impressora da cozinha também é acionada pelo PC do caixa (ponto central de impressão)
+- Atualização do status de preparo do pedido: `Em preparo` → `Pronto` (no MVP, feita pelo caixa já que não há tela da cozinha)
 - Registro de pagamentos recebidos: dinheiro, PIX e **cartão** (quando pedido vier via iFood/99Food)
 - Histórico de transações por dia/período
 - Fechamento de caixa diário com totais por modalidade de pagamento
@@ -151,7 +152,7 @@ PC do caixa processa pedido:
   ├── Impressora do caixa imprime ticket completo (endereço + itens + pagamento)
   └── Impressora da cozinha imprime ticket de preparo (itens + observações)
         ↓
-Cozinheiro atualiza status → "Em preparo" → "Pronto"
+Caixa/gerente atualiza status → "Em preparo" → "Pronto"
         ↓
 Gerente designa entregador → Status "Saiu para entrega"
         ↓
@@ -224,8 +225,7 @@ Foco em confiabilidade (resolver o problema de pedidos que não imprimem), custo
 
 - [ ] Cardápio web (cliente faz pedido via link)
 - [ ] Fila de pedidos confiável (Redis + BullMQ)
-- [ ] Tela da cozinha (itens + observações, sem endereço)
-- [ ] Tela do caixa/gerente (fila completa com endereço)
+- [ ] Tela do caixa/gerente (fila completa com endereço + atualização de status do preparo)
 - [ ] Impressão automática: ticket de cozinha + ticket de caixa
 - [ ] Status do pedido em tempo real para o cliente
 - [ ] Pagamento em dinheiro e PIX (registrado manualmente)
@@ -262,4 +262,5 @@ Foco em confiabilidade (resolver o problema de pedidos que não imprimem), custo
 - **iFood Merchant API**: iniciar o processo de solicitação de acesso com antecedência — pode levar semanas para ser aprovado.
 - **Gami/99Food**: confirmar disponibilidade de API antes de planejar a integração; se não houver, avaliar impressora virtual como ponte temporária.
 - **Estoque**: confirmar com o gerente a granularidade do controle (baixa por prato vendido ou entrada/saída manual).
+- **Sinalização de pedido pronto**: sem tela da cozinha no MVP, a cozinha não consegue marcar `Pronto` diretamente — quem atualiza é o caixa, que dependerá de aviso verbal/visual da cozinha. Se isso virar gargalo, a tela da cozinha (prevista para fase futura) resolve.
 - **Sem pressa**: o sistema atual funciona — o MVP só vai para produção quando estiver estável e testado.
