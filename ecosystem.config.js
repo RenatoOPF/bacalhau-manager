@@ -1,7 +1,9 @@
-// Configuração do PM2 — mantém o backend sempre de pé no notebook-servidor.
+// Configuração do PM2 — mantém o AGENTE LOCAL de impressão sempre de pé no PC
+// do caixa (rode com PRINT_WORKER=on no backend/.env). Ele consome a fila do
+// Redis da nuvem e imprime nas impressoras da rede local.
 // Uso: pm2 start ecosystem.config.js
 //
-// O frontend roda na Vercel; o Cloudflare Tunnel expõe este backend na internet.
+// O backend público roda na Fly.io e o frontend na Vercel (ver docs/deploy.md).
 module.exports = {
   apps: [
     {

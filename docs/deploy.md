@@ -1,163 +1,159 @@
 # Deploy — produção
 
-> **Onde rodar:** todo este guia roda **no notebook-servidor do restaurante**
-> (não na máquina de desenvolvimento). O backend, o banco e a fila ficam nesse
-> notebook; o frontend fica na Vercel.
->
-> **Alvo:** Ubuntu Server (headless), instalação **nativa** (sem Docker),
-> pensado para hardware modesto (ex.: Atom 64 bits + 4GB RAM).
-
-## Atalho: script de setup
-
-Com o repositório clonado no notebook-servidor, a maior parte é automática:
-
-```bash
-bash scripts/setup-server.sh
-```
-
-Ele instala Node 20, PostgreSQL e Redis nativos, cria o banco, prepara um swap
-de segurança, instala dependências, builda o backend, sobe o PM2 e instala o
-`cloudflared` — e imprime no fim os 3 passos manuais (boot do PM2, tunnel e
-Vercel). As seções abaixo detalham cada parte caso prefira fazer na mão.
-
----
+> **Arquitetura atual:** o backend roda na **Fly.io** (nuvem), com **Postgres**
+> e **Redis** gerenciados. As impressoras térmicas ficam na rede local do
+> restaurante — por isso um **agente local** roda no PC do caixa, consome a
+> fila do Redis e imprime. O frontend fica na **Vercel**.
 
 ## Arquitetura de produção
 
 ```
 Cliente → Vercel (frontend Next.js)
                 ↓ HTTPS / WebSocket
-        Cloudflare Tunnel (URL pública)
-                ↓
-        Notebook (Ubuntu Server):
-          backend NestJS (PM2) → PostgreSQL + Redis (nativos)
+        Fly.io (backend NestJS, região gru/São Paulo)
+          ├── Postgres gerenciado (DATABASE_URL)
+          └── Redis gerenciado (REDIS_URL)  ← fila BullMQ
+                ↑ mesma REDIS_URL + DATABASE_URL
+        PC do caixa (rede local do restaurante):
+          Agente de impressão (mesmo backend, PRINT_WORKER=on)
                 ↓ rede local
-        Impressoras térmicas (caixa + cozinha)
+          Impressoras térmicas (caixa + cozinha)
 ```
 
-- **Frontend**: Vercel (grátis) — não roda no notebook.
-- **Backend + banco + fila + impressoras**: notebook local.
-- **Exposição**: Cloudflare Tunnel (sem abrir portas no roteador).
+**Divisão de papéis (mesmo código, dois modos via `PRINT_WORKER`):**
+
+| Onde | `PRINT_WORKER` | Faz |
+|---|---|---|
+| Fly.io (nuvem) | `off` | Serve a API/WebSocket e **enfileira** os pedidos. Não imprime. |
+| PC do caixa (local) | `on` | **Consome** a fila e imprime nas impressoras ESC/POS locais. |
+
+Como os pedidos ficam persistidos no Redis, se o PC do caixa estiver desligado
+os jobs **aguardam** na fila e são impressos assim que o agente voltar.
 
 ---
 
-## 1. Sistema e serviços (instalação nativa)
+## 1. Backend na Fly.io
+
+Pré-requisito: `flyctl` instalado e logado (`flyctl auth login`).
 
 ```bash
-# Node.js 20 LTS (a versão do apt costuma ser antiga)
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# PostgreSQL + Redis nativos
-sudo apt-get update
-sudo apt-get install -y postgresql redis-server
-sudo systemctl enable --now postgresql redis-server
-
-# Banco e usuário (casa com o DATABASE_URL padrão do .env.example)
-sudo -u postgres psql -c "CREATE USER bacalhau WITH PASSWORD 'bacalhau';"
-sudo -u postgres psql -c "CREATE DATABASE bacalhau OWNER bacalhau;"
+# Na RAIZ do repo (o Dockerfile builda a partir daqui — npm workspaces).
+flyctl launch --no-deploy   # cria o app; confirme região gru e o fly.toml existente
 ```
 
-> Por padrão o PostgreSQL do Ubuntu já aceita conexão por senha em
-> `127.0.0.1`/`localhost` (pg_hba `scram-sha-256`), que é como o Prisma conecta.
+### 1.1 Provisionar Postgres e Redis gerenciados
 
-### Ajustes para 4GB de RAM
-- **Swap de segurança** (o script cria 2GB automaticamente se não houver):
-  ```bash
-  sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
-  sudo mkswap /swapfile && sudo swapon /swapfile
-  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-  ```
-- **PostgreSQL** enxuto em `/etc/postgresql/<versão>/main/postgresql.conf`:
-  `shared_buffers = 256MB`, `max_connections = 20`. Reinicie:
-  `sudo systemctl restart postgresql`.
-- **Redis**: NÃO configurar `maxmemory` com despejo (eviction) — ele guarda a
-  fila de pedidos (BullMQ) e despejar jobs perderia pedidos. Deixe o padrão.
-- Use **Ubuntu Server headless** (sem ambiente gráfico) para sobrar RAM.
+Use o provedor de sua preferência (ex.: Fly Postgres/Upstash, Neon, Supabase).
+O importante é obter as duas strings de conexão:
 
-### Cuidados com o notebook-servidor
-- Nunca suspender/hibernar; manter na tomada (nobreak de preferência).
-- Conexão via cabo de rede, não Wi-Fi.
-- Serviços configurados para subir no boot (PostgreSQL, Redis e PM2).
+- `DATABASE_URL` — Postgres, com `sslmode=require`.
+- `REDIS_URL` — use `rediss://` (TLS). O código detecta `rediss://` e liga TLS
+  automaticamente (`backend/src/app.module.ts`).
+
+### 1.2 Segredos (não vão no fly.toml)
+
+```bash
+flyctl secrets set \
+  DATABASE_URL="postgresql://user:senha@host/db?sslmode=require" \
+  REDIS_URL="rediss://default:senha@host:6379" \
+  JWT_SECRET="troque-por-um-segredo-forte" \
+  CORS_ORIGINS="https://seu-projeto.vercel.app"
+```
+
+> `PORT=8080` e `PRINT_WORKER=off` já estão no `fly.toml` — a nuvem nunca roda
+> o worker de impressão.
+
+### 1.3 Deploy
+
+```bash
+flyctl deploy
+```
+
+As migrations do Prisma rodam sozinhas antes de cada release
+(`release_command` no `fly.toml` → `prisma migrate deploy`). A API fica em
+`https://<app>.fly.dev/api` e o WebSocket na própria origem.
+
+> O `fly.toml` mantém `auto_stop_machines = off` / `min_machines_running = 1`:
+> o gateway WebSocket e a fila precisam de um processo vivo 24/7.
 
 ---
 
-## 2. Backend sempre de pé com PM2
+## 2. Agente de impressão no PC do caixa
+
+O agente é o **mesmo backend**, rodando na máquina do caixa (mesma rede das
+impressoras), apontando para o Postgres e o Redis da nuvem.
+
+### 2.1 Preparar a máquina
 
 ```bash
-# Banco: gera o client e aplica as migrações existentes (produção)
+# Node 20 LTS (Linux; no Windows, instale o Node 20 pelo instalador oficial)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs
+
+git clone <repo> bacalhau-manager && cd bacalhau-manager
+npm ci
 npm run prisma:generate --workspace backend
-npm run prisma:deploy --workspace backend
-
-# Build de produção do backend
 npm run build --workspace backend
-
-# Instala o PM2 globalmente (uma vez)
-sudo npm install -g pm2
-
-# Sobe o backend pela config do repo
-pm2 start ecosystem.config.js
-
-# Salva a lista de processos e configura o início automático no boot
-pm2 save
-pm2 startup        # imprime um comando com sudo — copie e rode
-
-# Comandos úteis
-pm2 status
-pm2 logs bacalhau-backend
-pm2 restart bacalhau-backend
 ```
 
-> Garanta que o `backend/.env` aponta para os serviços nativos
-> (`DATABASE_URL`, `REDIS_HOST=localhost`, `REDIS_PORT=6379`) e que `JWT_SECRET`
-> e a senha do admin foram trocados.
+### 2.2 Configurar `backend/.env`
 
----
+```
+# Aponta para os MESMOS serviços da nuvem que o backend Fly usa:
+DATABASE_URL="postgresql://user:senha@host/db?sslmode=require"
+REDIS_URL="rediss://default:senha@host:6379"
 
-## 3. Expor na internet com Cloudflare Tunnel
+# Liga o worker de impressão SÓ aqui:
+PRINT_WORKER=on
 
-### Agora (sem domínio): Quick Tunnel
+# Impressoras na rede local (ESC/POS). Ex.: tcp://IP, ou //localhost/Nome no Windows.
+PRINTER_CASHIER_INTERFACE=tcp://192.168.0.50
+PRINTER_KITCHEN_INTERFACE=tcp://192.168.0.51
+PRINTER_WIDTH=48
+```
 
-URL aleatória `*.trycloudflare.com`, grátis, sem conta. **A URL muda a cada
-reinício** — bom para testar, não para produção fixa.
+> O agente só precisa do processo de pé para consumir a fila; a porta HTTP
+> local (`PORT`) fica ociosa e não precisa ser exposta.
+
+### 2.3 Manter de pé com PM2
 
 ```bash
-# Instala o cloudflared
-curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
-chmod +x cloudflared && sudo mv cloudflared /usr/local/bin/
+sudo npm install -g pm2
+pm2 start ecosystem.config.js
+pm2 save
+pm2 startup   # imprime um comando com sudo — copie e rode (início no boot)
 
-# Sobe o tunnel apontando para o backend local
-cloudflared tunnel --url http://localhost:3001
+pm2 logs bacalhau-backend   # deve mostrar "Pedido #... impresso com sucesso"
 ```
 
-O comando imprime uma URL pública (ex: `https://algo-aleatorio.trycloudflare.com`).
-A API fica em `<URL>/api` e o WebSocket na própria `<URL>`.
-
-### Depois (com domínio no Cloudflare): Tunnel nomeado
-
-URL fixa (ex: `api.seudominio.com.br`), sobrevive a reinícios e pode rodar como
-serviço/PM2. Passos: `cloudflared login` → `cloudflared tunnel create bacalhau`
-→ rota DNS → arquivo de config → `cloudflared tunnel run`.
+### Cuidados com o PC do caixa
+- Nunca suspender/hibernar; manter na tomada (nobreak de preferência).
+- Conexão estável com a internet (fala com Postgres/Redis na nuvem) **e** com
+  as impressoras na rede local.
+- Serviço configurado para subir no boot (PM2).
 
 ---
 
-## 4. Frontend na Vercel
+## 3. Frontend na Vercel
 
 1. Conectar o repositório na Vercel, **Root Directory = `frontend`**.
 2. Variáveis de ambiente (Project Settings → Environment Variables):
-   - `NEXT_PUBLIC_API_URL = https://<sua-url-tunnel>/api`
-   - `NEXT_PUBLIC_WS_URL  = https://<sua-url-tunnel>`
+   - `NEXT_PUBLIC_API_URL = https://<app>.fly.dev/api`
+   - `NEXT_PUBLIC_WS_URL  = https://<app>.fly.dev`
 3. Deploy. A cada `git push` na branch de produção, a Vercel publica sozinha.
 
-### CORS no backend
-No `backend/.env`, incluir a URL da Vercel em `CORS_ORIGINS`:
+Garanta que a URL da Vercel esteja em `CORS_ORIGINS` nos secrets do Fly
+(seção 1.2). Ao alterar, rode `flyctl secrets set CORS_ORIGINS=...` (dispara um
+novo release automaticamente).
 
-```
-CORS_ORIGINS=https://seu-projeto.vercel.app
-```
+---
 
-Reinicie o backend (`pm2 restart bacalhau-backend`) após alterar o `.env`.
+## Checklist de validação
 
-> Com Quick Tunnel a URL muda a cada restart — então, ao reiniciar o tunnel,
-> atualize `NEXT_PUBLIC_API_URL`/`NEXT_PUBLIC_WS_URL` na Vercel. Some quando
-> migrarmos para tunnel nomeado com domínio.
+- [ ] `flyctl deploy` conclui e `GET https://<app>.fly.dev/api` responde (404 do
+      Nest confirma que o processo está de pé).
+- [ ] Frontend na Vercel carrega o cardápio consumindo a API do Fly.
+- [ ] Um pedido de teste cria um job na fila (visível nos logs do Fly:
+      "enfileira" sem imprimir).
+- [ ] Agente local (`PRINT_WORKER=on`) imprime o pedido de teste nas duas
+      impressoras e loga "Pedido #... impresso com sucesso".
+- [ ] Desligar o agente, fazer um pedido, religar → o pedido pendente imprime.

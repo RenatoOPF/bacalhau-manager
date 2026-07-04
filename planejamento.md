@@ -117,25 +117,32 @@ Enquanto integrações oficiais (Gami/99Food) não estiverem disponíveis, exist
 
 ## Arquitetura de Infraestrutura
 
-### Servidor Local (Notebook)
-O backend roda no notebook disponível em casa/restaurante. Isso resolve naturalmente o problema das impressoras, que precisam estar na mesma rede local.
+### Backend na nuvem (Fly.io) + agente local de impressão
+O backend público roda na **Fly.io** (região `gru`/São Paulo), com **PostgreSQL** e **Redis** gerenciados. Como as impressoras térmicas ficam na rede local do restaurante — e a nuvem não alcança IPs locais —, um **agente local** roda no PC do caixa: é o mesmo backend com `PRINT_WORKER=on`, que consome a fila do Redis e imprime.
 
 ```
-Internet
-    ↓
-Cloudflare Tunnel (gratuito — expõe o servidor local com segurança)
-    ↓
-Notebook (backend + banco de dados)
-    ↓
-Rede local
+Cliente → Vercel (frontend Next.js)
+    ↓ HTTPS / WebSocket
+Fly.io (backend NestJS) — só ENFILEIRA os pedidos
+    ├── PostgreSQL gerenciado (DATABASE_URL)
+    └── Redis gerenciado (REDIS_URL) ← fila BullMQ
+    ↑ mesma REDIS_URL + DATABASE_URL
+PC do caixa (rede local) — agente com PRINT_WORKER=on, CONSOME a fila
+    ↓ rede local
     ├── Impressora da Cozinha (ESC/POS)
     └── Impressora do Caixa (ESC/POS)
 ```
 
-**Cuidados para o notebook como servidor:**
+**Papéis (mesmo código, dois modos via `PRINT_WORKER`):**
+- **Fly.io** (`PRINT_WORKER=off`): serve a API/WebSocket e enfileira os pedidos. Não imprime.
+- **PC do caixa** (`PRINT_WORKER=on`): consome a fila e imprime nas impressoras locais.
+
+Como os pedidos ficam persistidos no Redis, se o PC do caixa estiver desligado os jobs aguardam na fila e são impressos assim que o agente voltar. Detalhes operacionais em [`docs/deploy.md`](docs/deploy.md).
+
+**Cuidados para o PC do caixa (agente de impressão):**
 - Configurar para nunca suspender ou hibernar
 - Manter conectado na tomada (não depender de bateria)
-- Conexão via cabo de rede (não Wi-Fi) para estabilidade
+- Internet estável (fala com Postgres/Redis na nuvem) **e** rede local com as impressoras
 - Nobreak/UPS para proteger contra quedas de energia
 - Configurar reinício automático dos serviços (PM2 ou systemd)
 
@@ -211,9 +218,10 @@ Foco em confiabilidade (resolver o problema de pedidos que não imprimem), custo
 ### Infraestrutura
 | Componente | Solução |
 |---|---|
-| **Servidor** | Notebook local (custo zero) |
-| **Exposição para internet** | Cloudflare Tunnel (gratuito) |
-| **Banco de dados** | PostgreSQL local no notebook |
+| **Backend** | Fly.io (região gru/São Paulo), sempre de pé (sem escala-a-zero) |
+| **Banco de dados** | PostgreSQL gerenciado (DATABASE_URL) |
+| **Fila (Redis)** | Redis gerenciado (REDIS_URL, TLS) |
+| **Impressão** | Agente local no PC do caixa (`PRINT_WORKER=on`), gerenciado por PM2 |
 | **Frontend (cardápio)** | Vercel (gratuito para projetos pequenos) |
 
 ---
@@ -230,7 +238,7 @@ Foco em confiabilidade (resolver o problema de pedidos que não imprimem), custo
 - [ ] Status do pedido em tempo real para o cliente
 - [ ] Pagamento em dinheiro e PIX (registrado manualmente)
 - [ ] Painel básico do admin (gerenciar cardápio)
-- [ ] Cloudflare Tunnel configurado no notebook
+- [ ] Deploy do backend na Fly.io + agente local de impressão no PC do caixa
 
 ### Fase 2 — Gestão
 - [ ] Módulo de caixa (histórico, fechamento diário)
