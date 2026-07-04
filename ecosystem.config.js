@@ -1,9 +1,10 @@
-// Configuração do PM2 — mantém o AGENTE LOCAL de impressão sempre de pé no PC
-// do caixa (rode com PRINT_WORKER=on no backend/.env). Ele consome a fila do
-// Redis da nuvem e imprime nas impressoras da rede local.
+// Configuração do PM2 — mantém o backend sempre de pé no PC do caixa
+// (PRINT_WORKER=on no backend/.env). A mesma instância serve a API/WebSocket,
+// consome a fila do Redis local e imprime nas impressoras da rede local.
 // Uso: pm2 start ecosystem.config.js
 //
-// O backend público roda na Fly.io e o frontend na Vercel (ver docs/deploy.md).
+// Banco no Supabase, exposição via Cloudflare Tunnel, frontend na Vercel
+// (ver docs/deploy.md).
 module.exports = {
   apps: [
     {

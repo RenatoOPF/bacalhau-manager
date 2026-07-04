@@ -1,159 +1,154 @@
 # Deploy — produção
 
-> **Arquitetura atual:** o backend roda na **Fly.io** (nuvem), com **Postgres**
-> e **Redis** gerenciados. As impressoras térmicas ficam na rede local do
-> restaurante — por isso um **agente local** roda no PC do caixa, consome a
-> fila do Redis e imprime. O frontend fica na **Vercel**.
+> **Arquitetura (custo ~zero):** o backend roda **no PC do caixa**, dentro do
+> restaurante. Uma única instância serve a API/WebSocket, enfileira os pedidos
+> **e** imprime (`PRINT_WORKER=on`) — as impressoras estão na mesma rede local.
+> O **PostgreSQL** fica no **Supabase** (grátis), o **Redis** roda **local** no
+> PC, a exposição para a internet é via **Cloudflare Tunnel** (grátis) e o
+> frontend na **Vercel** (grátis).
 
 ## Arquitetura de produção
 
 ```
 Cliente → Vercel (frontend Next.js)
                 ↓ HTTPS / WebSocket
-        Fly.io (backend NestJS, região gru/São Paulo)
-          ├── Postgres gerenciado (DATABASE_URL)
-          └── Redis gerenciado (REDIS_URL)  ← fila BullMQ
-                ↑ mesma REDIS_URL + DATABASE_URL
+        Cloudflare Tunnel (URL pública, grátis)
+                ↓
         PC do caixa (rede local do restaurante):
-          Agente de impressão (mesmo backend, PRINT_WORKER=on)
+          backend NestJS (PM2, PRINT_WORKER=on)
+            ├── Redis local (fila BullMQ)
+            └── Supabase (PostgreSQL gerenciado, na nuvem)
                 ↓ rede local
           Impressoras térmicas (caixa + cozinha)
 ```
 
-**Divisão de papéis (mesmo código, dois modos via `PRINT_WORKER`):**
-
-| Onde | `PRINT_WORKER` | Faz |
-|---|---|---|
-| Fly.io (nuvem) | `off` | Serve a API/WebSocket e **enfileira** os pedidos. Não imprime. |
-| PC do caixa (local) | `on` | **Consome** a fila e imprime nas impressoras ESC/POS locais. |
-
-Como os pedidos ficam persistidos no Redis, se o PC do caixa estiver desligado
-os jobs **aguardam** na fila e são impressos assim que o agente voltar.
+- **Único processo**: o mesmo backend serve a API, mantém o WebSocket, consome
+  a fila e imprime. Sem serviço separado.
+- **Custo**: Supabase (free tier), Cloudflare Tunnel (grátis), Vercel (grátis).
+  Só o PC do caixa (que já existe) e a luz.
 
 ---
 
-## 1. Backend na Fly.io
+## 1. Banco de dados no Supabase
 
-Pré-requisito: `flyctl` instalado e logado (`flyctl auth login`).
+1. Crie um projeto em <https://supabase.com> (free tier). Escolha uma região
+   próxima (ex.: `sa-east-1` / São Paulo).
+2. Em **Project Settings → Database → Connection string**, copie a URI.
+   - Prefira a porta **6543** (pooler PgBouncer) para conexões curtas, ou
+     **5432** (direta). Mantenha `sslmode=require`.
+3. Esse valor vai no `DATABASE_URL` do `backend/.env` (seção 3).
 
-```bash
-# Na RAIZ do repo (o Dockerfile builda a partir daqui — npm workspaces).
-flyctl launch --no-deploy   # cria o app; confirme região gru e o fly.toml existente
-```
-
-### 1.1 Provisionar Postgres e Redis gerenciados
-
-Use o provedor de sua preferência (ex.: Fly Postgres/Upstash, Neon, Supabase).
-O importante é obter as duas strings de conexão:
-
-- `DATABASE_URL` — Postgres, com `sslmode=require`.
-- `REDIS_URL` — use `rediss://` (TLS). O código detecta `rediss://` e liga TLS
-  automaticamente (`backend/src/app.module.ts`).
-
-### 1.2 Segredos (não vão no fly.toml)
-
-```bash
-flyctl secrets set \
-  DATABASE_URL="postgresql://user:senha@host/db?sslmode=require" \
-  REDIS_URL="rediss://default:senha@host:6379" \
-  JWT_SECRET="troque-por-um-segredo-forte" \
-  CORS_ORIGINS="https://seu-projeto.vercel.app"
-```
-
-> `PORT=8080` e `PRINT_WORKER=off` já estão no `fly.toml` — a nuvem nunca roda
-> o worker de impressão.
-
-### 1.3 Deploy
-
-```bash
-flyctl deploy
-```
-
-As migrations do Prisma rodam sozinhas antes de cada release
-(`release_command` no `fly.toml` → `prisma migrate deploy`). A API fica em
-`https://<app>.fly.dev/api` e o WebSocket na própria origem.
-
-> O `fly.toml` mantém `auto_stop_machines = off` / `min_machines_running = 1`:
-> o gateway WebSocket e a fila precisam de um processo vivo 24/7.
+> O free tier pausa o projeto após ~1 semana **sem nenhuma atividade**. Um
+> restaurante em operação diária mantém o banco ativo, então não é problema.
 
 ---
 
-## 2. Agente de impressão no PC do caixa
-
-O agente é o **mesmo backend**, rodando na máquina do caixa (mesma rede das
-impressoras), apontando para o Postgres e o Redis da nuvem.
-
-### 2.1 Preparar a máquina
+## 2. PC do caixa — sistema e serviços
 
 ```bash
-# Node 20 LTS (Linux; no Windows, instale o Node 20 pelo instalador oficial)
+# Node.js 20 LTS (Linux; no Windows use o instalador oficial do Node 20)
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs
 
-git clone <repo> bacalhau-manager && cd bacalhau-manager
-npm ci
-npm run prisma:generate --workspace backend
-npm run build --workspace backend
+# Redis local (a fila de pedidos)
+sudo apt-get update && sudo apt-get install -y redis-server
+sudo systemctl enable --now redis-server
 ```
 
-### 2.2 Configurar `backend/.env`
-
-```
-# Aponta para os MESMOS serviços da nuvem que o backend Fly usa:
-DATABASE_URL="postgresql://user:senha@host/db?sslmode=require"
-REDIS_URL="rediss://default:senha@host:6379"
-
-# Liga o worker de impressão SÓ aqui:
-PRINT_WORKER=on
-
-# Impressoras na rede local (ESC/POS). Ex.: tcp://IP, ou //localhost/Nome no Windows.
-PRINTER_CASHIER_INTERFACE=tcp://192.168.0.50
-PRINTER_KITCHEN_INTERFACE=tcp://192.168.0.51
-PRINTER_WIDTH=48
-```
-
-> O agente só precisa do processo de pé para consumir a fila; a porta HTTP
-> local (`PORT`) fica ociosa e não precisa ser exposta.
-
-### 2.3 Manter de pé com PM2
-
-```bash
-sudo npm install -g pm2
-pm2 start ecosystem.config.js
-pm2 save
-pm2 startup   # imprime um comando com sudo — copie e rode (início no boot)
-
-pm2 logs bacalhau-backend   # deve mostrar "Pedido #... impresso com sucesso"
-```
+> **Redis**: NÃO configure `maxmemory` com despejo (eviction) — ele guarda a
+> fila de pedidos (BullMQ) e despejar jobs perderia pedidos. Deixe o padrão.
+> A persistência AOF/RDB do Redis garante que a fila sobreviva a um reinício.
 
 ### Cuidados com o PC do caixa
 - Nunca suspender/hibernar; manter na tomada (nobreak de preferência).
-- Conexão estável com a internet (fala com Postgres/Redis na nuvem) **e** com
-  as impressoras na rede local.
-- Serviço configurado para subir no boot (PM2).
+- Internet estável (fala com o Supabase) **e** rede local com as impressoras.
+- Serviços configurados para subir no boot (Redis e PM2).
 
 ---
 
-## 3. Frontend na Vercel
+## 3. Backend sempre de pé com PM2
+
+```bash
+git clone <repo> bacalhau-manager && cd bacalhau-manager
+npm ci
+
+# backend/.env — copie do exemplo e preencha:
+cp backend/.env.example backend/.env
+#   DATABASE_URL   → connection string do Supabase (seção 1)
+#   REDIS_HOST=localhost / REDIS_PORT=6379   (Redis local)
+#   PRINT_WORKER=on
+#   PRINTER_CASHIER_INTERFACE / PRINTER_KITCHEN_INTERFACE → impressoras da rede
+#   CORS_ORIGINS   → URL do frontend na Vercel
+#   JWT_SECRET     → um segredo forte
+
+# Banco: gera o client e aplica as migrações (no Supabase)
+npm run prisma:generate --workspace backend
+npm run prisma:deploy --workspace backend
+
+# Build de produção
+npm run build --workspace backend
+
+# PM2 mantém o backend de pé e reinicia no boot
+sudo npm install -g pm2
+pm2 start ecosystem.config.js
+pm2 save
+pm2 startup        # imprime um comando com sudo — copie e rode
+
+pm2 status
+pm2 logs bacalhau-backend    # deve mostrar "Pedido #... impresso com sucesso"
+```
+
+---
+
+## 4. Expor na internet com Cloudflare Tunnel
+
+### Agora (sem domínio): Quick Tunnel
+
+URL aleatória `*.trycloudflare.com`, grátis, sem conta. **A URL muda a cada
+reinício** — bom para testar, não para produção fixa.
+
+```bash
+# Instala o cloudflared
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+chmod +x cloudflared && sudo mv cloudflared /usr/local/bin/
+
+# Sobe o tunnel apontando para o backend local
+cloudflared tunnel --url http://localhost:3001
+```
+
+A API fica em `<URL>/api` e o WebSocket na própria `<URL>`.
+
+### Depois (com domínio no Cloudflare): Tunnel nomeado
+
+URL fixa (ex: `api.seudominio.com.br`), sobrevive a reinícios e roda como
+serviço. Passos: `cloudflared login` → `cloudflared tunnel create bacalhau` →
+rota DNS → arquivo de config → `cloudflared tunnel run` (ou instale como serviço
+do sistema para subir no boot).
+
+---
+
+## 5. Frontend na Vercel
 
 1. Conectar o repositório na Vercel, **Root Directory = `frontend`**.
 2. Variáveis de ambiente (Project Settings → Environment Variables):
-   - `NEXT_PUBLIC_API_URL = https://<app>.fly.dev/api`
-   - `NEXT_PUBLIC_WS_URL  = https://<app>.fly.dev`
+   - `NEXT_PUBLIC_API_URL = https://<sua-url-tunnel>/api`
+   - `NEXT_PUBLIC_WS_URL  = https://<sua-url-tunnel>`
 3. Deploy. A cada `git push` na branch de produção, a Vercel publica sozinha.
 
-Garanta que a URL da Vercel esteja em `CORS_ORIGINS` nos secrets do Fly
-(seção 1.2). Ao alterar, rode `flyctl secrets set CORS_ORIGINS=...` (dispara um
-novo release automaticamente).
+No `backend/.env`, inclua a URL da Vercel em `CORS_ORIGINS` e reinicie
+(`pm2 restart bacalhau-backend`).
+
+> Com Quick Tunnel a URL muda a cada restart — ao reiniciar o tunnel, atualize
+> `NEXT_PUBLIC_API_URL`/`NEXT_PUBLIC_WS_URL` na Vercel. Some quando migrar para
+> tunnel nomeado com domínio.
 
 ---
 
 ## Checklist de validação
 
-- [ ] `flyctl deploy` conclui e `GET https://<app>.fly.dev/api` responde (404 do
-      Nest confirma que o processo está de pé).
-- [ ] Frontend na Vercel carrega o cardápio consumindo a API do Fly.
-- [ ] Um pedido de teste cria um job na fila (visível nos logs do Fly:
-      "enfileira" sem imprimir).
-- [ ] Agente local (`PRINT_WORKER=on`) imprime o pedido de teste nas duas
-      impressoras e loga "Pedido #... impresso com sucesso".
-- [ ] Desligar o agente, fazer um pedido, religar → o pedido pendente imprime.
+- [ ] `npm run prisma:deploy` aplica as migrações no Supabase sem erro.
+- [ ] `pm2 status` mostra o `bacalhau-backend` online.
+- [ ] Frontend na Vercel carrega o cardápio consumindo a API via tunnel.
+- [ ] Um pedido de teste imprime nas duas impressoras e loga
+      "Pedido #... impresso com sucesso".
+- [ ] Reiniciar o PC → Redis, backend (PM2) e tunnel voltam sozinhos; um pedido
+      de teste ainda imprime.

@@ -117,34 +117,32 @@ Enquanto integrações oficiais (Gami/99Food) não estiverem disponíveis, exist
 
 ## Arquitetura de Infraestrutura
 
-### Backend na nuvem (Fly.io) + agente local de impressão
-O backend público roda na **Fly.io** (região `gru`/São Paulo), com **PostgreSQL** e **Redis** gerenciados. Como as impressoras térmicas ficam na rede local do restaurante — e a nuvem não alcança IPs locais —, um **agente local** roda no PC do caixa: é o mesmo backend com `PRINT_WORKER=on`, que consome a fila do Redis e imprime.
+### Backend no PC do caixa + Postgres no Supabase (custo ~zero)
+O backend roda **no PC do caixa**, dentro do restaurante. Uma única instância (`PRINT_WORKER=on`) serve a API/WebSocket, enfileira os pedidos **e** imprime — as impressoras estão na mesma rede local. O **PostgreSQL** fica no **Supabase** (grátis), o **Redis** roda **local** no PC, a exposição é via **Cloudflare Tunnel** (grátis) e o frontend na **Vercel** (grátis).
 
 ```
 Cliente → Vercel (frontend Next.js)
     ↓ HTTPS / WebSocket
-Fly.io (backend NestJS) — só ENFILEIRA os pedidos
-    ├── PostgreSQL gerenciado (DATABASE_URL)
-    └── Redis gerenciado (REDIS_URL) ← fila BullMQ
-    ↑ mesma REDIS_URL + DATABASE_URL
-PC do caixa (rede local) — agente com PRINT_WORKER=on, CONSOME a fila
+Cloudflare Tunnel (URL pública, grátis)
+    ↓
+PC do caixa (rede local): backend NestJS (PM2, PRINT_WORKER=on)
+    ├── Redis local (fila BullMQ)
+    └── Supabase (PostgreSQL gerenciado, na nuvem)
     ↓ rede local
     ├── Impressora da Cozinha (ESC/POS)
     └── Impressora do Caixa (ESC/POS)
 ```
 
-**Papéis (mesmo código, dois modos via `PRINT_WORKER`):**
-- **Fly.io** (`PRINT_WORKER=off`): serve a API/WebSocket e enfileira os pedidos. Não imprime.
-- **PC do caixa** (`PRINT_WORKER=on`): consome a fila e imprime nas impressoras locais.
+**Único processo**: o mesmo backend serve a API, mantém o WebSocket, consome a fila e imprime. Sem serviço separado. Detalhes operacionais em [`docs/deploy.md`](docs/deploy.md).
 
-Como os pedidos ficam persistidos no Redis, se o PC do caixa estiver desligado os jobs aguardam na fila e são impressos assim que o agente voltar. Detalhes operacionais em [`docs/deploy.md`](docs/deploy.md).
+**Custo**: Supabase (free tier), Cloudflare Tunnel e Vercel (grátis). Só o PC do caixa (que já existe) e a energia.
 
-**Cuidados para o PC do caixa (agente de impressão):**
+**Cuidados para o PC do caixa:**
 - Configurar para nunca suspender ou hibernar
 - Manter conectado na tomada (não depender de bateria)
-- Internet estável (fala com Postgres/Redis na nuvem) **e** rede local com as impressoras
+- Internet estável (fala com o Supabase) **e** rede local com as impressoras
 - Nobreak/UPS para proteger contra quedas de energia
-- Configurar reinício automático dos serviços (PM2 ou systemd)
+- Configurar reinício automático dos serviços (Redis + PM2)
 
 ---
 
@@ -218,10 +216,10 @@ Foco em confiabilidade (resolver o problema de pedidos que não imprimem), custo
 ### Infraestrutura
 | Componente | Solução |
 |---|---|
-| **Backend** | Fly.io (região gru/São Paulo), sempre de pé (sem escala-a-zero) |
-| **Banco de dados** | PostgreSQL gerenciado (DATABASE_URL) |
-| **Fila (Redis)** | Redis gerenciado (REDIS_URL, TLS) |
-| **Impressão** | Agente local no PC do caixa (`PRINT_WORKER=on`), gerenciado por PM2 |
+| **Backend** | PC do caixa (PM2, `PRINT_WORKER=on`) — serve API, fila e impressão |
+| **Banco de dados** | Supabase (PostgreSQL gerenciado, free tier) |
+| **Fila (Redis)** | Redis local nativo no PC do caixa |
+| **Exposição para internet** | Cloudflare Tunnel (gratuito) |
 | **Frontend (cardápio)** | Vercel (gratuito para projetos pequenos) |
 
 ---
@@ -238,7 +236,7 @@ Foco em confiabilidade (resolver o problema de pedidos que não imprimem), custo
 - [ ] Status do pedido em tempo real para o cliente
 - [ ] Pagamento em dinheiro e PIX (registrado manualmente)
 - [ ] Painel básico do admin (gerenciar cardápio)
-- [ ] Deploy do backend na Fly.io + agente local de impressão no PC do caixa
+- [ ] Deploy no PC do caixa (backend + Redis local) + Supabase + Cloudflare Tunnel
 
 ### Fase 2 — Gestão
 - [ ] Módulo de caixa (histórico, fechamento diário)

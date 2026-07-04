@@ -13,8 +13,8 @@ import { RealtimeModule } from './realtime/realtime.module';
 
 /**
  * Resolve a conexão do Redis a partir do ambiente.
- * - Nuvem (Upstash/Fly Redis): usa REDIS_URL, com TLS quando `rediss://`.
- * - Local/desenvolvimento: cai para REDIS_HOST/REDIS_PORT.
+ * - Produção/local: usa REDIS_HOST/REDIS_PORT (Redis nativo no PC do caixa).
+ * - Redis em nuvem (opcional): defina REDIS_URL, com TLS quando `rediss://`.
  * `maxRetriesPerRequest: null` é exigido pelo BullMQ (conexões bloqueantes).
  */
 function redisConnection(): RedisOptions {

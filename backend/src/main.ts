@@ -17,8 +17,8 @@ async function bootstrap() {
   );
 
   const port = Number(process.env.PORT ?? 3001);
-  // '0.0.0.0' é obrigatório em containers (Fly/Docker) para aceitar
-  // conexões externas; ligar só em localhost não seria alcançável.
+  // '0.0.0.0' aceita conexões de fora do processo (Cloudflare Tunnel e
+  // outras máquinas da rede local); ligar só em localhost não seria alcançável.
   await app.listen(port, '0.0.0.0');
   Logger.log(`Backend rodando em http://localhost:${port}/api`, 'Bootstrap');
 }

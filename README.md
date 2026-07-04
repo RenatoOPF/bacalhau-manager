@@ -58,11 +58,11 @@ npm run dev                # http://localhost:3000
 
 Deixe `PRINTER_*_INTERFACE` vazio no `.env` para rodar sem hardware (a impressão
 fica apenas no log). Para impressoras reais, preencha com o IP (`tcp://192.168.0.50`)
-ou caminho USB. Em produção quem imprime é o **agente local** (`PRINT_WORKER=on`)
-no PC do caixa; o backend na nuvem apenas enfileira. Ver [docs/deploy.md](docs/deploy.md).
+ou caminho USB. Em produção o backend roda no **PC do caixa** com
+`PRINT_WORKER=on` e imprime nas impressoras da rede local. Ver [docs/deploy.md](docs/deploy.md).
 
 ## Próximos passos (ainda da Fase 1)
 
 - Painel admin para gerenciar cardápio (criar/editar itens) — API pronta, falta UI.
 - Tela pública de acompanhamento do pedido por protocolo.
-- Deploy do backend na Fly.io + agente local de impressão (ver `docs/deploy.md`).
+- Deploy no PC do caixa + Supabase + Cloudflare Tunnel (ver `docs/deploy.md`).
