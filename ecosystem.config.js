@@ -1,7 +1,10 @@
-// Configuração do PM2 — mantém o backend sempre de pé no notebook-servidor.
+// Configuração do PM2 — mantém o backend sempre de pé no PC do caixa
+// (PRINT_WORKER=on no backend/.env). A mesma instância serve a API/WebSocket,
+// consome a fila do Redis local e imprime nas impressoras da rede local.
 // Uso: pm2 start ecosystem.config.js
 //
-// O frontend roda na Vercel; o Cloudflare Tunnel expõe este backend na internet.
+// Banco no Supabase, exposição via Cloudflare Tunnel, frontend na Vercel
+// (ver docs/deploy.md).
 module.exports = {
   apps: [
     {

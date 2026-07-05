@@ -1,79 +1,123 @@
-# Deploy — Fase 1
+# Deploy — produção
 
-> **Onde rodar:** todo este guia roda **no notebook-servidor do restaurante**
-> (não na máquina de desenvolvimento). O backend, o banco, a fila e as
-> impressoras ficam nesse notebook; o frontend fica na Vercel.
+> **Arquitetura (custo ~zero):** o backend roda **no PC do caixa**, dentro do
+> restaurante. Uma única instância serve a API/WebSocket, enfileira os pedidos
+> **e** imprime (`PRINT_WORKER=on`) — as impressoras estão na mesma rede local.
+> O **PostgreSQL** fica no **Supabase** (grátis), o **Redis** roda **local** no
+> PC, a exposição para a internet é via **Cloudflare Tunnel** (grátis) e o
+> frontend na **Vercel** (grátis).
 
 ## Atalho: script de setup
 
-Com o repositório clonado no notebook-servidor, a maior parte é automática:
+Com o repositório clonado no PC do caixa e o **Supabase já criado** (seção 1),
+a maior parte é automática:
 
 ```bash
-bash scripts/setup-server.sh
+bash scripts/setup-caixa.sh
 ```
 
-Ele sobe Postgres/Redis, instala dependências, prepara o banco, builda o
-backend, instala e sobe o PM2 e instala o `cloudflared` — e imprime no fim os
-3 passos manuais (boot do PM2, tunnel e Vercel). As seções abaixo detalham cada
-parte caso prefira fazer na mão.
+Ele instala Node 20 e Redis local, instala dependências, cria o `backend/.env`
+(que você preenche com a `DATABASE_URL` do Supabase), aplica as migrações, faz
+o seed, builda, sobe o PM2 e instala o `cloudflared` — e imprime no fim os
+passos manuais (boot do PM2, tunnel e Vercel). Na primeira execução ele para
+para você preencher a `DATABASE_URL`; rode de novo depois. As seções abaixo
+detalham cada parte caso prefira fazer na mão.
 
 ---
 
-Arquitetura de produção (MVP):
+## Arquitetura de produção
 
 ```
 Cliente → Vercel (frontend Next.js)
                 ↓ HTTPS / WebSocket
-        Cloudflare Tunnel (URL pública)
+        Cloudflare Tunnel (URL pública, grátis)
                 ↓
-        Notebook: backend NestJS (PM2) → PostgreSQL + Redis (Docker)
+        PC do caixa (rede local do restaurante):
+          backend NestJS (PM2, PRINT_WORKER=on)
+            ├── Redis local (fila BullMQ)
+            └── Supabase (PostgreSQL gerenciado, na nuvem)
                 ↓ rede local
-        Impressoras térmicas (caixa + cozinha)
+          Impressoras térmicas (caixa + cozinha)
 ```
 
-- **Frontend**: Vercel (grátis).
-- **Backend + banco + fila + impressoras**: notebook local.
-- **Exposição**: Cloudflare Tunnel (sem abrir portas no roteador).
+- **Único processo**: o mesmo backend serve a API, mantém o WebSocket, consome
+  a fila e imprime. Sem serviço separado.
+- **Custo**: Supabase (free tier), Cloudflare Tunnel (grátis), Vercel (grátis).
+  Só o PC do caixa (que já existe) e a luz.
 
 ---
 
-## 1. Backend sempre de pé com PM2
+## 1. Banco de dados no Supabase
+
+1. Crie um projeto em <https://supabase.com> (free tier). Escolha uma região
+   próxima (ex.: `sa-east-1` / São Paulo).
+2. Em **Project Settings → Database → Connection string**, copie a URI.
+   - Prefira a porta **6543** (pooler PgBouncer) para conexões curtas, ou
+     **5432** (direta). Mantenha `sslmode=require`.
+3. Esse valor vai no `DATABASE_URL` do `backend/.env` (seção 3).
+
+> O free tier pausa o projeto após ~1 semana **sem nenhuma atividade**. Um
+> restaurante em operação diária mantém o banco ativo, então não é problema.
+
+---
+
+## 2. PC do caixa — sistema e serviços
 
 ```bash
-# Banco: gera o client e aplica as migrações existentes (produção)
+# Node.js 20 LTS (Linux; no Windows use o instalador oficial do Node 20)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs
+
+# Redis local (a fila de pedidos)
+sudo apt-get update && sudo apt-get install -y redis-server
+sudo systemctl enable --now redis-server
+```
+
+> **Redis**: NÃO configure `maxmemory` com despejo (eviction) — ele guarda a
+> fila de pedidos (BullMQ) e despejar jobs perderia pedidos. Deixe o padrão.
+> A persistência AOF/RDB do Redis garante que a fila sobreviva a um reinício.
+
+### Cuidados com o PC do caixa
+- Nunca suspender/hibernar; manter na tomada (nobreak de preferência).
+- Internet estável (fala com o Supabase) **e** rede local com as impressoras.
+- Serviços configurados para subir no boot (Redis e PM2).
+
+---
+
+## 3. Backend sempre de pé com PM2
+
+```bash
+git clone <repo> bacalhau-manager && cd bacalhau-manager
+npm ci
+
+# backend/.env — copie do exemplo e preencha:
+cp backend/.env.example backend/.env
+#   DATABASE_URL   → connection string do Supabase (seção 1)
+#   REDIS_HOST=localhost / REDIS_PORT=6379   (Redis local)
+#   PRINT_WORKER=on
+#   PRINTER_CASHIER_INTERFACE / PRINTER_KITCHEN_INTERFACE → impressoras da rede
+#   CORS_ORIGINS   → URL do frontend na Vercel
+#   JWT_SECRET     → um segredo forte
+
+# Banco: gera o client e aplica as migrações (no Supabase)
 npm run prisma:generate --workspace backend
 npm run prisma:deploy --workspace backend
 
-# Build de produção do backend
+# Build de produção
 npm run build --workspace backend
 
-# Instala o PM2 globalmente (uma vez)
+# PM2 mantém o backend de pé e reinicia no boot
 sudo npm install -g pm2
-
-# Sobe o backend pela config do repo
 pm2 start ecosystem.config.js
-
-# Salva a lista de processos e configura o início automático no boot
 pm2 save
 pm2 startup        # imprime um comando com sudo — copie e rode
 
-# Comandos úteis
 pm2 status
-pm2 logs bacalhau-backend
-pm2 restart bacalhau-backend
+pm2 logs bacalhau-backend    # deve mostrar "Pedido #... impresso com sucesso"
 ```
-
-> O Postgres e o Redis sobem via `docker compose up -d` (ver README). Garanta que
-> o `backend/.env` aponta para eles (`DATABASE_URL`, `REDIS_HOST`, `REDIS_PORT`).
-
-### Cuidados com o notebook-servidor
-- Nunca suspender/hibernar; manter na tomada (nobreak de preferência).
-- Conexão via cabo de rede, não Wi-Fi.
-- Docker e PM2 configurados para subir no boot.
 
 ---
 
-## 2. Expor na internet com Cloudflare Tunnel
+## 4. Expor na internet com Cloudflare Tunnel
 
 ### Agora (sem domínio): Quick Tunnel
 
@@ -89,18 +133,18 @@ chmod +x cloudflared && sudo mv cloudflared /usr/local/bin/
 cloudflared tunnel --url http://localhost:3001
 ```
 
-O comando imprime uma URL pública (ex: `https://algo-aleatorio.trycloudflare.com`).
 A API fica em `<URL>/api` e o WebSocket na própria `<URL>`.
 
 ### Depois (com domínio no Cloudflare): Tunnel nomeado
 
-URL fixa (ex: `api.seudominio.com.br`), sobrevive a reinícios e pode rodar como
-serviço/PM2. Passos: `cloudflared login` → `cloudflared tunnel create bacalhau`
-→ rota DNS → arquivo de config → `cloudflared tunnel run`.
+URL fixa (ex: `api.seudominio.com.br`), sobrevive a reinícios e roda como
+serviço. Passos: `cloudflared login` → `cloudflared tunnel create bacalhau` →
+rota DNS → arquivo de config → `cloudflared tunnel run` (ou instale como serviço
+do sistema para subir no boot).
 
 ---
 
-## 3. Frontend na Vercel
+## 5. Frontend na Vercel
 
 1. Conectar o repositório na Vercel, **Root Directory = `frontend`**.
 2. Variáveis de ambiente (Project Settings → Environment Variables):
@@ -108,15 +152,21 @@ serviço/PM2. Passos: `cloudflared login` → `cloudflared tunnel create bacalha
    - `NEXT_PUBLIC_WS_URL  = https://<sua-url-tunnel>`
 3. Deploy. A cada `git push` na branch de produção, a Vercel publica sozinha.
 
-### CORS no backend
-No `backend/.env`, incluir a URL da Vercel em `CORS_ORIGINS`:
+No `backend/.env`, inclua a URL da Vercel em `CORS_ORIGINS` e reinicie
+(`pm2 restart bacalhau-backend`).
 
-```
-CORS_ORIGINS=https://seu-projeto.vercel.app
-```
+> Com Quick Tunnel a URL muda a cada restart — ao reiniciar o tunnel, atualize
+> `NEXT_PUBLIC_API_URL`/`NEXT_PUBLIC_WS_URL` na Vercel. Some quando migrar para
+> tunnel nomeado com domínio.
 
-Reinicie o backend (`pm2 restart bacalhau-backend`) após alterar o `.env`.
+---
 
-> Com Quick Tunnel a URL muda a cada restart — então, ao reiniciar o tunnel,
-> atualize `NEXT_PUBLIC_API_URL`/`NEXT_PUBLIC_WS_URL` na Vercel. Some quando
-> migrarmos para tunnel nomeado com domínio.
+## Checklist de validação
+
+- [ ] `npm run prisma:deploy` aplica as migrações no Supabase sem erro.
+- [ ] `pm2 status` mostra o `bacalhau-backend` online.
+- [ ] Frontend na Vercel carrega o cardápio consumindo a API via tunnel.
+- [ ] Um pedido de teste imprime nas duas impressoras e loga
+      "Pedido #... impresso com sucesso".
+- [ ] Reiniciar o PC → Redis, backend (PM2) e tunnel voltam sozinhos; um pedido
+      de teste ainda imprime.

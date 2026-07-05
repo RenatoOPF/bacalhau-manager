@@ -117,27 +117,32 @@ Enquanto integrações oficiais (Gami/99Food) não estiverem disponíveis, exist
 
 ## Arquitetura de Infraestrutura
 
-### Servidor Local (Notebook)
-O backend roda no notebook disponível em casa/restaurante. Isso resolve naturalmente o problema das impressoras, que precisam estar na mesma rede local.
+### Backend no PC do caixa + Postgres no Supabase (custo ~zero)
+O backend roda **no PC do caixa**, dentro do restaurante. Uma única instância (`PRINT_WORKER=on`) serve a API/WebSocket, enfileira os pedidos **e** imprime — as impressoras estão na mesma rede local. O **PostgreSQL** fica no **Supabase** (grátis), o **Redis** roda **local** no PC, a exposição é via **Cloudflare Tunnel** (grátis) e o frontend na **Vercel** (grátis).
 
 ```
-Internet
+Cliente → Vercel (frontend Next.js)
+    ↓ HTTPS / WebSocket
+Cloudflare Tunnel (URL pública, grátis)
     ↓
-Cloudflare Tunnel (gratuito — expõe o servidor local com segurança)
-    ↓
-Notebook (backend + banco de dados)
-    ↓
-Rede local
+PC do caixa (rede local): backend NestJS (PM2, PRINT_WORKER=on)
+    ├── Redis local (fila BullMQ)
+    └── Supabase (PostgreSQL gerenciado, na nuvem)
+    ↓ rede local
     ├── Impressora da Cozinha (ESC/POS)
     └── Impressora do Caixa (ESC/POS)
 ```
 
-**Cuidados para o notebook como servidor:**
+**Único processo**: o mesmo backend serve a API, mantém o WebSocket, consome a fila e imprime. Sem serviço separado. Detalhes operacionais em [`docs/deploy.md`](docs/deploy.md).
+
+**Custo**: Supabase (free tier), Cloudflare Tunnel e Vercel (grátis). Só o PC do caixa (que já existe) e a energia.
+
+**Cuidados para o PC do caixa:**
 - Configurar para nunca suspender ou hibernar
 - Manter conectado na tomada (não depender de bateria)
-- Conexão via cabo de rede (não Wi-Fi) para estabilidade
+- Internet estável (fala com o Supabase) **e** rede local com as impressoras
 - Nobreak/UPS para proteger contra quedas de energia
-- Configurar reinício automático dos serviços (PM2 ou systemd)
+- Configurar reinício automático dos serviços (Redis + PM2)
 
 ---
 
@@ -211,9 +216,10 @@ Foco em confiabilidade (resolver o problema de pedidos que não imprimem), custo
 ### Infraestrutura
 | Componente | Solução |
 |---|---|
-| **Servidor** | Notebook local (custo zero) |
+| **Backend** | PC do caixa (PM2, `PRINT_WORKER=on`) — serve API, fila e impressão |
+| **Banco de dados** | Supabase (PostgreSQL gerenciado, free tier) |
+| **Fila (Redis)** | Redis local nativo no PC do caixa |
 | **Exposição para internet** | Cloudflare Tunnel (gratuito) |
-| **Banco de dados** | PostgreSQL local no notebook |
 | **Frontend (cardápio)** | Vercel (gratuito para projetos pequenos) |
 
 ---
@@ -230,7 +236,7 @@ Foco em confiabilidade (resolver o problema de pedidos que não imprimem), custo
 - [ ] Status do pedido em tempo real para o cliente
 - [ ] Pagamento em dinheiro e PIX (registrado manualmente)
 - [ ] Painel básico do admin (gerenciar cardápio)
-- [ ] Cloudflare Tunnel configurado no notebook
+- [ ] Deploy no PC do caixa (backend + Redis local) + Supabase + Cloudflare Tunnel
 
 ### Fase 2 — Gestão
 - [ ] Módulo de caixa (histórico, fechamento diário)

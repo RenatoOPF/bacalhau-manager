@@ -58,11 +58,11 @@ npm run dev                # http://localhost:3000
 
 Deixe `PRINTER_*_INTERFACE` vazio no `.env` para rodar sem hardware (a impressão
 fica apenas no log). Para impressoras reais, preencha com o IP (`tcp://192.168.0.50`)
-ou caminho USB. As duas são acionadas pelo backend rodando no PC do caixa.
+ou caminho USB. Em produção o backend roda no **PC do caixa** com
+`PRINT_WORKER=on` e imprime nas impressoras da rede local. Ver [docs/deploy.md](docs/deploy.md).
 
 ## Próximos passos (ainda da Fase 1)
 
 - Painel admin para gerenciar cardápio (criar/editar itens) — API pronta, falta UI.
 - Tela pública de acompanhamento do pedido por protocolo.
-- Configurar Cloudflare Tunnel no notebook.
-- PM2 para manter o backend sempre de pé.
+- Deploy no PC do caixa + Supabase + Cloudflare Tunnel (ver `docs/deploy.md`).
