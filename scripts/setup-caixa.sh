@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 #
-# Setup do PC do caixa (produção) — Bacalhau & Cia.
+# Setup do PC do caixa (produção, Linux/Ubuntu) — Bacalhau & Cia.
+# No Windows 10 use scripts/setup-caixa.ps1 (guia: docs/deploy-windows.md).
+#
 # Arquitetura: backend NestJS roda AQUI (PRINT_WORKER=on), Redis LOCAL,
 # PostgreSQL no Supabase (nuvem), exposição via Cloudflare Tunnel.
 #
