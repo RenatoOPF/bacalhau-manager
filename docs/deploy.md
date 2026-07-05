@@ -1,5 +1,8 @@
 # Deploy — produção
 
+> 🪟 **PC do caixa roda Windows 10?** Use o guia [`deploy-windows.md`](deploy-windows.md).
+> Este documento cobre o alvo Linux/Ubuntu.
+
 > **Arquitetura (custo ~zero):** o backend roda **no PC do caixa**, dentro do
 > restaurante. Uma única instância serve a API/WebSocket, enfileira os pedidos
 > **e** imprime (`PRINT_WORKER=on`) — as impressoras estão na mesma rede local.
