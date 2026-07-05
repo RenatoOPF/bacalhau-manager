@@ -51,9 +51,15 @@ Cliente → Vercel (frontend Next.js)
 
 1. Crie um projeto em <https://supabase.com> (free tier). Escolha uma região
    próxima (ex.: `sa-east-1` / São Paulo).
-2. Em **Project Settings → Database → Connection string**, copie a URI.
-   - Prefira a porta **6543** (pooler PgBouncer) para conexões curtas, ou
-     **5432** (direta). Mantenha `sslmode=require`.
+2. Em **Connect** (ou **Project Settings → Database → Connection string**),
+   copie a **Session pooler** — host `aws-<n>-<regiao>.pooler.supabase.com`,
+   **porta 5432**, usuário `postgres.<ref>`.
+   - É IPv4 (alcançável de qualquer rede) e suporta as migrations do Prisma.
+   - **Não** use a *Transaction pooler* (6543): é para serverless e quebra
+     `prisma migrate deploy` sem um `directUrl` separado (que este schema não
+     tem). A *Direct connection* costuma ser IPv6-only e não conecta do PC.
+   - Troque `[YOUR-PASSWORD]` pela senha do banco e mantenha `sslmode=require`.
+     Se a senha tiver caracteres especiais, faça URL-encode (`@`→`%40` etc.).
 3. Esse valor vai no `DATABASE_URL` do `backend/.env` (seção 3).
 
 > O free tier pausa o projeto após ~1 semana **sem nenhuma atividade**. Um
