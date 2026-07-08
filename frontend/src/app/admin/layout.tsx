@@ -1,17 +1,9 @@
 'use client';
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { api, auth, type Employee } from '@/lib/api';
-
-const UserContext = createContext<Employee | null>(null);
-export const useAdminUser = () => useContext(UserContext);
+import { AdminUserProvider } from './user-context';
 
 const NAV = [
   { href: '/admin', label: 'Fila' },
@@ -61,7 +53,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <UserContext.Provider value={user}>
+    <AdminUserProvider user={user}>
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 p-3">
           <span className="font-bold">Bacalhau &amp; Cia</span>
@@ -101,6 +93,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
       {children}
-    </UserContext.Provider>
+    </AdminUserProvider>
   );
 }
