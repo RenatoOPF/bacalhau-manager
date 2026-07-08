@@ -65,8 +65,9 @@ if (-not (Test-Path backend\.env)) {
 }
 
 # Guarda: sem um DATABASE_URL real (Supabase), as migrations falham.
-$envText = Get-Content backend\.env -Raw
-if (($envText -notmatch '(?m)^DATABASE_URL=') -or ($envText -match '<ref>|<senha>|localhost:5432/bacalhau')) {
+# (Só olha a linha ativa, não comentários de exemplo acima dela.)
+$dbUrlLine = (Get-Content backend\.env | Where-Object { $_ -match '^DATABASE_URL=' } | Select-Object -Last 1)
+if ((-not $dbUrlLine) -or ($dbUrlLine -match '<ref>|<senha>|localhost:5432/bacalhau')) {
   Warn "DATABASE_URL ainda não aponta para o Supabase."
   Write-Host "Preencha DATABASE_URL em backend\.env com a Session pooler do Supabase"
   Write-Host "(porta 5432) e rode este script novamente."
