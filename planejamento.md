@@ -229,14 +229,18 @@ Foco em confiabilidade (resolver o problema de pedidos que não imprimem), custo
 ### Fase 1 — MVP (Coração do sistema)
 > Objetivo: substituir o sistema atual com o mínimo funcional
 
-- [ ] Cardápio web (cliente faz pedido via link)
-- [ ] Fila de pedidos confiável (Redis + BullMQ)
-- [ ] Tela do caixa/gerente (fila completa com endereço + atualização de status do preparo)
-- [ ] Impressão automática: ticket de cozinha + ticket de caixa
-- [ ] Status do pedido em tempo real para o cliente
-- [ ] Pagamento em dinheiro e PIX (registrado manualmente)
-- [ ] Painel básico do admin (gerenciar cardápio)
-- [ ] Deploy no PC do caixa (backend + Redis local) + Supabase + Cloudflare Tunnel
+- [x] Cardápio web (cliente faz pedido via link)
+- [x] Fila de pedidos confiável (Redis + BullMQ)
+- [x] Tela do caixa/gerente (fila completa com endereço + atualização de status do preparo)
+- [x] Impressão automática: ticket de cozinha + ticket de caixa
+- [x] Status do pedido em tempo real para o cliente
+- [x] Pagamento em dinheiro e PIX (registrado manualmente)
+- [x] Painel básico do admin (gerenciar cardápio)
+- [x] Deploy no PC do caixa (backend + Redis local) + Supabase + Cloudflare Tunnel
+
+> ⚠️ O painel admin ainda **não tem autenticação** — as rotas `/admin/*` estão
+> abertas para quem tiver a URL do túnel. Login/perfis estão prontos na branch
+> `fase-2-funcionarios` (ver Fase 2). Resolver antes do uso aberto em produção.
 
 ### Fase 2 — Gestão
 - [ ] Módulo de caixa (histórico, fechamento diário)
