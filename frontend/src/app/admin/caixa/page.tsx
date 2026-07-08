@@ -58,14 +58,7 @@ export default function CaixaFinanceiroPage() {
 
   return (
     <main className="mx-auto max-w-4xl p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Caixa</h1>
-        <nav className="flex gap-3 text-sm text-blue-600 underline">
-          <a href="/admin">Fila</a>
-          <a href="/admin/cardapio">Cardápio</a>
-          <a href="/admin/relatorios">Relatórios</a>
-        </nav>
-      </div>
+      <h1 className="text-2xl font-bold">Caixa</h1>
 
       {/* Pendentes de pagamento */}
       <section className="mt-6">

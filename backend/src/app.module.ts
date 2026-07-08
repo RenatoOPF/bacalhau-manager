@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import type { RedisOptions } from 'ioredis';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
+import { EmployeesModule } from './employees/employees.module';
 import { MenuModule } from './menu/menu.module';
 import { OrdersModule } from './orders/orders.module';
 import { CashModule } from './cash/cash.module';
@@ -44,6 +46,8 @@ function redisConnection(): RedisOptions {
     // Conexão única do BullMQ com o Redis, compartilhada por todas as filas.
     BullModule.forRoot({ connection: redisConnection() }),
     PrismaModule,
+    AuthModule,
+    EmployeesModule,
     RealtimeModule,
     PrintingModule,
     QueueModule,

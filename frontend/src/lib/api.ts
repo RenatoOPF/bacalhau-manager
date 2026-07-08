@@ -1,14 +1,42 @@
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
+const TOKEN_KEY = 'bacalhau_token';
+
+export const auth = {
+  getToken: (): string | null =>
+    typeof window === 'undefined' ? null : localStorage.getItem(TOKEN_KEY),
+  setToken: (token: string) => localStorage.setItem(TOKEN_KEY, token),
+  clear: () => localStorage.removeItem(TOKEN_KEY),
+};
+
+/** Lançado quando a API responde — carrega o status HTTP para tratamento. */
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+function authHeaders(): Record<string, string> {
+  const token = auth.getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+      ...(init?.headers ?? {}),
+    },
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`API ${res.status}: ${body}`);
+    throw new ApiError(res.status, `API ${res.status}: ${body}`);
   }
   return res.json() as Promise<T>;
 }
@@ -133,10 +161,61 @@ export interface CreateOrderPayload {
   items: { menuItemId: string; quantity: number; notes?: string }[];
 }
 
+export type Role = 'ADMIN' | 'MANAGER' | 'KITCHEN' | 'DELIVERY';
+
+export interface Employee {
+  id: string;
+  name: string;
+  username: string;
+  role: Role;
+  active: boolean;
+  createdAt?: string;
+}
+
+export interface Session {
+  token: string;
+  employee: Pick<Employee, 'id' | 'name' | 'username' | 'role'>;
+}
+
+export interface CreateEmployeePayload {
+  name: string;
+  username: string;
+  password: string;
+  role: Role;
+}
+
+export interface UpdateEmployeePayload {
+  name?: string;
+  role?: Role;
+  active?: boolean;
+  password?: string;
+}
+
 // ---- Endpoints ----
 
 export const api = {
   getMenu: () => request<MenuCategory[]>('/menu'),
+
+  // ---- Autenticação ----
+  login: (username: string, password: string) =>
+    request<Session>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+  me: () => request<Employee>('/auth/me'),
+
+  // ---- Funcionários (ADMIN) ----
+  listEmployees: () => request<Employee[]>('/employees'),
+  createEmployee: (payload: CreateEmployeePayload) =>
+    request<Employee>('/employees', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateEmployee: (id: string, payload: UpdateEmployeePayload) =>
+    request<Employee>(`/employees/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
 
   // ---- Gestão do cardápio (admin) ----
   getFullMenu: () => request<MenuCategory[]>('/menu/admin'),
@@ -205,9 +284,21 @@ export const api = {
     const q = qs.toString();
     return request<TopItem[]>(`/reports/top-items${q ? `?${q}` : ''}`);
   },
-  // URL de download do CSV (navegação direta, não fetch).
-  exportUrl: (from?: string, to?: string) =>
-    `${API_URL}/reports/export${periodQuery(from, to)}`,
+  // Baixa o CSV autenticado e dispara o download no navegador.
+  downloadTransactionsCsv: async (from?: string, to?: string) => {
+    const res = await fetch(
+      `${API_URL}/reports/export${periodQuery(from, to)}`,
+      { headers: authHeaders() },
+    );
+    if (!res.ok) throw new ApiError(res.status, `API ${res.status}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transacoes_${from ?? 'inicio'}_${to ?? 'fim'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };
 
 function periodQuery(from?: string, to?: string): string {
