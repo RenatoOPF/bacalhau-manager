@@ -15,6 +15,56 @@ Pré-requisito: o banco no Supabase já deve estar criado e você precisa da
 
 ---
 
+## Atualizar uma instalação já existente
+
+> Já rodou o setup antes e só quer atualizar o código no PC do caixa? Faça isto
+> no PowerShell, dentro da pasta do projeto (ex.: `C:\bacalhau`):
+
+```powershell
+cd C:\bacalhau
+git pull
+npm ci
+npm run build --workspace backend
+pm2 restart bacalhau-backend
+```
+
+Depois **redeploy do frontend na Vercel** se houver mudança de tela (a Vercel
+publica sozinha a cada push, mas confirme).
+
+### ⚠️ Ativando a autenticação do painel admin (uma vez)
+
+A partir da Fase 2, o painel `/admin` **exige login** — sem os passos abaixo,
+ele para de abrir após o `git pull`. Faça **uma vez**:
+
+1. Abra o `.env` e adicione:
+   ```powershell
+   notepad backend\.env
+   ```
+   ```
+   # valor longo e aleatório:
+   JWT_SECRET=coloque-um-segredo-forte-aqui
+   # troque o padrão admin/admin123 por uma senha forte:
+   SEED_ADMIN_USERNAME=admin
+   SEED_ADMIN_PASSWORD=UmaSenhaForte123
+   ```
+2. Aplique a migration nova e crie o admin (seguro; a migration é aditiva e o
+   seed é idempotente — não duplica o cardápio):
+   ```powershell
+   npm run prisma:deploy --workspace backend
+   npm run db:seed --workspace backend
+   ```
+3. Rebuild + restart:
+   ```powershell
+   npm run build --workspace backend
+   pm2 restart bacalhau-backend
+   ```
+4. Confirme que a Vercel publicou a página `/login` nova.
+
+Depois disso: o **cardápio do cliente segue público**; o `/admin` pede usuário
+e senha (o admin criado no passo 1). Troque a senha no primeiro acesso.
+
+---
+
 ## Atalho: script de setup
 
 Com o repositório clonado (seção 3) e o Supabase pronto, o script automatiza a
