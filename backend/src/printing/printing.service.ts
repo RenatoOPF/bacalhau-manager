@@ -121,13 +121,11 @@ export class PrintingService {
     label: string,
     protocol: number,
   ): Promise<void> {
-    const connected = await p.isPrinterConnected();
-    if (!connected) {
-      // Lançar erro faz a fila reprocessar o job automaticamente.
-      throw new Error(
-        `[${label}] impressora não conectada (pedido #${protocol})`,
-      );
-    }
+    // Sem pré-checagem via isPrinterConnected(): para interfaces UNC
+    // (//localhost/Nome) ela usa fs.existsSync, que sempre retorna false
+    // para compartilhamentos de impressora — falso negativo mesmo com a
+    // impressora acessível. p.execute() já rejeita/lança se a escrita
+    // falhar, o que a fila (BullMQ) usa pra disparar o retry.
     await p.execute();
     this.logger.log(`[${label}] ticket impresso (pedido #${protocol})`);
   }
