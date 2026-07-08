@@ -1,8 +1,14 @@
-import { Controller, Get, Header, Query, Res } from '@nestjs/common';
+import { Controller, Get, Header, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
+import { Role } from '@prisma/client';
 import { ReportsService } from './reports.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @Controller('reports')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN, Role.MANAGER)
 export class ReportsController {
   constructor(private readonly reports: ReportsService) {}
 
