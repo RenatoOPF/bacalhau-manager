@@ -1,6 +1,5 @@
 <#
   Setup do PC do caixa (Windows 10) — Bacalhau & Cia.
-  Equivalente Windows do scripts/setup-caixa.sh.
 
   Arquitetura: backend NestJS roda AQUI (PRINT_WORKER=on), Redis LOCAL
   (Memurai), PostgreSQL no Supabase (nuvem), exposição via Cloudflare Tunnel.
