@@ -10,23 +10,9 @@
 > PC, a exposição para a internet é via **Cloudflare Tunnel** (grátis) e o
 > frontend na **Vercel** (grátis).
 
-## Atalho: script de setup
-
-Com o repositório clonado no PC do caixa e o **Supabase já criado** (seção 1),
-a maior parte é automática:
-
-```bash
-bash scripts/setup-caixa.sh
-```
-
-Ele instala Node 20 e Redis local, instala dependências, cria o `backend/.env`
-(que você preenche com a `DATABASE_URL` do Supabase), aplica as migrações, faz
-o seed, builda, sobe o PM2 e instala o `cloudflared` — e imprime no fim os
-passos manuais (boot do PM2, tunnel e Vercel). Na primeira execução ele para
-para você preencher a `DATABASE_URL`; rode de novo depois. As seções abaixo
-detalham cada parte caso prefira fazer na mão.
-
----
+> ℹ️ Não há script de setup para Linux — a produção roda em Windows
+> (ver [`deploy-windows.md`](deploy-windows.md), que tem o `setup-caixa.ps1`).
+> Em Linux, siga os passos manuais abaixo.
 
 ## Arquitetura de produção
 
