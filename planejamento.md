@@ -117,25 +117,25 @@ Enquanto integrações oficiais (Gami/99Food) não estiverem disponíveis, exist
 
 ## Arquitetura de Infraestrutura
 
-### Backend no PC do caixa + Postgres no Supabase (custo ~zero)
-O backend roda **no PC do caixa**, dentro do restaurante. Uma única instância (`PRINT_WORKER=on`) serve a API/WebSocket, enfileira os pedidos **e** imprime — as impressoras estão na mesma rede local. O **PostgreSQL** fica no **Supabase** (grátis), o **Redis** roda **local** no PC, a exposição é via **Cloudflare Tunnel** (grátis) e o frontend na **Vercel** (grátis).
+### Backend na nuvem + agente de impressão no caixa (custo ~zero)
+O backend (API/WebSocket) roda numa **VM grátis da Oracle Cloud** e apenas **enfileira** os pedidos (`PRINT_WORKER=off`). O **PC do caixa** roda só o **agente de impressão** (`dist/worker.js`), que consome a fila e imprime nas térmicas locais — fazendo apenas conexões de **saída**, sem túnel. O **PostgreSQL** fica no **Supabase** e o **Redis** (fila) no **Upstash**, ambos grátis; HTTPS via **Caddy** (`<ip>.sslip.io`) e frontend na **Vercel**.
 
 ```
 Cliente → Vercel (frontend Next.js)
     ↓ HTTPS / WebSocket
-Cloudflare Tunnel (URL pública, grátis)
-    ↓
-PC do caixa (rede local): backend NestJS (PM2, PRINT_WORKER=on)
-    ├── Redis local (fila BullMQ)
-    └── Supabase (PostgreSQL gerenciado, na nuvem)
+Oracle Cloud VM: backend NestJS (PM2, PRINT_WORKER=off)  ← Caddy (HTTPS)
+    ├── Supabase (PostgreSQL gerenciado)
+    └── Upstash (Redis / fila BullMQ) ──────────────┐
+                                                    │ conexão de saída
+PC do caixa (rede local): agente de impressão  ─────┘
     ↓ rede local
     ├── Impressora da Cozinha (ESC/POS)
     └── Impressora do Caixa (ESC/POS)
 ```
 
-**Único processo**: o mesmo backend serve a API, mantém o WebSocket, consome a fila e imprime. Sem serviço separado. Detalhes operacionais em [`docs/deploy.md`](docs/deploy.md).
+**Dois processos desacoplados pela fila**: a API na nuvem produz jobs; o agente no caixa consome e imprime. Como o caixa só faz conexões de saída, dispensa túnel/exposição. Detalhes em [`docs/deploy-cloud.md`](docs/deploy-cloud.md) e [`docs/deploy-windows.md`](docs/deploy-windows.md).
 
-**Custo**: Supabase (free tier), Cloudflare Tunnel e Vercel (grátis). Só o PC do caixa (que já existe) e a energia.
+**Custo**: Supabase, Upstash, Oracle Cloud (Always Free) e Vercel — todos free tier. Só o PC do caixa (que já existe) e a energia.
 
 **Cuidados para o PC do caixa:**
 - Configurar para nunca suspender ou hibernar
@@ -216,10 +216,11 @@ Foco em confiabilidade (resolver o problema de pedidos que não imprimem), custo
 ### Infraestrutura
 | Componente | Solução |
 |---|---|
-| **Backend** | PC do caixa (PM2, `PRINT_WORKER=on`) — serve API, fila e impressão |
+| **Backend (API)** | VM Oracle Cloud (PM2, `PRINT_WORKER=off`) — serve API/WebSocket e enfileira |
+| **Agente de impressão** | PC do caixa (PM2, `dist/worker.js`) — consome a fila e imprime |
 | **Banco de dados** | Supabase (PostgreSQL gerenciado, free tier) |
-| **Fila (Redis)** | Redis local nativo no PC do caixa |
-| **Exposição para internet** | Cloudflare Tunnel (gratuito) |
+| **Fila (Redis)** | Upstash (Redis serverless, free tier) |
+| **Exposição para internet** | Caddy + `<ip>.sslip.io` (HTTPS automático, gratuito) |
 | **Frontend (cardápio)** | Vercel (gratuito para projetos pequenos) |
 
 ---
@@ -236,7 +237,7 @@ Foco em confiabilidade (resolver o problema de pedidos que não imprimem), custo
 - [x] Status do pedido em tempo real para o cliente
 - [x] Pagamento em dinheiro e PIX (registrado manualmente)
 - [x] Painel básico do admin (gerenciar cardápio)
-- [x] Deploy no PC do caixa (backend + Redis local) + Supabase + Cloudflare Tunnel
+- [x] Deploy: backend na nuvem (Oracle) + Supabase + Upstash + agente no caixa
 
 > ⚠️ O painel admin ainda **não tem autenticação** — as rotas `/admin/*` estão
 > abertas para quem tiver a URL do túnel. Login/perfis estão prontos na branch
