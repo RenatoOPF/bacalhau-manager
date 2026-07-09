@@ -3,8 +3,8 @@
 // consome a fila do Redis local e imprime nas impressoras da rede local.
 // Uso: pm2 start ecosystem.config.js
 //
-// Banco no Supabase, exposição via Cloudflare Tunnel, frontend na Vercel
-// (ver docs/deploy.md).
+// Banco no Supabase, exposição via ngrok (domínio estático grátis), frontend
+// na Vercel (ver docs/deploy.md).
 module.exports = {
   apps: [
     {
@@ -21,11 +21,12 @@ module.exports = {
       },
     },
     {
-      // Tunnel rápido (URL muda a cada reinício). Para URL fixa, ver
-      // docs/deploy-windows.md#8-expor-na-internet-cloudflare-tunnel.
-      name: 'cloudflared-tunnel',
-      script: 'cloudflared',
-      args: 'tunnel --url http://localhost:3001',
+      // Túnel ngrok com domínio estático grátis (URL fixa, sobe no boot junto
+      // com o PM2). Configure o authtoken uma vez: `ngrok config add-authtoken <token>`
+      // e troque o --domain pelo seu domínio reservado em dashboard.ngrok.com.
+      name: 'ngrok-tunnel',
+      script: 'ngrok',
+      args: 'http --domain=SEU-DOMINIO.ngrok-free.app 3001',
       instances: 1,
       autorestart: true,
       watch: false,

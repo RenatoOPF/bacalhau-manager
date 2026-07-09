@@ -206,23 +206,33 @@ Duas formas de ligar cada impressora no `.env` (seção 4):
 
 Depois de ajustar o `.env`: `pm2 restart bacalhau-backend`.
 
-## 8. Expor na internet — Cloudflare Tunnel
+## 8. Expor na internet — ngrok (URL fixa grátis)
 
-```powershell
-winget install Cloudflare.cloudflared
-```
+O plano gratuito do ngrok dá **1 domínio estático permanente**, ideal pra
+produção (a URL não muda a cada reinício).
 
-Teste rápido (URL temporária, muda a cada reinício):
+1. Crie uma conta em <https://dashboard.ngrok.com> e instale:
 
-```powershell
-cloudflared tunnel --url http://localhost:3001
-```
+   ```powershell
+   winget install ngrok.ngrok
+   ```
 
-Anote a URL `https://algo.trycloudflare.com`.
+2. Configure o authtoken (uma vez só — copie de *Your Authtoken* no dashboard):
 
-> Para uma URL **fixa** que sobe sozinha no boot, crie um *named tunnel* e
-> instale como serviço (`cloudflared service install`) — recomendado quando
-> tiver um domínio no Cloudflare.
+   ```powershell
+   ngrok config add-authtoken <SEU_TOKEN>
+   ```
+
+3. Reserve o domínio grátis em *Domains* no dashboard (ex.:
+   `bacalhau.ngrok-free.app`) e teste:
+
+   ```powershell
+   ngrok http --domain=bacalhau.ngrok-free.app 3001
+   ```
+
+O `ecosystem.config.js` já sobe esse túnel junto com o backend (app
+`ngrok-tunnel`) — troque o `--domain` pelo seu domínio reservado. A página de
+aviso do ngrok free é ignorada pelo frontend via header `ngrok-skip-browser-warning`.
 
 ## 9. Frontend na Vercel
 
