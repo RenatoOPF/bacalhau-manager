@@ -1,7 +1,10 @@
-# Deploy — produção
+# Deploy — produção (monolito, LEGADO)
 
-> 🪟 **PC do caixa roda Windows 10?** Use o guia [`deploy-windows.md`](deploy-windows.md).
-> Este documento cobre o alvo Linux/Ubuntu.
+> ⚠️ **Arquitetura antiga.** Este guia descreve o monolito (backend inteiro no
+> PC do caixa + Redis local + Cloudflare Tunnel). A arquitetura atual roda a API
+> na **nuvem** e só o **agente de impressão** no caixa — use
+> [`deploy-cloud.md`](deploy-cloud.md) (nuvem) e
+> [`deploy-windows.md`](deploy-windows.md) (agente). Mantido só como referência.
 
 > **Arquitetura (custo ~zero):** o backend roda **no PC do caixa**, dentro do
 > restaurante. Uma única instância serve a API/WebSocket, enfileira os pedidos

@@ -4,12 +4,13 @@ import { ORDERS_QUEUE, ORDERS_JOB_OPTIONS } from './queue.constants';
 import { OrdersProcessor } from './orders.processor';
 
 /**
- * O worker de impressão (OrdersProcessor) só é ativado quando PRINT_WORKER=on.
+ * Ativa o worker de impressão DENTRO da API quando PRINT_WORKER=on (modo
+ * monolito, uma máquina só — útil em dev e no setup antigo).
  *
- * - Produção (PC do caixa): PRINT_WORKER=on → a instância consome a fila e
- *   imprime nas impressoras ESC/POS da rede local.
- * - Dev: deixe off para rodar a API sem tentar imprimir. Os pedidos ficam
- *   enfileirados no Redis e são impressos quando um worker subir.
+ * - Produção (arquitetura atual): a API roda na nuvem com PRINT_WORKER=off
+ *   (só enfileira) e o agente de impressão roda no PC do caixa como processo
+ *   separado (`WorkerModule` → `dist/worker.js`), consumindo a mesma fila.
+ * - Dev/monolito: PRINT_WORKER=on faz a própria API consumir e imprimir.
  */
 const PRINT_WORKER_ENABLED = process.env.PRINT_WORKER === 'on';
 
