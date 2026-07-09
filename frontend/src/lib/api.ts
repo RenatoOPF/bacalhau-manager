@@ -3,6 +3,12 @@ const API_URL =
 
 const TOKEN_KEY = 'bacalhau_token';
 
+// Pula a página de aviso do ngrok (plano free) quando o backend é exposto por
+// um túnel *.ngrok-free.app. Inofensivo com qualquer outro host.
+const baseHeaders: Record<string, string> = {
+  'ngrok-skip-browser-warning': 'true',
+};
+
 export const auth = {
   getToken: (): string | null =>
     typeof window === 'undefined' ? null : localStorage.getItem(TOKEN_KEY),
@@ -30,6 +36,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...baseHeaders,
       ...authHeaders(),
       ...(init?.headers ?? {}),
     },
@@ -288,7 +295,7 @@ export const api = {
   downloadTransactionsCsv: async (from?: string, to?: string) => {
     const res = await fetch(
       `${API_URL}/reports/export${periodQuery(from, to)}`,
-      { headers: authHeaders() },
+      { headers: { ...baseHeaders, ...authHeaders() } },
     );
     if (!res.ok) throw new ApiError(res.status, `API ${res.status}`);
     const blob = await res.blob();
