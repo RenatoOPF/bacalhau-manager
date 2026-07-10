@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -13,6 +14,8 @@ import {
   CreateCategoryDto,
   CreateMenuItemDto,
   UpdateMenuItemDto,
+  CreateOptionDto,
+  UpdateOptionDto,
 } from './dto/menu.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -55,5 +58,31 @@ export class MenuController {
   @Roles(Role.ADMIN, Role.MANAGER)
   updateItem(@Param('id') id: string, @Body() dto: UpdateMenuItemDto) {
     return this.menu.updateItem(id, dto);
+  }
+
+  // ---- Opções (variações) do item ----
+
+  @Post('items/:itemId/options')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
+  createOption(
+    @Param('itemId') itemId: string,
+    @Body() dto: CreateOptionDto,
+  ) {
+    return this.menu.createOption(itemId, dto);
+  }
+
+  @Patch('options/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
+  updateOption(@Param('id') id: string, @Body() dto: UpdateOptionDto) {
+    return this.menu.updateOption(id, dto);
+  }
+
+  @Delete('options/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
+  deleteOption(@Param('id') id: string) {
+    return this.menu.deleteOption(id);
   }
 }

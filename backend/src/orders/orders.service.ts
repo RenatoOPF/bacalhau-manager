@@ -26,9 +26,10 @@ export class OrdersService {
 
   /** Cria o pedido, enfileira a impressão e notifica o caixa em tempo real. */
   async create(dto: CreateOrderDto) {
-    // Busca os itens do cardápio para validar disponibilidade e congelar preços.
+    // Busca os itens do cardápio (com opções) para validar e congelar preços.
     const menuItems = await this.prisma.menuItem.findMany({
       where: { id: { in: dto.items.map((i) => i.menuItemId) } },
+      include: { options: true },
     });
     const byId = new Map(menuItems.map((m) => [m.id, m]));
 
@@ -40,10 +41,32 @@ export class OrdersService {
           `Item indisponível: ${input.menuItemId}`,
         );
       }
+
+      // Item com opções: exige a escolha de uma opção disponível.
+      if (menuItem.options.length > 0) {
+        const option = menuItem.options.find((o) => o.id === input.optionId);
+        if (!option || !option.available) {
+          throw new BadRequestException(
+            `Escolha uma opção válida para "${menuItem.name}"`,
+          );
+        }
+        totalCents += option.priceCents * input.quantity;
+        return {
+          menuItemId: menuItem.id,
+          nameSnapshot: menuItem.name,
+          optionNameSnapshot: option.name,
+          priceCents: option.priceCents,
+          quantity: input.quantity,
+          notes: input.notes,
+        };
+      }
+
+      // Item simples: usa o preço próprio.
       totalCents += menuItem.priceCents * input.quantity;
       return {
         menuItemId: menuItem.id,
         nameSnapshot: menuItem.name,
+        optionNameSnapshot: null,
         priceCents: menuItem.priceCents,
         quantity: input.quantity,
         notes: input.notes,
@@ -100,7 +123,13 @@ export class OrdersService {
         protocol: true,
         status: true,
         createdAt: true,
-        items: { select: { nameSnapshot: true, quantity: true } },
+        items: {
+          select: {
+            nameSnapshot: true,
+            optionNameSnapshot: true,
+            quantity: true,
+          },
+        },
       },
     });
     if (!order) throw new NotFoundException('Pedido não encontrado');

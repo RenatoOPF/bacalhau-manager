@@ -4,13 +4,15 @@ import {
   CreateCategoryDto,
   CreateMenuItemDto,
   UpdateMenuItemDto,
+  CreateOptionDto,
+  UpdateOptionDto,
 } from './dto/menu.dto';
 
 @Injectable()
 export class MenuService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Cardápio público: apenas categorias ativas com itens disponíveis. */
+  /** Cardápio público: categorias ativas, itens disponíveis e opções disponíveis. */
   getPublicMenu() {
     return this.prisma.menuCategory.findMany({
       where: { active: true },
@@ -19,16 +21,29 @@ export class MenuService {
         items: {
           where: { available: true },
           orderBy: { name: 'asc' },
+          include: {
+            options: {
+              where: { available: true },
+              orderBy: [{ sortOrder: 'asc' }, { priceCents: 'asc' }],
+            },
+          },
         },
       },
     });
   }
 
-  /** Cardápio completo para o admin (inclui itens indisponíveis). */
+  /** Cardápio completo para o admin (inclui itens/opções indisponíveis). */
   getFullMenu() {
     return this.prisma.menuCategory.findMany({
       orderBy: { sortOrder: 'asc' },
-      include: { items: { orderBy: { name: 'asc' } } },
+      include: {
+        items: {
+          orderBy: { name: 'asc' },
+          include: {
+            options: { orderBy: [{ sortOrder: 'asc' }, { priceCents: 'asc' }] },
+          },
+        },
+      },
     });
   }
 
@@ -42,5 +57,21 @@ export class MenuService {
 
   updateItem(id: string, dto: UpdateMenuItemDto) {
     return this.prisma.menuItem.update({ where: { id }, data: dto });
+  }
+
+  // ---- Opções (variações) do item ----
+
+  createOption(menuItemId: string, dto: CreateOptionDto) {
+    return this.prisma.menuItemOption.create({
+      data: { menuItemId, ...dto },
+    });
+  }
+
+  updateOption(id: string, dto: UpdateOptionDto) {
+    return this.prisma.menuItemOption.update({ where: { id }, data: dto });
+  }
+
+  deleteOption(id: string) {
+    return this.prisma.menuItemOption.delete({ where: { id } });
   }
 }

@@ -50,12 +50,23 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 // ---- Tipos compartilhados (espelham o backend) ----
 
+export interface MenuItemOption {
+  id: string;
+  name: string;
+  priceCents: number;
+  available: boolean;
+  sortOrder?: number;
+}
+
 export interface MenuItem {
   id: string;
   name: string;
   description?: string | null;
   priceCents: number;
   available: boolean;
+  // Presente quando o item tem variações (ex.: Individual/Inteira). Quando há
+  // opções, o preço vem da opção escolhida.
+  options?: MenuItemOption[];
 }
 
 export interface MenuCategory {
@@ -92,6 +103,7 @@ export type OrderStatus =
 export interface OrderItem {
   id: string;
   nameSnapshot: string;
+  optionNameSnapshot?: string | null;
   quantity: number;
   priceCents: number;
   notes?: string | null;
@@ -155,7 +167,11 @@ export interface TrackedOrder {
   protocol: number;
   status: OrderStatus;
   createdAt: string;
-  items: { nameSnapshot: string; quantity: number }[];
+  items: {
+    nameSnapshot: string;
+    optionNameSnapshot?: string | null;
+    quantity: number;
+  }[];
 }
 
 export interface CreateOrderPayload {
@@ -165,7 +181,25 @@ export interface CreateOrderPayload {
   addressNumber?: string;
   paymentMethod: 'CASH' | 'PIX';
   notes?: string;
-  items: { menuItemId: string; quantity: number; notes?: string }[];
+  items: {
+    menuItemId: string;
+    optionId?: string;
+    quantity: number;
+    notes?: string;
+  }[];
+}
+
+export interface CreateOptionPayload {
+  name: string;
+  priceCents: number;
+  sortOrder?: number;
+}
+
+export interface UpdateOptionPayload {
+  name?: string;
+  priceCents?: number;
+  sortOrder?: number;
+  available?: boolean;
 }
 
 export type Role = 'ADMIN' | 'MANAGER' | 'KITCHEN' | 'DELIVERY';
@@ -241,6 +275,20 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
+
+  // ---- Opções (variações) do item ----
+  createOption: (itemId: string, payload: CreateOptionPayload) =>
+    request<MenuItemOption>(`/menu/items/${itemId}/options`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateOption: (id: string, payload: UpdateOptionPayload) =>
+    request<MenuItemOption>(`/menu/options/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteOption: (id: string) =>
+    request<{ id: string }>(`/menu/options/${id}`, { method: 'DELETE' }),
 
   createOrder: (payload: CreateOrderPayload) =>
     request<Order>('/orders', {

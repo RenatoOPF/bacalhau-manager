@@ -60,7 +60,13 @@ export default function AcompanhamentoPage({
         Pedido <span className="font-mono">#{data.protocol}</span>
       </h1>
       <p className="text-center text-gray-500">
-        {data.items.map((i) => `${i.quantity}x ${i.nameSnapshot}`).join(', ')}
+        {data.items
+          .map(
+            (i) =>
+              `${i.quantity}x ${i.nameSnapshot}` +
+              (i.optionNameSnapshot ? ` (${i.optionNameSnapshot})` : ''),
+          )
+          .join(', ')}
       </p>
 
       {canceled ? (
