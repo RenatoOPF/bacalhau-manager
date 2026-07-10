@@ -370,3 +370,19 @@ export function formatBRL(cents: number): string {
     currency: 'BRL',
   });
 }
+
+/**
+ * Termo da opção usado na cozinha/impressão: "Meia Porção" → "Individual",
+ * "Porção Inteira" → "Inteira". O cardápio do cliente mantém o nome original.
+ */
+export function toPrintOption(name: string): string {
+  return name
+    .replace(/Meia Porção/gi, 'Individual')
+    .replace(/Porção Inteira/gi, 'Inteira');
+}
+
+/** Rótulo do item como sai na impressão: MAIÚSCULAS + opção no termo da cozinha. */
+export function printLabel(name: string, optionName?: string | null): string {
+  const full = optionName ? `${name} (${toPrintOption(optionName)})` : name;
+  return full.toUpperCase();
+}

@@ -6,6 +6,7 @@ import { io } from 'socket.io-client';
 import {
   api,
   formatBRL,
+  printLabel,
   type Order,
   type OrderStatus,
 } from '@/lib/api';
@@ -91,8 +92,7 @@ export default function CaixaPage() {
               <ul className="mt-2 text-sm">
                 {order.items.map((it) => (
                   <li key={it.id}>
-                    {it.quantity}x {it.nameSnapshot}
-                    {it.optionNameSnapshot && ` (${it.optionNameSnapshot})`}
+                    {it.quantity}x {printLabel(it.nameSnapshot, it.optionNameSnapshot)}
                     {it.notes && (
                       <span className="text-gray-500"> — {it.notes}</span>
                     )}
