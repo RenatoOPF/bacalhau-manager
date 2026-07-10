@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -62,5 +63,13 @@ export class OrdersController {
   @Roles(Role.ADMIN, Role.MANAGER)
   reprint(@Param('id') id: string) {
     return this.orders.reprint(id);
+  }
+
+  /** Exclui um pedido (ex.: pedido de teste ou lançado por engano). */
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
+  remove(@Param('id') id: string) {
+    return this.orders.deleteOrder(id);
   }
 }

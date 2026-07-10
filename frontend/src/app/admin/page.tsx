@@ -60,6 +60,11 @@ export default function CaixaPage() {
     mutationFn: (id: string) => api.reprint(id),
   });
 
+  const removeOrder = useMutation({
+    mutationFn: (id: string) => api.deleteOrder(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['orders'] }),
+  });
+
   return (
     <main className="mx-auto max-w-5xl p-6">
       <h1 className="text-2xl font-bold">Fila de pedidos</h1>
@@ -121,6 +126,17 @@ export default function CaixaPage() {
                   onClick={() => reprint.mutate(order.id)}
                 >
                   Reimprimir
+                </button>
+                <button
+                  className="rounded border border-red-300 px-3 py-2 text-sm text-red-600 disabled:opacity-50"
+                  disabled={removeOrder.isPending}
+                  onClick={() => {
+                    if (confirm(`Excluir o pedido #${order.protocol}?`)) {
+                      removeOrder.mutate(order.id);
+                    }
+                  }}
+                >
+                  Excluir
                 </button>
               </div>
             </div>

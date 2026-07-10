@@ -153,4 +153,11 @@ export class OrdersService {
     await this.ordersQueue.add(PRINT_ORDER_JOB, { orderId: order.id });
     return { enqueued: true, protocol: order.protocol };
   }
+
+  /** Exclui o pedido (e seus itens, em cascata). */
+  async deleteOrder(id: string) {
+    const order = await this.findOne(id);
+    await this.prisma.order.delete({ where: { id: order.id } });
+    return { deleted: true, protocol: order.protocol };
+  }
 }
