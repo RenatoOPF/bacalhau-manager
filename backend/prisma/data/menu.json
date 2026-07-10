@@ -12,12 +12,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 4000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 6000,
               "sortOrder": 2
             }
@@ -30,12 +30,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 4000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 6000,
               "sortOrder": 2
             }
@@ -48,12 +48,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 4000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 6000,
               "sortOrder": 2
             }
@@ -66,12 +66,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 4000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 6000,
               "sortOrder": 2
             }
@@ -84,12 +84,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 4000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 6000,
               "sortOrder": 2
             }
@@ -102,12 +102,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 4000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 6000,
               "sortOrder": 2
             }
@@ -162,12 +162,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 6000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 10000,
               "sortOrder": 2
             }
@@ -180,12 +180,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 8000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 13000,
               "sortOrder": 2
             }
@@ -198,12 +198,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 8000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 13000,
               "sortOrder": 2
             }
@@ -216,12 +216,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -234,12 +234,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -252,12 +252,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 8000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 13000,
               "sortOrder": 2
             }
@@ -270,12 +270,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 8000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 13000,
               "sortOrder": 2
             }
@@ -288,12 +288,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 8000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 13000,
               "sortOrder": 2
             }
@@ -306,12 +306,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 8000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 13000,
               "sortOrder": 2
             }
@@ -324,12 +324,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 5400,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 9000,
               "sortOrder": 2
             }
@@ -342,12 +342,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 8000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 13000,
               "sortOrder": 2
             }
@@ -360,12 +360,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 8000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 13000,
               "sortOrder": 2
             }
@@ -392,12 +392,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -410,12 +410,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -428,12 +428,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -446,12 +446,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -464,12 +464,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -489,12 +489,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -507,12 +507,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -525,12 +525,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -543,12 +543,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 5400,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 9000,
               "sortOrder": 2
             }
@@ -561,12 +561,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 0,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -593,12 +593,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -611,12 +611,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -636,12 +636,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 14000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 23000,
               "sortOrder": 2
             }
@@ -654,12 +654,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 14000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 23000,
               "sortOrder": 2
             }
@@ -672,12 +672,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 14000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 23000,
               "sortOrder": 2
             }
@@ -690,12 +690,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 14000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 23000,
               "sortOrder": 2
             }
@@ -708,12 +708,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 14000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 23000,
               "sortOrder": 2
             }
@@ -726,12 +726,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 14000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 23000,
               "sortOrder": 2
             }
@@ -744,12 +744,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 14000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 23000,
               "sortOrder": 2
             }
@@ -762,12 +762,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 14000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 23000,
               "sortOrder": 2
             }
@@ -787,12 +787,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -805,12 +805,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -823,12 +823,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -841,12 +841,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -859,12 +859,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -889,12 +889,12 @@
               "sortOrder": 1
             },
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 7500,
               "sortOrder": 2
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 12500,
               "sortOrder": 3
             }
@@ -907,12 +907,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 7500,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 12500,
               "sortOrder": 2
             }
@@ -925,12 +925,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 7500,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 12500,
               "sortOrder": 2
             }
@@ -957,32 +957,32 @@
           "available": true,
           "options": [
             {
-              "name": "Tilápia Individual",
+              "name": "Tilápia Meia Porção",
               "priceCents": 5400,
               "sortOrder": 1
             },
             {
-              "name": "Sirigado Individual",
+              "name": "Sirigado Meia Porção",
               "priceCents": 7500,
               "sortOrder": 2
             },
             {
-              "name": "Tilápia Inteira",
+              "name": "Tilápia Porção Inteira",
               "priceCents": 9000,
               "sortOrder": 3
             },
             {
-              "name": "Salmão Individual",
+              "name": "Salmão Meia Porção",
               "priceCents": 9000,
               "sortOrder": 4
             },
             {
-              "name": "Sirigado Inteira",
+              "name": "Sirigado Porção Inteira",
               "priceCents": 12500,
               "sortOrder": 5
             },
             {
-              "name": "Salmão Inteira",
+              "name": "Salmão Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 6
             }
@@ -995,32 +995,32 @@
           "available": true,
           "options": [
             {
-              "name": "Tilápia Individual",
+              "name": "Tilápia Meia Porção",
               "priceCents": 5400,
               "sortOrder": 1
             },
             {
-              "name": "Sirigado Individual",
+              "name": "Sirigado Meia Porção",
               "priceCents": 7500,
               "sortOrder": 2
             },
             {
-              "name": "Tilápia Inteira",
+              "name": "Tilápia Porção Inteira",
               "priceCents": 9000,
               "sortOrder": 3
             },
             {
-              "name": "Salmão Individual",
+              "name": "Salmão Meia Porção",
               "priceCents": 9000,
               "sortOrder": 4
             },
             {
-              "name": "Sirigado Inteira",
+              "name": "Sirigado Porção Inteira",
               "priceCents": 12500,
               "sortOrder": 5
             },
             {
-              "name": "Salmão Inteira",
+              "name": "Salmão Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 6
             }
@@ -1033,32 +1033,32 @@
           "available": true,
           "options": [
             {
-              "name": "Tilápia Individual",
+              "name": "Tilápia Meia Porção",
               "priceCents": 5400,
               "sortOrder": 1
             },
             {
-              "name": "Sirigado Individual",
+              "name": "Sirigado Meia Porção",
               "priceCents": 7500,
               "sortOrder": 2
             },
             {
-              "name": "Tilápia Inteira",
+              "name": "Tilápia Porção Inteira",
               "priceCents": 9000,
               "sortOrder": 3
             },
             {
-              "name": "Salmão Individual",
+              "name": "Salmão Meia Porção",
               "priceCents": 9000,
               "sortOrder": 4
             },
             {
-              "name": "Sirigado Inteira",
+              "name": "Sirigado Porção Inteira",
               "priceCents": 12500,
               "sortOrder": 5
             },
             {
-              "name": "Salmão Inteira",
+              "name": "Salmão Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 6
             }
@@ -1071,32 +1071,32 @@
           "available": true,
           "options": [
             {
-              "name": "Tilápia Individual",
+              "name": "Tilápia Meia Porção",
               "priceCents": 5400,
               "sortOrder": 1
             },
             {
-              "name": "Sirigado Individual",
+              "name": "Sirigado Meia Porção",
               "priceCents": 7500,
               "sortOrder": 2
             },
             {
-              "name": "Tilápia Inteira",
+              "name": "Tilápia Porção Inteira",
               "priceCents": 9000,
               "sortOrder": 3
             },
             {
-              "name": "Salmão Individual",
+              "name": "Salmão Meia Porção",
               "priceCents": 9000,
               "sortOrder": 4
             },
             {
-              "name": "Sirigado Inteira",
+              "name": "Sirigado Porção Inteira",
               "priceCents": 12500,
               "sortOrder": 5
             },
             {
-              "name": "Salmão Inteira",
+              "name": "Salmão Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 6
             }
@@ -1123,12 +1123,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -1141,12 +1141,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 9000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 15000,
               "sortOrder": 2
             }
@@ -1166,12 +1166,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 7000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 13000,
               "sortOrder": 2
             }
@@ -1184,12 +1184,12 @@
           "available": true,
           "options": [
             {
-              "name": "Individual",
+              "name": "Meia Porção",
               "priceCents": 7000,
               "sortOrder": 1
             },
             {
-              "name": "Inteira",
+              "name": "Porção Inteira",
               "priceCents": 13000,
               "sortOrder": 2
             }
