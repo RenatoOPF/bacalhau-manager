@@ -59,16 +59,11 @@ export class MenuService {
     return this.prisma.menuItem.update({ where: { id }, data: dto });
   }
 
-  /** Exclui um item (e suas opções, em cascata). Bloqueia se houver pedidos. */
-  async deleteItem(id: string) {
-    const orders = await this.prisma.orderItem.count({
-      where: { menuItemId: id },
-    });
-    if (orders > 0) {
-      throw new BadRequestException(
-        'Este item já tem pedidos vinculados. Desative-o em vez de excluir.',
-      );
-    }
+  /**
+   * Exclui um item (opções em cascata). Pedidos antigos que o referenciavam
+   * mantêm os snapshots (nome/preço/opção) e apenas perdem o vínculo (SetNull).
+   */
+  deleteItem(id: string) {
     return this.prisma.menuItem.delete({ where: { id } });
   }
 

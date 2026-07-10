@@ -148,8 +148,10 @@ model OrderItem {
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderId String
 
-  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
-  menuItemId String
+  // Opcional + SetNull: permite excluir o item do cardápio sem apagar o
+  // histórico do pedido (os snapshots abaixo preservam nome/preço/opção).
+  menuItem   MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+  menuItemId String?
 
   // Snapshots para preservar o histórico mesmo se o cardápio mudar depois.
   nameSnapshot       String

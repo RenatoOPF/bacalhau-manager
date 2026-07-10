@@ -312,6 +312,8 @@ export const api = {
     request<{ enqueued: boolean }>(`/orders/${id}/reprint`, {
       method: 'POST',
     }),
+  deleteOrder: (id: string) =>
+    request<{ deleted: boolean }>(`/orders/${id}`, { method: 'DELETE' }),
 
   // ---- Caixa / fechamento ----
   payOrder: (id: string, paymentMethod?: PaymentMethod) =>
