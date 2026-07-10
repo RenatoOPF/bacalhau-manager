@@ -15,6 +15,18 @@ function formatBRL(cents: number): string {
 }
 
 /**
+ * Converte o nome da opção do cardápio para o termo usado na cozinha/impressão:
+ * "Meia Porção" → "Individual", "Porção Inteira" → "Inteira" (inclui os peixes,
+ * ex.: "Tilápia Meia Porção" → "Tilápia Individual"). O cardápio do cliente
+ * mantém o nome original.
+ */
+function toPrintOption(name: string): string {
+  return name
+    .replace(/Meia Porção/gi, 'Individual')
+    .replace(/Porção Inteira/gi, 'Inteira');
+}
+
+/**
  * Impressão dos tickets via ESC/POS. As duas impressoras são acionadas
  * pelo PC do caixa (ponto central de impressão).
  *
@@ -65,9 +77,9 @@ export class PrintingService {
     if (order.addressReference) p.println(`  Ref: ${order.addressReference}`);
     p.drawLine();
     for (const item of order.items) {
-      // Nome (+ opção) sempre em MAIÚSCULAS no ticket (o cardápio guarda em Título).
+      // Nome (+ opção) em MAIÚSCULAS; opção no termo da cozinha (Individual/Inteira).
       const label = item.optionNameSnapshot
-        ? `${item.nameSnapshot} (${item.optionNameSnapshot})`
+        ? `${item.nameSnapshot} (${toPrintOption(item.optionNameSnapshot)})`
         : item.nameSnapshot;
       p.println(`${item.quantity}x ${label.toUpperCase()}`);
       if (item.notes) p.println(`   obs: ${item.notes}`);
@@ -107,9 +119,9 @@ export class PrintingService {
     p.alignLeft();
     for (const item of order.items) {
       p.bold(true);
-      // Nome (+ opção) sempre em MAIÚSCULAS no ticket (o cardápio guarda em Título).
+      // Nome (+ opção) em MAIÚSCULAS; opção no termo da cozinha (Individual/Inteira).
       const label = item.optionNameSnapshot
-        ? `${item.nameSnapshot} (${item.optionNameSnapshot})`
+        ? `${item.nameSnapshot} (${toPrintOption(item.optionNameSnapshot)})`
         : item.nameSnapshot;
       p.println(`${item.quantity}x ${label.toUpperCase()}`);
       p.bold(false);

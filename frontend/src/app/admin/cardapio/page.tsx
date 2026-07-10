@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   api,
   formatBRL,
+  toPrintOption,
   type MenuCategory,
   type MenuItem,
   type MenuItemOption,
@@ -224,7 +225,7 @@ function ItemRow({
       <div className="flex items-center gap-3">
         <div className="flex-1">
           <p className={item.available ? 'font-medium' : 'font-medium text-gray-400 line-through'}>
-            {item.name}
+            {item.name.toUpperCase()}
           </p>
           {item.description && (
             <p className="text-sm text-gray-500">{item.description}</p>
@@ -386,7 +387,7 @@ function OptionRow({
           option.available ? 'flex-1' : 'flex-1 text-gray-400 line-through'
         }
       >
-        {option.name}
+        {toPrintOption(option.name).toUpperCase()}
       </span>
       <span>{formatBRL(option.priceCents)}</span>
       <button
