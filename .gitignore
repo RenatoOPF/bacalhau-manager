@@ -24,3 +24,10 @@ backend/prisma/*.db
 .DS_Store
 coverage/
 .vercel
+
+# runbook pessoal com segredos (não versionar)
+SETUP-VM-ORACLE.md
+
+# dados brutos exportados do sistema antigo (PII / volumoso — não versionar)
+arquivos-consumer/
+backend/prisma/data/legacy-orders.json

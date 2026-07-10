@@ -140,3 +140,24 @@ model OrderItem {
 
   @@index([orderId])
 }
+
+// ---------- Arquivo do sistema antigo ----------
+
+/// Pedidos históricos importados do sistema anterior (2023–2026). Só totais,
+/// sem itens nem endereço. Isolado do fluxo operacional (model Order) para não
+/// poluir o caixa nem os relatórios do dia a dia — serve apenas para consulta.
+model LegacyOrder {
+  id           String    @id @default(cuid())
+  code         String    @unique // "Código" do sistema antigo
+  openedAt     DateTime // Data de abertura
+  closedAt     DateTime? // Data de fechamento
+  status       String? // texto original (ex.: "Finalizado - Pago")
+  createdBy    String? // "Criado por"
+  customerName String? // "Cliente"
+  type         String? // "Tipo" (ex.: Delivery)
+  channel      String? // "Origem" (iFood, Desktop, 99Food, ...)
+  totalCents   Int       @default(0)
+  importedAt   DateTime  @default(now())
+
+  @@index([openedAt])
+}
