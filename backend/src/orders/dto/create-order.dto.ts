@@ -16,6 +16,11 @@ export class OrderItemInputDto {
   @IsString()
   menuItemId: string;
 
+  // Obrigatório quando o item tem opções (ex.: Individual/Inteira).
+  @IsOptional()
+  @IsString()
+  optionId?: string;
+
   @IsInt()
   @Min(1)
   quantity: number;

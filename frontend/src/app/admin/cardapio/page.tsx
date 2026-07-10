@@ -7,6 +7,7 @@ import {
   formatBRL,
   type MenuCategory,
   type MenuItem,
+  type MenuItemOption,
 } from '@/lib/api';
 
 /** Converte texto em reais ("89,90" ou "89.90") para centavos. */
@@ -216,29 +217,197 @@ function ItemRow({
     );
   }
 
+  const hasOptions = (item.options ?? []).length > 0;
+
   return (
-    <li className="flex items-center gap-3 py-2">
-      <div className="flex-1">
-        <p className={item.available ? 'font-medium' : 'font-medium text-gray-400 line-through'}>
-          {item.name}
-        </p>
-        {item.description && (
-          <p className="text-sm text-gray-500">{item.description}</p>
-        )}
+    <li className="py-2">
+      <div className="flex items-center gap-3">
+        <div className="flex-1">
+          <p className={item.available ? 'font-medium' : 'font-medium text-gray-400 line-through'}>
+            {item.name}
+          </p>
+          {item.description && (
+            <p className="text-sm text-gray-500">{item.description}</p>
+          )}
+        </div>
+        <span className="text-sm">
+          {hasOptions ? (
+            <span className="text-gray-400">preço nas opções</span>
+          ) : (
+            formatBRL(item.priceCents)
+          )}
+        </span>
+        <button
+          className="rounded border px-2 py-1 text-xs"
+          onClick={() => setEditing(true)}
+        >
+          Editar
+        </button>
+        <button
+          className={`rounded px-2 py-1 text-xs text-white ${item.available ? 'bg-gray-500' : 'bg-green-600'}`}
+          disabled={update.isPending}
+          onClick={() => update.mutate({ available: !item.available })}
+        >
+          {item.available ? 'Desativar' : 'Ativar'}
+        </button>
       </div>
-      <span className="text-sm">{formatBRL(item.priceCents)}</span>
+      <OptionsManager item={item} onChange={onChange} />
+    </li>
+  );
+}
+
+/** Lista e edição das opções (variações) de um item. */
+function OptionsManager({
+  item,
+  onChange,
+}: {
+  item: MenuItem;
+  onChange: () => void;
+}) {
+  const options = item.options ?? [];
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const add = useMutation({
+    mutationFn: () => {
+      const priceCents = reaisToCents(price);
+      if (!name.trim() || priceCents === null) {
+        throw new Error('Informe nome e preço da opção.');
+      }
+      return api.createOption(item.id, { name: name.trim(), priceCents });
+    },
+    onSuccess: () => {
+      setName('');
+      setPrice('');
+      setError(null);
+      onChange();
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  return (
+    <div className="ml-3 mt-2 border-l-2 pl-3">
+      {options.length > 0 && (
+        <ul className="space-y-1">
+          {options.map((opt) => (
+            <OptionRow key={opt.id} option={opt} onChange={onChange} />
+          ))}
+        </ul>
+      )}
+      <div className="mt-2 flex flex-wrap gap-2">
+        <input
+          className="flex-1 rounded border p-1 text-sm"
+          placeholder="Nova opção (ex: Inteira)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          className="w-20 rounded border p-1 text-sm"
+          placeholder="R$"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+        />
+        <button
+          className="rounded bg-green-600 px-2 py-1 text-xs text-white disabled:opacity-50"
+          disabled={add.isPending}
+          onClick={() => add.mutate()}
+        >
+          + opção
+        </button>
+      </div>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+function OptionRow({
+  option,
+  onChange,
+}: {
+  option: MenuItemOption;
+  onChange: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(option.name);
+  const [price, setPrice] = useState((option.priceCents / 100).toFixed(2));
+
+  const update = useMutation({
+    mutationFn: (payload: Parameters<typeof api.updateOption>[1]) =>
+      api.updateOption(option.id, payload),
+    onSuccess: () => {
+      setEditing(false);
+      onChange();
+    },
+  });
+  const remove = useMutation({
+    mutationFn: () => api.deleteOption(option.id),
+    onSuccess: onChange,
+  });
+
+  if (editing) {
+    return (
+      <li className="flex flex-wrap items-center gap-2 text-sm">
+        <input
+          className="flex-1 rounded border p-1"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          className="w-20 rounded border p-1"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+        />
+        <button
+          className="rounded bg-blue-600 px-2 py-1 text-xs text-white"
+          onClick={() => {
+            const priceCents = reaisToCents(price);
+            if (name.trim() && priceCents !== null) {
+              update.mutate({ name: name.trim(), priceCents });
+            }
+          }}
+        >
+          Salvar
+        </button>
+        <button
+          className="rounded border px-2 py-1 text-xs"
+          onClick={() => setEditing(false)}
+        >
+          Cancelar
+        </button>
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex items-center gap-2 text-sm">
+      <span
+        className={
+          option.available ? 'flex-1' : 'flex-1 text-gray-400 line-through'
+        }
+      >
+        {option.name}
+      </span>
+      <span>{formatBRL(option.priceCents)}</span>
       <button
-        className="rounded border px-2 py-1 text-xs"
+        className="rounded border px-2 py-0.5 text-xs"
         onClick={() => setEditing(true)}
       >
         Editar
       </button>
       <button
-        className={`rounded px-2 py-1 text-xs text-white ${item.available ? 'bg-gray-500' : 'bg-green-600'}`}
+        className={`rounded px-2 py-0.5 text-xs text-white ${option.available ? 'bg-gray-500' : 'bg-green-600'}`}
         disabled={update.isPending}
-        onClick={() => update.mutate({ available: !item.available })}
+        onClick={() => update.mutate({ available: !option.available })}
       >
-        {item.available ? 'Desativar' : 'Ativar'}
+        {option.available ? 'Desativar' : 'Ativar'}
+      </button>
+      <button
+        className="rounded bg-red-600 px-2 py-0.5 text-xs text-white disabled:opacity-50"
+        disabled={remove.isPending}
+        onClick={() => remove.mutate()}
+      >
+        Excluir
       </button>
     </li>
   );

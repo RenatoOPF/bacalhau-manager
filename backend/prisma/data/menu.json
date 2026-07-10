@@ -1,1565 +1,1609 @@
 {
   "categories": [
     {
-      "name": "Entradas",
+      "name": "File de Frango",
       "sortOrder": 1,
       "active": true,
       "items": [
         {
+          "name": "Frango à Parmegiana",
+          "description": "Acompanha arroz e purê",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 4000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 6000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Frango Strogonoff",
+          "description": "Acompanha arroz e batata palha",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 4000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 6000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Frango Grelhado",
+          "description": "Acompanha arroz e legumes",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 4000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 6000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Frango Catupiry",
+          "description": "Ao molho de catupiry, acompanha arroz e batata palha",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 4000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 6000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Frango Recheado",
+          "description": "Empanado recheado com queijo e presunto, acompanha arroz e purê",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 4000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 6000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Frango ao Milho Verde",
+          "description": "Ao creme de milho verde, acompanha arroz com milho verde",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 4000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 6000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Executivo de Frango à Parmegiana",
+          "description": null,
+          "priceCents": 3990,
+          "available": true,
+          "options": []
+        },
+        {
+          "name": "Executivo de Frango Strogonoff",
+          "description": null,
+          "priceCents": 3990,
+          "available": true,
+          "options": []
+        },
+        {
+          "name": "Executivo de Frango Grelhado",
+          "description": null,
+          "priceCents": 3990,
+          "available": true,
+          "options": []
+        },
+        {
+          "name": "Executivo de Frango à Parmegiana + Coca",
+          "description": null,
+          "priceCents": 4690,
+          "available": true,
+          "options": []
+        },
+        {
+          "name": "Executivo de Frango Strogonoff + Coca",
+          "description": null,
+          "priceCents": 4690,
+          "available": true,
+          "options": []
+        }
+      ]
+    },
+    {
+      "name": "File Mignon",
+      "sortOrder": 2,
+      "active": true,
+      "items": [
+        {
+          "name": "Filé Mignon Strogonoff",
+          "description": "Acompanha arroz e batata palha",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 6000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 10000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Filé Mignon à Moda da Casa",
+          "description": "Filé alto com molho vermelho do chefe, acompanha arroz e creme de milho verde",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 8000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 13000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Filé Mignon à Moda do Chefe",
+          "description": "Filé alto grelhado na manteiga, acompanha arroz e batata frita com cheddar e bacon",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 8000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 13000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Filé Mignon Diplomata",
+          "description": "Filé alto ao molho madeira com bacon e ervilha, acompanha arroz e batata frita",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Filé Mignon Tornedor",
+          "description": "Filé alto ao molho tornedor, acompanha arroz e batata chips",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Filé Mignon Grelhado",
+          "description": "Acompanha arroz e legumes",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 8000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 13000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Filé Mignon ao Molho de Cogumelos",
+          "description": "Ao molho de cogumelos, acompanha arroz e purê",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 8000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 13000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Filé Mignon Catupiry",
+          "description": "Ao molho de catupiry, acompanha arroz e batata palha",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 8000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 13000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Filé Mignon ao Molho Madeira",
+          "description": "Acompanha arroz e batata palha",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 8000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 13000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Filé Mignon à Parmegiana",
+          "description": "Aocmpanha arroz e purê",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 5400,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 9000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Filé Mignon à Suiça",
+          "description": "Empanado com molho branco, queijo e presunto. acompanha arroz e batata palha",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 8000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 13000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Filé Mignon à Quatro Queijos",
+          "description": "Ao molho de quatro queijos, acompanha arroz e batata palha",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 8000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 13000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Executivo de Filé à Parmegiana",
+          "description": null,
+          "priceCents": 5390,
+          "available": true,
+          "options": []
+        }
+      ]
+    },
+    {
+      "name": "Camarao",
+      "sortOrder": 3,
+      "active": true,
+      "items": [
+        {
+          "name": "Camarão à Moda da Casa",
+          "description": "Ao molho de tomate com leite de côco. acompanha arroz e purê",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Camarão ao Molho de Champignon",
+          "description": "Ao molho de cogumelos, acompanha arroz e batata palha",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Camarão à Jangadeiro",
+          "description": "Empanado na farinha panko, acompanha arroz à grega.",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Camarão ao Catupiry",
+          "description": "Ao catupiry, acompanha arroz e batata palha",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Camarão Chiclete",
+          "description": "Ao molho de queijos, acompanha arroz e batata palha",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Moquecas",
+      "sortOrder": 4,
+      "active": true,
+      "items": [
+        {
+          "name": "Moqueca de Camarão",
+          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Moqueca de Polvo",
+          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Moqueca de Bacalhau",
+          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Moqueca de Peixe",
+          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 5400,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 9000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Moqueca de Polvo com Camarão",
+          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 0,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Executivo de Moqueca de Peixe",
+          "description": null,
+          "priceCents": 5399,
+          "available": true,
+          "options": []
+        }
+      ]
+    },
+    {
+      "name": "Polvo",
+      "sortOrder": 5,
+      "active": true,
+      "items": [
+        {
+          "name": "Arroz de Polvo",
+          "description": "Risoto de polvo",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Polvo Lagareiro",
+          "description": "Grelhado com pimentões fritos, alho laminado no azeite, e batatas ao murro. acompanha arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bacalhau em Posta",
+      "sortOrder": 6,
+      "active": true,
+      "items": [
+        {
+          "name": "Bacalhau Vila Real",
+          "description": "Grelhado com batatas ao murro, brócolis, cebola e alho cozido. acompanha arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 14000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 23000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Bacalhau Lagareiro",
+          "description": "Grelhado com pimentões, batata ao murro, alho laminado. acompanha arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 14000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 23000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Bacalhau da Casa",
+          "description": "Frito com pimentões vermelhos e batata chips. acompanha arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 14000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 23000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Bacalhau com Todos",
+          "description": "Cozido com legumes, acompanha arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 14000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 23000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Bacalhau Zé do Pipo",
+          "description": "Frito, com cobertura de molho branco, cenora, pimentões vermelhos e purê. acompanha arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 14000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 23000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Bacalhau Narciso",
+          "description": "Frito com batata sotê, pimentões e bastante cebola. acompanha arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 14000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 23000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Bacalhau Vinho Tinto",
+          "description": "Frito flambado ao vilho tinto com batata torneada e brócolis. acompanha arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 14000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 23000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Bacalhau Grão de Bico",
+          "description": "Frito com grão de bico e verduras. acompanha arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 14000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 23000,
+              "sortOrder": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bacalhau em Lascas",
+      "sortOrder": 7,
+      "active": true,
+      "items": [
+        {
+          "name": "Bacalhau Gomes de Sá",
+          "description": "Refogado, com batata sotê, cebola, salsa, azeitona e ovo. acompanha arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Bacalhau Arminda",
+          "description": "Gratinado, ao molho branco com brócolis e batata chips, acompanha arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Bacalhau Figueira da Foz",
+          "description": "Gratinado, ao molho branco com azeitona, cenora, batata chips e ovo, acompanha arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Bacalhau à Parmegiana",
+          "description": "Acompanha arroz e purê",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Arroz de Bacalhau Algarvia",
+          "description": "Risoto de bacalhau",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bacalhau Desfiado",
+      "sortOrder": 8,
+      "active": true,
+      "items": [
+        {
+          "name": "Bacalhau com Natas",
+          "description": "Gratinado, com molho branco, acompanha arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Único",
+              "priceCents": 0,
+              "sortOrder": 1
+            },
+            {
+              "name": "Individual",
+              "priceCents": 7500,
+              "sortOrder": 2
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 12500,
+              "sortOrder": 3
+            }
+          ]
+        },
+        {
+          "name": "Bacalhau Rosa com Natas",
+          "description": "Gratinado, com batata palha, ao molho rosê, acompanha arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 7500,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 12500,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Bacalhau à Brás",
+          "description": "Refogado com ovos e batata palha, acompanha arroz e salada de feijão verde",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 7500,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 12500,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Executivo de Bacalhau com Natas",
+          "description": "Acompanha arroz e batata palha",
+          "priceCents": 5990,
+          "available": true,
+          "options": []
+        }
+      ]
+    },
+    {
+      "name": "File de Peixe",
+      "sortOrder": 9,
+      "active": true,
+      "items": [
+        {
+          "name": "Peixe ao Molho de Espinafre",
+          "description": "Ao molho de espinafre, acompanha arroz e batata cozida",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Tilápia Individual",
+              "priceCents": 5400,
+              "sortOrder": 1
+            },
+            {
+              "name": "Sirigado Individual",
+              "priceCents": 7500,
+              "sortOrder": 2
+            },
+            {
+              "name": "Tilápia Inteira",
+              "priceCents": 9000,
+              "sortOrder": 3
+            },
+            {
+              "name": "Salmão Individual",
+              "priceCents": 9000,
+              "sortOrder": 4
+            },
+            {
+              "name": "Sirigado Inteira",
+              "priceCents": 12500,
+              "sortOrder": 5
+            },
+            {
+              "name": "Salmão Inteira",
+              "priceCents": 15000,
+              "sortOrder": 6
+            }
+          ]
+        },
+        {
+          "name": "Peixe Grelhado",
+          "description": "Grelhado, acompanha arroz e legumes",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Tilápia Individual",
+              "priceCents": 5400,
+              "sortOrder": 1
+            },
+            {
+              "name": "Sirigado Individual",
+              "priceCents": 7500,
+              "sortOrder": 2
+            },
+            {
+              "name": "Tilápia Inteira",
+              "priceCents": 9000,
+              "sortOrder": 3
+            },
+            {
+              "name": "Salmão Individual",
+              "priceCents": 9000,
+              "sortOrder": 4
+            },
+            {
+              "name": "Sirigado Inteira",
+              "priceCents": 12500,
+              "sortOrder": 5
+            },
+            {
+              "name": "Salmão Inteira",
+              "priceCents": 15000,
+              "sortOrder": 6
+            }
+          ]
+        },
+        {
+          "name": "Peixe ao Molho de Camarão",
+          "description": "Ao molho de camarão, acompanha arroz e purê",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Tilápia Individual",
+              "priceCents": 5400,
+              "sortOrder": 1
+            },
+            {
+              "name": "Sirigado Individual",
+              "priceCents": 7500,
+              "sortOrder": 2
+            },
+            {
+              "name": "Tilápia Inteira",
+              "priceCents": 9000,
+              "sortOrder": 3
+            },
+            {
+              "name": "Salmão Individual",
+              "priceCents": 9000,
+              "sortOrder": 4
+            },
+            {
+              "name": "Sirigado Inteira",
+              "priceCents": 12500,
+              "sortOrder": 5
+            },
+            {
+              "name": "Salmão Inteira",
+              "priceCents": 15000,
+              "sortOrder": 6
+            }
+          ]
+        },
+        {
+          "name": "Peixe à Belle Meuniere",
+          "description": "Grelhado, com molho de alcaparras, cogumelos e camarões, acompanha batata cozida e arroz",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Tilápia Individual",
+              "priceCents": 5400,
+              "sortOrder": 1
+            },
+            {
+              "name": "Sirigado Individual",
+              "priceCents": 7500,
+              "sortOrder": 2
+            },
+            {
+              "name": "Tilápia Inteira",
+              "priceCents": 9000,
+              "sortOrder": 3
+            },
+            {
+              "name": "Salmão Individual",
+              "priceCents": 9000,
+              "sortOrder": 4
+            },
+            {
+              "name": "Sirigado Inteira",
+              "priceCents": 12500,
+              "sortOrder": 5
+            },
+            {
+              "name": "Salmão Inteira",
+              "priceCents": 15000,
+              "sortOrder": 6
+            }
+          ]
+        },
+        {
+          "name": "Executivo de Peixe Grelhado",
+          "description": null,
+          "priceCents": 5399,
+          "available": true,
+          "options": []
+        }
+      ]
+    },
+    {
+      "name": "Cordeiro",
+      "sortOrder": 10,
+      "active": true,
+      "items": [
+        {
+          "name": "Cordeiro na Púcara",
+          "description": "Guisado com verduras, bacon e usa passa. acompanha arroz e batata soutê",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Cordeiro Assado",
+          "description": "Assado no forno, acompanha arroz e batata torneada",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 9000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 15000,
+              "sortOrder": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Entradas",
+      "sortOrder": 11,
+      "active": true,
+      "items": [
+        {
+          "name": "Camarão Crocante",
+          "description": "Camarão empanado na farinha panko, acompanha molho rosê",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 7000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 13000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
+          "name": "Camarão Favorito",
+          "description": "Camarão com casca ao alho e óleo à moda do chefe",
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Individual",
+              "priceCents": 7000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Inteira",
+              "priceCents": 13000,
+              "sortOrder": 2
+            }
+          ]
+        },
+        {
           "name": "Bolinho de Bacalhau",
           "description": "Unidade",
           "priceCents": 800,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Casquinha de Siri",
           "description": null,
           "priceCents": 2500,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Caldo Verde",
           "description": "Caldo português à base de batata, couve folha e linguiça portuguesa",
           "priceCents": 2000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Isca de Peixe",
           "description": "Peixe empanado, acompanha molho tártaro",
           "priceCents": 7000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Isca de Frango",
           "description": "Frango empanado, acompanha molho rosê",
           "priceCents": 5000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Salada de Bacalhau",
           "description": "Bacalhau refogado com grão de bico e verduras",
           "priceCents": 9900,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Casquinha de Bacalhau",
           "description": "Bacalhau desfiado ao molho branco crocante e gratinado.",
           "priceCents": 3000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "File com Fritas",
           "description": "File em tiras com fritas",
           "priceCents": 8000,
-          "available": true
-        },
-        {
-          "name": "Camarão Crocante",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Camarão Crocante Individual",
-          "description": "Camarão empanado na farinha panko, acompanha molho rosê",
-          "priceCents": 7000,
-          "available": true
-        },
-        {
-          "name": "Camarão Crocante Inteira",
-          "description": "Camarão empanado na farinha panko, acompanha molho rosê",
-          "priceCents": 13000,
-          "available": true
-        },
-        {
-          "name": "Camarão Favorito",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Camarão Favorito Individual",
-          "description": "Camarão com casca ao alho e óleo à moda do chefe",
-          "priceCents": 7000,
-          "available": true
-        },
-        {
-          "name": "Camarão Favorito Inteira",
-          "description": "Camarão com casca ao alho e óleo à moda do chefe",
-          "priceCents": 13000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Porção de Bolinhos",
           "description": null,
           "priceCents": 4799,
-          "available": true
+          "available": true,
+          "options": []
         }
       ]
     },
     {
       "name": "Porcao",
-      "sortOrder": 2,
+      "sortOrder": 12,
       "active": true,
       "items": [
+        {
+          "name": "Batata Batata Frita",
+          "description": null,
+          "priceCents": 0,
+          "available": true,
+          "options": [
+            {
+              "name": "Meia Porção",
+              "priceCents": 2000,
+              "sortOrder": 1
+            },
+            {
+              "name": "Porção Inteira",
+              "priceCents": 3000,
+              "sortOrder": 2
+            }
+          ]
+        },
         {
           "name": "Pure",
           "description": null,
           "priceCents": 3000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Arroz de Alho",
           "description": null,
           "priceCents": 1200,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Arroz Branco",
           "description": null,
           "priceCents": 1000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Arroz de Brocolis",
           "description": null,
           "priceCents": 1500,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Arroz  Piamontese",
           "description": null,
           "priceCents": 2500,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Batata Frita",
           "description": null,
           "priceCents": 3000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Arroz a Grega",
           "description": null,
           "priceCents": 2000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Arroz de Brocolis com Alho",
           "description": null,
           "priceCents": 1700,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Batata Torneada",
           "description": null,
           "priceCents": 3000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Batata Palha",
           "description": null,
           "priceCents": 2000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Feijao Verde",
           "description": null,
           "priceCents": 2000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Batata do Chefe",
           "description": "Batata frita com cheddar e bacon",
           "priceCents": 3500,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Legumes",
           "description": null,
           "priceCents": 3000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Batata Chips",
           "description": null,
           "priceCents": 3000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Batata ao Murro",
           "description": "Batatas a moda portuguesa",
           "priceCents": 3000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Batata Cozida",
           "description": null,
           "priceCents": 3000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Batata Sotê",
           "description": null,
           "priceCents": 3000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Pirao Porcao",
           "description": null,
           "priceCents": 2000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Molho Rosé",
           "description": null,
           "priceCents": 1000,
-          "available": true
-        },
-        {
-          "name": "Batata Batata Frita",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Batata Batata Frita Meia Porção",
-          "description": null,
-          "priceCents": 2000,
-          "available": true
-        },
-        {
-          "name": "Batata Batata Frita Porção Inteira",
-          "description": null,
-          "priceCents": 3000,
-          "available": true
+          "available": true,
+          "options": []
         }
       ]
     },
     {
       "name": "Taxa de Entrega",
-      "sortOrder": 3,
+      "sortOrder": 13,
       "active": false,
       "items": [
         {
           "name": "Taxa de Entrega",
           "description": null,
           "priceCents": 1000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Taxa Gratis",
           "description": null,
           "priceCents": 0,
-          "available": false
+          "available": true,
+          "options": []
         },
         {
           "name": "Taxa Padrao",
           "description": null,
           "priceCents": 500,
-          "available": true
+          "available": true,
+          "options": []
         }
       ]
     },
     {
       "name": "Sobremesas",
-      "sortOrder": 4,
+      "sortOrder": 14,
       "active": true,
       "items": [
         {
           "name": "Baba de Camelo",
           "description": null,
           "priceCents": 1200,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Pastel de Belém",
           "description": null,
           "priceCents": 1000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Copo da Felicidade - Brownie",
           "description": "Sobremesa gelada cremosa com brigadeiro duo e brownie.",
           "priceCents": 1990,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Copo da Felicidade - Morango",
           "description": "Sobremesa gelada cremosa com creme de morango.",
           "priceCents": 1990,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Delícia de Morango",
           "description": "Sobremesa gelada com creme de ninho e geleia de morango.",
           "priceCents": 1490,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Copo da Felicidade - Maracujá",
           "description": "Sobremesa gelada cremosa com creme de maracujá, chocolate e brownie.",
           "priceCents": 1990,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Brigadeiro de Colher com Creme de Maracujá",
           "description": "Sobremesa com creme de maracujá e brigadeiro de chocolate.",
           "priceCents": 1490,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Flau Gourmet",
           "description": "Sabor ninho com nutella",
           "priceCents": 1200,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Brigadeiro de Colher",
           "description": null,
           "priceCents": 990,
-          "available": true
+          "available": true,
+          "options": []
         }
       ]
     },
     {
       "name": "Bebida",
-      "sortOrder": 5,
+      "sortOrder": 15,
       "active": true,
       "items": [
         {
           "name": "Coca Cola Normal",
           "description": null,
           "priceCents": 700,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Coca Cola Zero",
           "description": null,
           "priceCents": 700,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Guarana Normal",
           "description": null,
           "priceCents": 700,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Heineken Long Neck",
           "description": null,
           "priceCents": 1200,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Corona Long Neck",
           "description": null,
           "priceCents": 1200,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Agua sem Gas",
           "description": null,
           "priceCents": 500,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Agua com Gas",
           "description": null,
           "priceCents": 600,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Heineken Zero",
           "description": null,
           "priceCents": 1200,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Corona Zero",
           "description": null,
           "priceCents": 1200,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Guarana Zero",
           "description": null,
           "priceCents": 700,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Devassa Lata",
           "description": null,
           "priceCents": 1000,
-          "available": true
+          "available": true,
+          "options": []
         },
         {
           "name": "Coca Cola Normal Executivo",
           "description": null,
           "priceCents": 0,
-          "available": false
-        }
-      ]
-    },
-    {
-      "name": "File de Frango",
-      "sortOrder": 6,
-      "active": true,
-      "items": [
-        {
-          "name": "Frango à Parmegiana",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Frango à Parmegiana Individual",
-          "description": "Acompanha arroz e purê",
-          "priceCents": 4000,
-          "available": true
-        },
-        {
-          "name": "Frango à Parmegiana Inteira",
-          "description": "Acompanha arroz e purê",
-          "priceCents": 6000,
-          "available": true
-        },
-        {
-          "name": "Frango Strogonoff",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Frango Strogonoff Individual",
-          "description": "Acompanha arroz e batata palha",
-          "priceCents": 4000,
-          "available": true
-        },
-        {
-          "name": "Frango Strogonoff Inteira",
-          "description": "Acompanha arroz e batata palha",
-          "priceCents": 6000,
-          "available": true
-        },
-        {
-          "name": "Frango Grelhado",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Frango Grelhado Individual",
-          "description": "Acompanha arroz e legumes",
-          "priceCents": 4000,
-          "available": true
-        },
-        {
-          "name": "Frango Grelhado Inteira",
-          "description": "Acompanha arroz e legumes",
-          "priceCents": 6000,
-          "available": true
-        },
-        {
-          "name": "Frango Catupiry",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Frango Catupiry Individual",
-          "description": "Ao molho de catupiry, acompanha arroz e batata palha",
-          "priceCents": 4000,
-          "available": true
-        },
-        {
-          "name": "Frango Catupiry Inteira",
-          "description": "Ao molho de catupiry, acompanha arroz e batata palha",
-          "priceCents": 6000,
-          "available": true
-        },
-        {
-          "name": "Frango Recheado",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Frango Recheado Individual",
-          "description": "Empanado recheado com queijo e presunto, acompanha arroz e purê",
-          "priceCents": 4000,
-          "available": true
-        },
-        {
-          "name": "Frango Recheado Inteira",
-          "description": "Empanado recheado com queijo e presunto, acompanha arroz e purê",
-          "priceCents": 6000,
-          "available": true
-        },
-        {
-          "name": "Frango ao Milho Verde",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Frango ao Milho Verde Individual",
-          "description": "Ao creme de milho verde, acompanha arroz com milho verde",
-          "priceCents": 4000,
-          "available": true
-        },
-        {
-          "name": "Frango ao Milho Verde Inteira",
-          "description": "Ao creme de milho verde, acompanha arroz com milho verde",
-          "priceCents": 6000,
-          "available": true
-        },
-        {
-          "name": "Executivo de Frango à Parmegiana",
-          "description": null,
-          "priceCents": 3990,
-          "available": true
-        },
-        {
-          "name": "Executivo de Frango Strogonoff",
-          "description": null,
-          "priceCents": 3990,
-          "available": true
-        },
-        {
-          "name": "Executivo de Frango Grelhado",
-          "description": null,
-          "priceCents": 3990,
-          "available": true
-        },
-        {
-          "name": "Executivo de Frango à Parmegiana + Coca",
-          "description": null,
-          "priceCents": 4690,
-          "available": true
-        },
-        {
-          "name": "Executivo de Frango Strogonoff + Coca",
-          "description": null,
-          "priceCents": 4690,
-          "available": true
-        }
-      ]
-    },
-    {
-      "name": "File Mignon",
-      "sortOrder": 7,
-      "active": true,
-      "items": [
-        {
-          "name": "Filé Mignon Strogonoff",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Filé Mignon Strogonoff Individual",
-          "description": "Acompanha arroz e batata palha",
-          "priceCents": 6000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon Strogonoff Inteira",
-          "description": "Acompanha arroz e batata palha",
-          "priceCents": 10000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon à Moda da Casa",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Filé Mignon à Moda da Casa Individual",
-          "description": "Filé alto com molho vermelho do chefe, acompanha arroz e creme de milho verde",
-          "priceCents": 8000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon à Moda da Casa Inteira",
-          "description": "Filé alto com molho vermelho do chefe, acompanha arroz e creme de milho verde",
-          "priceCents": 13000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon à Moda do Chefe",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Filé Mignon à Moda do Chefe Individual",
-          "description": "Filé alto grelhado na manteiga, acompanha arroz e batata frita com cheddar e bacon",
-          "priceCents": 8000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon à Moda do Chefe Inteira",
-          "description": "Filé alto grelhado na manteiga, acompanha arroz e batata frita com cheddar e bacon",
-          "priceCents": 13000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon Diplomata",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Filé Mignon Diplomata Individual",
-          "description": "Filé alto ao molho madeira com bacon e ervilha, acompanha arroz e batata frita",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon Diplomata Inteira",
-          "description": "Filé alto ao molho madeira com bacon e ervilha, acompanha arroz e batata frita",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon Tornedor",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Filé Mignon Tornedor Individual",
-          "description": "Filé alto ao molho tornedor, acompanha arroz e batata chips",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon Tornedor Inteira",
-          "description": "Filé alto ao molho tornedor, acompanha arroz e batata chips",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon Grelhado",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Filé Mignon Grelhado Individual",
-          "description": "Acompanha arroz e legumes",
-          "priceCents": 8000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon Grelhado Inteira",
-          "description": "Acompanha arroz e legumes",
-          "priceCents": 13000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon ao Molho de Cogumelos",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Filé Mignon ao Molho de Cogumelos Individual",
-          "description": "Ao molho de cogumelos, acompanha arroz e purê",
-          "priceCents": 8000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon ao Molho de Cogumelos Inteira",
-          "description": "Ao molho de cogumelos, acompanha arroz e purê",
-          "priceCents": 13000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon Catupiry",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Filé Mignon Catupiry Individual",
-          "description": "Ao molho de catupiry, acompanha arroz e batata palha",
-          "priceCents": 8000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon Catupiry Inteira",
-          "description": "Ao molho de catupiry, acompanha arroz e batata palha",
-          "priceCents": 13000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon ao Molho Madeira",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Filé Mignon ao Molho Madeira Individual",
-          "description": "Acompanha arroz e batata palha",
-          "priceCents": 8000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon ao Molho Madeira Inteira",
-          "description": "Acompanha arroz e batata palha",
-          "priceCents": 13000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon à Parmegiana",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Filé Mignon à Parmegiana Individual",
-          "description": "Aocmpanha arroz e purê",
-          "priceCents": 5400,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon à Parmegiana Inteira",
-          "description": "Aocmpanha arroz e purê",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon à Suiça",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Filé Mignon à Suiça Individual",
-          "description": "Empanado com molho branco, queijo e presunto. acompanha arroz e batata palha",
-          "priceCents": 8000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon à Suiça Inteira",
-          "description": "Empanado com molho branco, queijo e presunto. acompanha arroz e batata palha",
-          "priceCents": 13000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon à Quatro Queijos",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Filé Mignon à Quatro Queijos Individual",
-          "description": "Ao molho de quatro queijos, acompanha arroz e batata palha",
-          "priceCents": 8000,
-          "available": true
-        },
-        {
-          "name": "Filé Mignon à Quatro Queijos Inteira",
-          "description": "Ao molho de quatro queijos, acompanha arroz e batata palha",
-          "priceCents": 13000,
-          "available": true
-        },
-        {
-          "name": "Executivo de Filé à Parmegiana",
-          "description": null,
-          "priceCents": 5390,
-          "available": true
-        }
-      ]
-    },
-    {
-      "name": "Camarao",
-      "sortOrder": 8,
-      "active": true,
-      "items": [
-        {
-          "name": "Camarão à Moda da Casa",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Camarão à Moda da Casa Individual",
-          "description": "Ao molho de tomate com leite de côco. acompanha arroz e purê",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Camarão à Moda da Casa Inteira",
-          "description": "Ao molho de tomate com leite de côco. acompanha arroz e purê",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Camarão ao Molho de Champignon",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Camarão ao Molho de Champignon Individual",
-          "description": "Ao molho de cogumelos, acompanha arroz e batata palha",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Camarão ao Molho de Champignon Inteira",
-          "description": "Ao molho de cogumelos, acompanha arroz e batata palha",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Camarão à Jangadeiro",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Camarão à Jangadeiro Individual",
-          "description": "Empanado na farinha panko, acompanha arroz à grega.",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Camarão à Jangadeiro Inteira",
-          "description": "Empanado na farinha panko, acompanha arroz à grega.",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Camarão ao Catupiry",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Camarão ao Catupiry Individual",
-          "description": "Ao catupiry, acompanha arroz e batata palha",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Camarão ao Catupiry Inteira",
-          "description": "Ao catupiry, acompanha arroz e batata palha",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Camarão Chiclete",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Camarão Chiclete Individual",
-          "description": "Ao molho de queijos, acompanha arroz e batata palha",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Camarão Chiclete Inteira",
-          "description": "Ao molho de queijos, acompanha arroz e batata palha",
-          "priceCents": 15000,
-          "available": true
-        }
-      ]
-    },
-    {
-      "name": "Moquecas",
-      "sortOrder": 9,
-      "active": true,
-      "items": [
-        {
-          "name": "Moqueca de Camarão",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Moqueca de Camarão Individual",
-          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Moqueca de Camarão Inteira",
-          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Moqueca de Polvo",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Moqueca de Polvo Individual",
-          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Moqueca de Polvo Inteira",
-          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Moqueca de Bacalhau",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Moqueca de Bacalhau Individual",
-          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Moqueca de Bacalhau Inteira",
-          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Moqueca de Peixe",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Moqueca de Peixe Individual",
-          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
-          "priceCents": 5400,
-          "available": true
-        },
-        {
-          "name": "Moqueca de Peixe Inteira",
-          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Moqueca de Polvo com Camarão",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Moqueca de Polvo com Camarão Individual",
-          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Moqueca de Polvo com Camarão Inteira",
-          "description": "Leva leite de côco e azeite de dendê, acompanha arroz e pirão",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Executivo de Moqueca de Peixe",
-          "description": null,
-          "priceCents": 5399,
-          "available": true
-        }
-      ]
-    },
-    {
-      "name": "Polvo",
-      "sortOrder": 10,
-      "active": true,
-      "items": [
-        {
-          "name": "Arroz de Polvo",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Arroz de Polvo Individual",
-          "description": "Risoto de polvo",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Arroz de Polvo Inteira",
-          "description": "Risoto de polvo",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Polvo Lagareiro",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Polvo Lagareiro Individual",
-          "description": "Grelhado com pimentões fritos, alho laminado no azeite, e batatas ao murro. acompanha arroz",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Polvo Lagareiro Inteira",
-          "description": "Grelhado com pimentões fritos, alho laminado no azeite, e batatas ao murro. acompanha arroz",
-          "priceCents": 15000,
-          "available": true
-        }
-      ]
-    },
-    {
-      "name": "Bacalhau em Posta",
-      "sortOrder": 11,
-      "active": true,
-      "items": [
-        {
-          "name": "Bacalhau Vila Real",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau Vila Real Individual",
-          "description": "Grelhado com batatas ao murro, brócolis, cebola e alho cozido. acompanha arroz",
-          "priceCents": 14000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Vila Real Inteira",
-          "description": "Grelhado com batatas ao murro, brócolis, cebola e alho cozido. acompanha arroz",
-          "priceCents": 23000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Lagareiro",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau Lagareiro Individual",
-          "description": "Grelhado com pimentões, batata ao murro, alho laminado. acompanha arroz",
-          "priceCents": 14000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Lagareiro Inteira",
-          "description": "Grelhado com pimentões, batata ao murro, alho laminado. acompanha arroz",
-          "priceCents": 23000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau da Casa",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau da Casa Individual",
-          "description": "Frito com pimentões vermelhos e batata chips. acompanha arroz",
-          "priceCents": 14000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau da Casa Inteira",
-          "description": "Frito com pimentões vermelhos e batata chips. acompanha arroz",
-          "priceCents": 23000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau com Todos",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau com Todos Individual",
-          "description": "Cozido com legumes, acompanha arroz",
-          "priceCents": 14000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau com Todos Inteira",
-          "description": "Cozido com legumes, acompanha arroz",
-          "priceCents": 23000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Zé do Pipo",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau Zé do Pipo Individual",
-          "description": "Frito, com cobertura de molho branco, cenora, pimentões vermelhos e purê. acompanha arroz",
-          "priceCents": 14000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Zé do Pipo Inteira",
-          "description": "Frito, com cobertura de molho branco, cenora, pimentões vermelhos e purê. acompanha arroz",
-          "priceCents": 23000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Narciso",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau Narciso Individual",
-          "description": "Frito com batata sotê, pimentões e bastante cebola. acompanha arroz",
-          "priceCents": 14000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Narciso Inteira",
-          "description": "Frito com batata sotê, pimentões e bastante cebola. acompanha arroz",
-          "priceCents": 23000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Vinho Tinto",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau Vinho Tinto Individual",
-          "description": "Frito flambado ao vilho tinto com batata torneada e brócolis. acompanha arroz",
-          "priceCents": 14000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Vinho Tinto Inteira",
-          "description": "Frito flambado ao vilho tinto com batata torneada e brócolis. acompanha arroz",
-          "priceCents": 23000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Grão de Bico",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau Grão de Bico Individual",
-          "description": "Frito com grão de bico e verduras. acompanha arroz",
-          "priceCents": 14000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Grão de Bico Inteira",
-          "description": "Frito com grão de bico e verduras. acompanha arroz",
-          "priceCents": 23000,
-          "available": true
-        }
-      ]
-    },
-    {
-      "name": "Bacalhau em Lascas",
-      "sortOrder": 12,
-      "active": true,
-      "items": [
-        {
-          "name": "Bacalhau Gomes de Sá",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau Gomes de Sá Individual",
-          "description": "Refogado, com batata sotê, cebola, salsa, azeitona e ovo. acompanha arroz",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Gomes de Sá Inteira",
-          "description": "Refogado, com batata sotê, cebola, salsa, azeitona e ovo. acompanha arroz",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Arminda",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau Arminda Individual",
-          "description": "Gratinado, ao molho branco com brócolis e batata chips, acompanha arroz",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Arminda Inteira",
-          "description": "Gratinado, ao molho branco com brócolis e batata chips, acompanha arroz",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Figueira da Foz",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau Figueira da Foz Individual",
-          "description": "Gratinado, ao molho branco com azeitona, cenora, batata chips e ovo, acompanha arroz",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Figueira da Foz Inteira",
-          "description": "Gratinado, ao molho branco com azeitona, cenora, batata chips e ovo, acompanha arroz",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau à Parmegiana",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau à Parmegiana Individual",
-          "description": "Acompanha arroz e purê",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Bacalhau à Parmegiana Inteira",
-          "description": "Acompanha arroz e purê",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Arroz de Bacalhau Algarvia",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Arroz de Bacalhau Algarvia Individual",
-          "description": "Risoto de bacalhau",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Arroz de Bacalhau Algarvia Inteira",
-          "description": "Risoto de bacalhau",
-          "priceCents": 15000,
-          "available": true
-        }
-      ]
-    },
-    {
-      "name": "Bacalhau Desfiado",
-      "sortOrder": 13,
-      "active": true,
-      "items": [
-        {
-          "name": "Bacalhau com Natas",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau com Natas Individual",
-          "description": "Gratinado, com molho branco, acompanha arroz",
-          "priceCents": 7500,
-          "available": true
-        },
-        {
-          "name": "Bacalhau com Natas Inteira",
-          "description": "Gratinado, com molho branco, acompanha arroz",
-          "priceCents": 12500,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Rosa com Natas",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau Rosa com Natas Individual",
-          "description": "Gratinado, com batata palha, ao molho rosê, acompanha arroz",
-          "priceCents": 7500,
-          "available": true
-        },
-        {
-          "name": "Bacalhau Rosa com Natas Inteira",
-          "description": "Gratinado, com batata palha, ao molho rosê, acompanha arroz",
-          "priceCents": 12500,
-          "available": true
-        },
-        {
-          "name": "Bacalhau à Brás",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Bacalhau à Brás Individual",
-          "description": "Refogado com ovos e batata palha, acompanha arroz e salada de feijão verde",
-          "priceCents": 7500,
-          "available": true
-        },
-        {
-          "name": "Bacalhau à Brás Inteira",
-          "description": "Refogado com ovos e batata palha, acompanha arroz e salada de feijão verde",
-          "priceCents": 12500,
-          "available": true
-        },
-        {
-          "name": "Bacalhau com Natas",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Executivo de Bacalhau com Natas",
-          "description": "Acompanha arroz e batata palha",
-          "priceCents": 5990,
-          "available": true
-        }
-      ]
-    },
-    {
-      "name": "File de Peixe",
-      "sortOrder": 14,
-      "active": true,
-      "items": [
-        {
-          "name": "Peixe ao Molho de Espinafre",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Peixe ao Molho de Espinafre Tilápia - Individual",
-          "description": "Ao molho de espinafre, acompanha arroz e batata cozida",
-          "priceCents": 5400,
-          "available": true
-        },
-        {
-          "name": "Peixe ao Molho de Espinafre Tilápia - Inteira",
-          "description": "Ao molho de espinafre, acompanha arroz e batata cozida",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Peixe ao Molho de Espinafre Sirigado - Individual",
-          "description": "Ao molho de espinafre, acompanha arroz e batata cozida",
-          "priceCents": 7500,
-          "available": true
-        },
-        {
-          "name": "Peixe ao Molho de Espinafre Sirigado - Inteira",
-          "description": "Ao molho de espinafre, acompanha arroz e batata cozida",
-          "priceCents": 12500,
-          "available": true
-        },
-        {
-          "name": "Peixe ao Molho de Espinafre Salmão - Individual",
-          "description": "Ao molho de espinafre, acompanha arroz e batata cozida",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Peixe ao Molho de Espinafre Salmão - Inteira",
-          "description": "Ao molho de espinafre, acompanha arroz e batata cozida",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Peixe Grelhado",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Peixe Grelhado Tilápia - Individual",
-          "description": "Grelhado, acompanha arroz e legumes",
-          "priceCents": 5400,
-          "available": true
-        },
-        {
-          "name": "Peixe Grelhado Tilápia - Inteira",
-          "description": "Grelhado, acompanha arroz e legumes",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Peixe Grelhado Sirigado - Individual",
-          "description": "Grelhado, acompanha arroz e legumes",
-          "priceCents": 7500,
-          "available": true
-        },
-        {
-          "name": "Peixe Grelhado Sirigado - Inteira",
-          "description": "Grelhado, acompanha arroz e legumes",
-          "priceCents": 12500,
-          "available": true
-        },
-        {
-          "name": "Peixe Grelhado Salmão - Individual",
-          "description": "Grelhado, acompanha arroz e legumes",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Peixe Grelhado Salmão - Inteira",
-          "description": "Grelhado, acompanha arroz e legumes",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Peixe ao Molho de Camarão",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Peixe ao Molho de Camarão Tilápia - Individual",
-          "description": "Ao molho de camarão, acompanha arroz e purê",
-          "priceCents": 5400,
-          "available": true
-        },
-        {
-          "name": "Peixe ao Molho de Camarão Tilápia - Inteira",
-          "description": "Ao molho de camarão, acompanha arroz e purê",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Peixe ao Molho de Camarão Sirigado - Individual",
-          "description": "Ao molho de camarão, acompanha arroz e purê",
-          "priceCents": 7500,
-          "available": true
-        },
-        {
-          "name": "Peixe ao Molho de Camarão Sirigado - Inteira",
-          "description": "Ao molho de camarão, acompanha arroz e purê",
-          "priceCents": 12500,
-          "available": true
-        },
-        {
-          "name": "Peixe ao Molho de Camarão Salmão - Individual",
-          "description": "Ao molho de camarão, acompanha arroz e purê",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Peixe ao Molho de Camarão Salmão - Inteira",
-          "description": "Ao molho de camarão, acompanha arroz e purê",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Peixe à Belle Meuniere",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Peixe à Belle Meuniere Tilápia - Individual",
-          "description": "Grelhado, com molho de alcaparras, cogumelos e camarões, acompanha batata cozida e arroz",
-          "priceCents": 5400,
-          "available": true
-        },
-        {
-          "name": "Peixe à Belle Meuniere Tilápia - Inteira",
-          "description": "Grelhado, com molho de alcaparras, cogumelos e camarões, acompanha batata cozida e arroz",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Peixe à Belle Meuniere Sirigado - Individual",
-          "description": "Grelhado, com molho de alcaparras, cogumelos e camarões, acompanha batata cozida e arroz",
-          "priceCents": 7500,
-          "available": true
-        },
-        {
-          "name": "Peixe à Belle Meuniere Sirigado - Inteira",
-          "description": "Grelhado, com molho de alcaparras, cogumelos e camarões, acompanha batata cozida e arroz",
-          "priceCents": 12500,
-          "available": true
-        },
-        {
-          "name": "Peixe à Belle Meuniere Salmão - Individual",
-          "description": "Grelhado, com molho de alcaparras, cogumelos e camarões, acompanha batata cozida e arroz",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Peixe à Belle Meuniere Salmão - Inteira",
-          "description": "Grelhado, com molho de alcaparras, cogumelos e camarões, acompanha batata cozida e arroz",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Executivo de Peixe Grelhado",
-          "description": null,
-          "priceCents": 5399,
-          "available": true
-        }
-      ]
-    },
-    {
-      "name": "Cordeiro",
-      "sortOrder": 15,
-      "active": true,
-      "items": [
-        {
-          "name": "Cordeiro na Púcara",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Cordeiro na Púcara Individual",
-          "description": "Guisado com verduras, bacon e usa passa. acompanha arroz e batata soutê",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Cordeiro na Púcara Inteira",
-          "description": "Guisado com verduras, bacon e usa passa. acompanha arroz e batata soutê",
-          "priceCents": 15000,
-          "available": true
-        },
-        {
-          "name": "Cordeiro Assado",
-          "description": null,
-          "priceCents": 0,
-          "available": false
-        },
-        {
-          "name": "Cordeiro Assado Individual",
-          "description": "Assado no forno, acompanha arroz e batata torneada",
-          "priceCents": 9000,
-          "available": true
-        },
-        {
-          "name": "Cordeiro Assado Inteira",
-          "description": "Assado no forno, acompanha arroz e batata torneada",
-          "priceCents": 15000,
-          "available": true
+          "available": true,
+          "options": []
         }
       ]
     }

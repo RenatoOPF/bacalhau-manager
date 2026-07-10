@@ -50,13 +50,32 @@ model MenuItem {
   name        String
   description String?
   // Preço em centavos para evitar imprecisão de ponto flutuante.
+  // Usado quando o item NÃO tem opções; com opções, o preço vem da opção.
   priceCents  Int
-  available   Boolean      @default(true)
+  available   Boolean          @default(true)
+  options     MenuItemOption[]
   orderItems  OrderItem[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   @@index([categoryId])
+}
+
+/// Variações de um item com preço próprio (ex.: Individual/Inteira, ou
+/// Tilápia Individual/Salmão Inteira nos peixes). Quando um item tem opções,
+/// o cliente escolhe uma e o preço vem dela.
+model MenuItemOption {
+  id         String   @id @default(cuid())
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  menuItemId String
+  name       String
+  priceCents Int
+  sortOrder  Int      @default(0)
+  available  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([menuItemId])
 }
 
 // ---------- Pedidos ----------
@@ -133,10 +152,11 @@ model OrderItem {
   menuItemId String
 
   // Snapshots para preservar o histórico mesmo se o cardápio mudar depois.
-  nameSnapshot String
-  priceCents   Int
-  quantity     Int     @default(1)
-  notes        String?
+  nameSnapshot       String
+  optionNameSnapshot String? // opção escolhida (ex.: "Inteira"), se o item tiver
+  priceCents         Int
+  quantity           Int     @default(1)
+  notes              String?
 
   @@index([orderId])
 }

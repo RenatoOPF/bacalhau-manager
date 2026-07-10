@@ -53,3 +53,37 @@ export class UpdateMenuItemDto {
   @IsBoolean()
   available?: boolean;
 }
+
+export class CreateOptionDto {
+  @IsString()
+  @MinLength(1)
+  name: string;
+
+  @IsInt()
+  @Min(0)
+  priceCents: number;
+
+  @IsOptional()
+  @IsInt()
+  sortOrder?: number;
+}
+
+export class UpdateOptionDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  name?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  priceCents?: number;
+
+  @IsOptional()
+  @IsInt()
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  available?: boolean;
+}

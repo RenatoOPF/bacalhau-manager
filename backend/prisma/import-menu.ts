@@ -1,13 +1,15 @@
 /**
  * Importa o cardápio a partir de prisma/data/menu.json (gerado do produtos.xlsx
- * do sistema antigo). Idempotente: faz upsert por (categoria) e (categoria+item),
- * então rodar mais de uma vez não duplica.
+ * do sistema antigo). Idempotente: upsert por (categoria) e (categoria+item),
+ * e as opções de cada item são regravadas a cada execução.
  *
- * - Categorias e itens: nome em Título (a impressão converte para MAIÚSCULAS).
- * - Itens sem preço no export entram ocultos (available=false, preço 0) para o
- *   admin só preencher o valor depois.
- * - Desativa o cardápio-placeholder do seed (Pratos/Bebidas) sem apagar, para
- *   não conflitar com pedidos de teste que possam referenciá-lo.
+ * - Itens com variação de porção viram 1 item com várias opções
+ *   (ex.: Individual/Inteira); o preço vem da opção.
+ * - Nomes em Título (a impressão converte para MAIÚSCULAS).
+ * - Remove itens órfãos das categorias importadas (ex.: as variações "flat"
+ *   de uma importação anterior) — deleta se não houver pedido referenciando,
+ *   senão apenas desativa.
+ * - Desativa o cardápio-placeholder do seed (Pratos/Bebidas).
  *
  * Uso: npm run menu:import --workspace backend
  */
@@ -21,6 +23,8 @@ async function main() {
   let catUpd = 0;
   let itemNew = 0;
   let itemUpd = 0;
+  let optCount = 0;
+  const canonicalByCat = new Map<string, Set<string>>();
 
   for (const c of menu.categories) {
     let cat = await prisma.menuCategory.findFirst({ where: { name: c.name } });
@@ -37,28 +41,69 @@ async function main() {
       catNew++;
     }
 
+    const names = new Set<string>();
     for (const it of c.items) {
-      const existing = await prisma.menuItem.findFirst({
-        where: { categoryId: cat.id, name: it.name },
-      });
+      names.add(it.name);
       const data = {
         description: it.description ?? null,
         priceCents: it.priceCents,
         available: it.available,
       };
-      if (existing) {
-        await prisma.menuItem.update({ where: { id: existing.id }, data });
+      let item = await prisma.menuItem.findFirst({
+        where: { categoryId: cat.id, name: it.name },
+      });
+      if (item) {
+        await prisma.menuItem.update({ where: { id: item.id }, data });
         itemUpd++;
       } else {
-        await prisma.menuItem.create({
+        item = await prisma.menuItem.create({
           data: { categoryId: cat.id, name: it.name, ...data },
         });
         itemNew++;
       }
+
+      // Regrava as opções do item (idempotente).
+      const itemId = item.id;
+      await prisma.menuItemOption.deleteMany({ where: { menuItemId: itemId } });
+      if (it.options.length > 0) {
+        await prisma.menuItemOption.createMany({
+          data: it.options.map((o, idx) => ({
+            menuItemId: itemId,
+            name: o.name,
+            priceCents: o.priceCents,
+            sortOrder: o.sortOrder ?? idx + 1,
+          })),
+        });
+        optCount += it.options.length;
+      }
+    }
+    canonicalByCat.set(cat.id, names);
+  }
+
+  // Limpa itens órfãos (variações "flat" da importação antiga).
+  let removed = 0;
+  let deactivated = 0;
+  for (const [catId, names] of canonicalByCat) {
+    const existing = await prisma.menuItem.findMany({
+      where: { categoryId: catId },
+      include: { _count: { select: { orderItems: true } } },
+    });
+    for (const item of existing) {
+      if (names.has(item.name)) continue;
+      if (item._count.orderItems === 0) {
+        await prisma.menuItemOption.deleteMany({ where: { menuItemId: item.id } });
+        await prisma.menuItem.delete({ where: { id: item.id } });
+        removed++;
+      } else {
+        await prisma.menuItem.update({
+          where: { id: item.id },
+          data: { available: false },
+        });
+        deactivated++;
+      }
     }
   }
 
-  // Desativa o cardápio-placeholder do seed inicial.
   const deact = await prisma.menuCategory.updateMany({
     where: { name: { in: ['Pratos', 'Bebidas'] } },
     data: { active: false },
@@ -66,6 +111,8 @@ async function main() {
 
   console.log(`Categorias: +${catNew} novas, ${catUpd} atualizadas`);
   console.log(`Itens:      +${itemNew} novos, ${itemUpd} atualizados`);
+  console.log(`Opções gravadas: ${optCount}`);
+  console.log(`Órfãos: ${removed} removidos, ${deactivated} desativados`);
   console.log(`Placeholder do seed desativado: ${deact.count} categoria(s)`);
   console.log('Importação do cardápio concluída.');
 }

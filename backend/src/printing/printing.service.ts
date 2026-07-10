@@ -65,8 +65,11 @@ export class PrintingService {
     if (order.addressReference) p.println(`  Ref: ${order.addressReference}`);
     p.drawLine();
     for (const item of order.items) {
-      // Nome do item sempre em MAIÚSCULAS no ticket (o cardápio guarda em Título).
-      p.println(`${item.quantity}x ${item.nameSnapshot.toUpperCase()}`);
+      // Nome (+ opção) sempre em MAIÚSCULAS no ticket (o cardápio guarda em Título).
+      const label = item.optionNameSnapshot
+        ? `${item.nameSnapshot} (${item.optionNameSnapshot})`
+        : item.nameSnapshot;
+      p.println(`${item.quantity}x ${label.toUpperCase()}`);
       if (item.notes) p.println(`   obs: ${item.notes}`);
       p.alignRight();
       p.println(formatBRL(item.priceCents * item.quantity));
@@ -104,8 +107,11 @@ export class PrintingService {
     p.alignLeft();
     for (const item of order.items) {
       p.bold(true);
-      // Nome do item sempre em MAIÚSCULAS no ticket (o cardápio guarda em Título).
-      p.println(`${item.quantity}x ${item.nameSnapshot.toUpperCase()}`);
+      // Nome (+ opção) sempre em MAIÚSCULAS no ticket (o cardápio guarda em Título).
+      const label = item.optionNameSnapshot
+        ? `${item.nameSnapshot} (${item.optionNameSnapshot})`
+        : item.nameSnapshot;
+      p.println(`${item.quantity}x ${label.toUpperCase()}`);
       p.bold(false);
       if (item.notes) p.println(`   >> ${item.notes}`);
     }

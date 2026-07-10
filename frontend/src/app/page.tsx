@@ -2,7 +2,21 @@
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { api, formatBRL, type CreateOrderPayload } from '@/lib/api';
+import {
+  api,
+  formatBRL,
+  type CreateOrderPayload,
+  type MenuItem,
+} from '@/lib/api';
+
+// Uma linha do carrinho: um item (ou uma opção específica dele).
+interface CartLine {
+  menuItemId: string;
+  optionId?: string;
+  label: string; // "Filé Mignon Grelhado" ou "Filé Mignon Grelhado — Inteira"
+  priceCents: number;
+  quantity: number;
+}
 
 export default function CardapioPage() {
   const { data: menu, isLoading } = useQuery({
@@ -10,8 +24,8 @@ export default function CardapioPage() {
     queryFn: api.getMenu,
   });
 
-  // Carrinho simples: menuItemId -> quantidade.
-  const [cart, setCart] = useState<Record<string, number>>({});
+  // Carrinho: chave (optionId ou menuItemId) -> linha.
+  const [cart, setCart] = useState<Record<string, CartLine>>({});
   const [form, setForm] = useState({
     customerName: '',
     customerPhone: '',
@@ -20,37 +34,37 @@ export default function CardapioPage() {
     paymentMethod: 'PIX' as 'CASH' | 'PIX',
   });
 
-  const allItems = useMemo(
-    () => (menu ?? []).flatMap((c) => c.items),
-    [menu],
-  );
-
   const totalCents = useMemo(
     () =>
-      Object.entries(cart).reduce((sum, [id, qty]) => {
-        const item = allItems.find((i) => i.id === id);
-        return sum + (item ? item.priceCents * qty : 0);
-      }, 0),
-    [cart, allItems],
+      Object.values(cart).reduce(
+        (sum, line) => sum + line.priceCents * line.quantity,
+        0,
+      ),
+    [cart],
   );
 
   const createOrder = useMutation({
     mutationFn: (payload: CreateOrderPayload) => api.createOrder(payload),
   });
 
-  const setQty = (id: string, delta: number) =>
+  const setQty = (line: Omit<CartLine, 'quantity'>, delta: number) =>
     setCart((prev) => {
-      const next = Math.max(0, (prev[id] ?? 0) + delta);
+      const key = line.optionId ?? line.menuItemId;
+      const current = prev[key]?.quantity ?? 0;
+      const next = Math.max(0, current + delta);
       const copy = { ...prev };
-      if (next === 0) delete copy[id];
-      else copy[id] = next;
+      if (next === 0) delete copy[key];
+      else copy[key] = { ...line, quantity: next };
       return copy;
     });
 
+  const qtyOf = (key: string) => cart[key]?.quantity ?? 0;
+
   const submit = () => {
-    const items = Object.entries(cart).map(([menuItemId, quantity]) => ({
-      menuItemId,
-      quantity,
+    const items = Object.values(cart).map((line) => ({
+      menuItemId: line.menuItemId,
+      optionId: line.optionId,
+      quantity: line.quantity,
     }));
     if (items.length === 0) return;
     createOrder.mutate({ ...form, items });
@@ -92,34 +106,12 @@ export default function CardapioPage() {
             <h2 className="text-xl font-semibold">{category.name}</h2>
             <ul className="mt-2 divide-y">
               {category.items.map((item) => (
-                <li key={item.id} className="flex items-center gap-3 py-3">
-                  <div className="flex-1">
-                    <p className="font-medium">{item.name}</p>
-                    {item.description && (
-                      <p className="text-sm text-gray-500">
-                        {item.description}
-                      </p>
-                    )}
-                    <p className="text-sm">{formatBRL(item.priceCents)}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      className="h-8 w-8 rounded bg-gray-200"
-                      onClick={() => setQty(item.id, -1)}
-                    >
-                      −
-                    </button>
-                    <span className="w-6 text-center">
-                      {cart[item.id] ?? 0}
-                    </span>
-                    <button
-                      className="h-8 w-8 rounded bg-gray-200"
-                      onClick={() => setQty(item.id, 1)}
-                    >
-                      +
-                    </button>
-                  </div>
-                </li>
+                <ItemRow
+                  key={item.id}
+                  item={item}
+                  qtyOf={qtyOf}
+                  setQty={setQty}
+                />
               ))}
             </ul>
           </section>
@@ -132,33 +124,25 @@ export default function CardapioPage() {
           className="w-full rounded border p-2"
           placeholder="Nome"
           value={form.customerName}
-          onChange={(e) =>
-            setForm({ ...form, customerName: e.target.value })
-          }
+          onChange={(e) => setForm({ ...form, customerName: e.target.value })}
         />
         <input
           className="w-full rounded border p-2"
           placeholder="Telefone"
           value={form.customerPhone}
-          onChange={(e) =>
-            setForm({ ...form, customerPhone: e.target.value })
-          }
+          onChange={(e) => setForm({ ...form, customerPhone: e.target.value })}
         />
         <input
           className="w-full rounded border p-2"
           placeholder="Rua"
           value={form.addressStreet}
-          onChange={(e) =>
-            setForm({ ...form, addressStreet: e.target.value })
-          }
+          onChange={(e) => setForm({ ...form, addressStreet: e.target.value })}
         />
         <input
           className="w-full rounded border p-2"
           placeholder="Número"
           value={form.addressNumber}
-          onChange={(e) =>
-            setForm({ ...form, addressNumber: e.target.value })
-          }
+          onChange={(e) => setForm({ ...form, addressNumber: e.target.value })}
         />
         <select
           className="w-full rounded border p-2"
@@ -193,5 +177,100 @@ export default function CardapioPage() {
         )}
       </section>
     </main>
+  );
+}
+
+function Stepper({
+  qty,
+  onDec,
+  onInc,
+}: {
+  qty: number;
+  onDec: () => void;
+  onInc: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <button className="h-8 w-8 rounded bg-gray-200" onClick={onDec}>
+        −
+      </button>
+      <span className="w-6 text-center">{qty}</span>
+      <button className="h-8 w-8 rounded bg-gray-200" onClick={onInc}>
+        +
+      </button>
+    </div>
+  );
+}
+
+function ItemRow({
+  item,
+  qtyOf,
+  setQty,
+}: {
+  item: MenuItem;
+  qtyOf: (key: string) => number;
+  setQty: (line: Omit<CartLine, 'quantity'>, delta: number) => void;
+}) {
+  const options = item.options ?? [];
+
+  // Item com opções: uma linha por opção (cada uma com seu preço).
+  if (options.length > 0) {
+    return (
+      <li className="py-3">
+        <p className="font-medium">{item.name}</p>
+        {item.description && (
+          <p className="text-sm text-gray-500">{item.description}</p>
+        )}
+        <ul className="mt-2 space-y-2">
+          {options.map((opt) => {
+            const line = {
+              menuItemId: item.id,
+              optionId: opt.id,
+              label: `${item.name} — ${opt.name}`,
+              priceCents: opt.priceCents,
+            };
+            return (
+              <li
+                key={opt.id}
+                className="flex items-center gap-3 rounded bg-gray-50 px-3 py-2"
+              >
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{opt.name}</p>
+                  <p className="text-sm">{formatBRL(opt.priceCents)}</p>
+                </div>
+                <Stepper
+                  qty={qtyOf(opt.id)}
+                  onDec={() => setQty(line, -1)}
+                  onInc={() => setQty(line, 1)}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      </li>
+    );
+  }
+
+  // Item simples.
+  const line = {
+    menuItemId: item.id,
+    label: item.name,
+    priceCents: item.priceCents,
+  };
+  return (
+    <li className="flex items-center gap-3 py-3">
+      <div className="flex-1">
+        <p className="font-medium">{item.name}</p>
+        {item.description && (
+          <p className="text-sm text-gray-500">{item.description}</p>
+        )}
+        <p className="text-sm">{formatBRL(item.priceCents)}</p>
+      </div>
+      <Stepper
+        qty={qtyOf(item.id)}
+        onDec={() => setQty(line, -1)}
+        onInc={() => setQty(line, 1)}
+      />
+    </li>
   );
 }

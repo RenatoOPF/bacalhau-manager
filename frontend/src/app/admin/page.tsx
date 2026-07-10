@@ -92,6 +92,7 @@ export default function CaixaPage() {
                 {order.items.map((it) => (
                   <li key={it.id}>
                     {it.quantity}x {it.nameSnapshot}
+                    {it.optionNameSnapshot && ` (${it.optionNameSnapshot})`}
                     {it.notes && (
                       <span className="text-gray-500"> — {it.notes}</span>
                     )}
