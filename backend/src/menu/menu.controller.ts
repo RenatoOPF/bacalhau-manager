@@ -60,6 +60,20 @@ export class MenuController {
     return this.menu.updateItem(id, dto);
   }
 
+  @Delete('items/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
+  deleteItem(@Param('id') id: string) {
+    return this.menu.deleteItem(id);
+  }
+
+  @Delete('categories/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
+  deleteCategory(@Param('id') id: string) {
+    return this.menu.deleteCategory(id);
+  }
+
   // ---- Opções (variações) do item ----
 
   @Post('items/:itemId/options')

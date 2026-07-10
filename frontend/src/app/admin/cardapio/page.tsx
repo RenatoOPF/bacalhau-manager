@@ -109,9 +109,30 @@ function CategoryBlock({
     onError: (e: Error) => setError(e.message),
   });
 
+  const removeCategory = useMutation({
+    mutationFn: () => api.deleteCategory(category.id),
+    onSuccess: onChange,
+    onError: (e: Error) => setError(e.message),
+  });
+
   return (
     <section className="rounded-lg border bg-white p-4">
-      <h2 className="text-lg font-semibold">{category.name}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{category.name}</h2>
+        <button
+          className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 disabled:opacity-50"
+          disabled={removeCategory.isPending}
+          onClick={() => {
+            if (
+              confirm(`Excluir a categoria "${category.name}"?`)
+            ) {
+              removeCategory.mutate();
+            }
+          }}
+        >
+          Excluir categoria
+        </button>
+      </div>
 
       <ul className="mt-2 divide-y">
         {category.items.map((item) => (
@@ -176,6 +197,12 @@ function ItemRow({
       setError(null);
       onChange();
     },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: () => api.deleteItem(item.id),
+    onSuccess: onChange,
     onError: (e: Error) => setError(e.message),
   });
 
@@ -251,7 +278,17 @@ function ItemRow({
         >
           {item.available ? 'Desativar' : 'Ativar'}
         </button>
+        <button
+          className="rounded bg-red-600 px-2 py-1 text-xs text-white disabled:opacity-50"
+          disabled={remove.isPending}
+          onClick={() => {
+            if (confirm(`Excluir o item "${item.name}"?`)) remove.mutate();
+          }}
+        >
+          Excluir
+        </button>
       </div>
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
       <OptionsManager item={item} onChange={onChange} />
     </li>
   );

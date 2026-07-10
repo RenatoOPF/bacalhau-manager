@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateCategoryDto,
@@ -57,6 +57,32 @@ export class MenuService {
 
   updateItem(id: string, dto: UpdateMenuItemDto) {
     return this.prisma.menuItem.update({ where: { id }, data: dto });
+  }
+
+  /** Exclui um item (e suas opções, em cascata). Bloqueia se houver pedidos. */
+  async deleteItem(id: string) {
+    const orders = await this.prisma.orderItem.count({
+      where: { menuItemId: id },
+    });
+    if (orders > 0) {
+      throw new BadRequestException(
+        'Este item já tem pedidos vinculados. Desative-o em vez de excluir.',
+      );
+    }
+    return this.prisma.menuItem.delete({ where: { id } });
+  }
+
+  /** Exclui uma categoria vazia. Bloqueia se ainda tiver itens. */
+  async deleteCategory(id: string) {
+    const items = await this.prisma.menuItem.count({
+      where: { categoryId: id },
+    });
+    if (items > 0) {
+      throw new BadRequestException(
+        'A categoria ainda tem itens. Exclua ou mova os itens antes.',
+      );
+    }
+    return this.prisma.menuCategory.delete({ where: { id } });
   }
 
   // ---- Opções (variações) do item ----
