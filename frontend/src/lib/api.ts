@@ -275,6 +275,10 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
+  deleteItem: (id: string) =>
+    request<{ id: string }>(`/menu/items/${id}`, { method: 'DELETE' }),
+  deleteCategory: (id: string) =>
+    request<{ id: string }>(`/menu/categories/${id}`, { method: 'DELETE' }),
 
   // ---- Opções (variações) do item ----
   createOption: (itemId: string, payload: CreateOptionPayload) =>
