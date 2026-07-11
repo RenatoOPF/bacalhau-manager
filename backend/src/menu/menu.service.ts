@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateCategoryDto,
+  UpdateCategoryDto,
   CreateMenuItemDto,
   UpdateMenuItemDto,
   CreateOptionDto,
@@ -20,7 +21,7 @@ export class MenuService {
       include: {
         items: {
           where: { available: true },
-          orderBy: { name: 'asc' },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
           include: {
             options: {
               where: { available: true },
@@ -38,7 +39,7 @@ export class MenuService {
       orderBy: { sortOrder: 'asc' },
       include: {
         items: {
-          orderBy: { name: 'asc' },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
           include: {
             options: { orderBy: [{ sortOrder: 'asc' }, { priceCents: 'asc' }] },
           },
@@ -80,8 +81,37 @@ export class MenuService {
     return { moved: true };
   }
 
+  updateCategory(id: string, dto: UpdateCategoryDto) {
+    return this.prisma.menuCategory.update({ where: { id }, data: dto });
+  }
+
   createItem(dto: CreateMenuItemDto) {
     return this.prisma.menuItem.create({ data: dto });
+  }
+
+  /** Move um item uma posição para cima/baixo DENTRO da sua categoria. */
+  async moveItem(id: string, direction: 'up' | 'down') {
+    const item = await this.prisma.menuItem.findUnique({ where: { id } });
+    if (!item) throw new BadRequestException('Item não encontrado');
+    const items = await this.prisma.menuItem.findMany({
+      where: { categoryId: item.categoryId },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
+    const idx = items.findIndex((i) => i.id === id);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= items.length) {
+      return { moved: false };
+    }
+    [items[idx], items[swapIdx]] = [items[swapIdx], items[idx]];
+    await this.prisma.$transaction(
+      items.map((it, i) =>
+        this.prisma.menuItem.update({
+          where: { id: it.id },
+          data: { sortOrder: i },
+        }),
+      ),
+    );
+    return { moved: true };
   }
 
   updateItem(id: string, dto: UpdateMenuItemDto) {

@@ -12,11 +12,12 @@ import { Role } from '@prisma/client';
 import { MenuService } from './menu.service';
 import {
   CreateCategoryDto,
+  UpdateCategoryDto,
   CreateMenuItemDto,
   UpdateMenuItemDto,
   CreateOptionDto,
   UpdateOptionDto,
-  MoveCategoryDto,
+  MoveDto,
 } from './dto/menu.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -68,11 +69,25 @@ export class MenuController {
     return this.menu.deleteItem(id);
   }
 
+  @Patch('categories/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
+  updateCategory(@Param('id') id: string, @Body() dto: UpdateCategoryDto) {
+    return this.menu.updateCategory(id, dto);
+  }
+
   @Post('categories/:id/move')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.MANAGER)
-  moveCategory(@Param('id') id: string, @Body() dto: MoveCategoryDto) {
+  moveCategory(@Param('id') id: string, @Body() dto: MoveDto) {
     return this.menu.moveCategory(id, dto.direction);
+  }
+
+  @Post('items/:id/move')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
+  moveItem(@Param('id') id: string, @Body() dto: MoveDto) {
+    return this.menu.moveItem(id, dto.direction);
   }
 
   @Delete('categories/:id')

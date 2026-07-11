@@ -8,7 +8,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-export class MoveCategoryDto {
+export class MoveDto {
   @IsIn(['up', 'down'])
   direction: 'up' | 'down';
 }
@@ -21,6 +21,21 @@ export class CreateCategoryDto {
   @IsOptional()
   @IsInt()
   sortOrder?: number;
+}
+
+export class UpdateCategoryDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  name?: string;
+
+  @IsOptional()
+  @IsInt()
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }
 
 export class CreateMenuItemDto {
