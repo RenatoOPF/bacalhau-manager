@@ -51,6 +51,35 @@ export class MenuService {
     return this.prisma.menuCategory.create({ data: dto });
   }
 
+  /**
+   * Move uma categoria uma posição para cima/baixo. Reatribui o sortOrder de
+   * todas em sequência (0,1,2...) para garantir uma ordem consistente mesmo
+   * que os valores atuais estejam repetidos.
+   */
+  async moveCategory(id: string, direction: 'up' | 'down') {
+    const cats = await this.prisma.menuCategory.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    });
+    const idx = cats.findIndex((c) => c.id === id);
+    if (idx === -1) {
+      throw new BadRequestException('Categoria não encontrada');
+    }
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= cats.length) {
+      return { moved: false }; // já está no topo/fim
+    }
+    [cats[idx], cats[swapIdx]] = [cats[swapIdx], cats[idx]];
+    await this.prisma.$transaction(
+      cats.map((c, i) =>
+        this.prisma.menuCategory.update({
+          where: { id: c.id },
+          data: { sortOrder: i },
+        }),
+      ),
+    );
+    return { moved: true };
+  }
+
   createItem(dto: CreateMenuItemDto) {
     return this.prisma.menuItem.create({ data: dto });
   }

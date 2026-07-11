@@ -62,11 +62,13 @@ export default function GestaoCardapioPage() {
       {isLoading && <p className="mt-6">Carregando...</p>}
 
       <div className="mt-6 space-y-6">
-        {(menu ?? []).map((category) => (
+        {(menu ?? []).map((category, i, arr) => (
           <CategoryBlock
             key={category.id}
             category={category}
             onChange={invalidate}
+            isFirst={i === 0}
+            isLast={i === arr.length - 1}
           />
         ))}
       </div>
@@ -77,9 +79,13 @@ export default function GestaoCardapioPage() {
 function CategoryBlock({
   category,
   onChange,
+  isFirst,
+  isLast,
 }: {
   category: MenuCategory;
   onChange: () => void;
+  isFirst: boolean;
+  isLast: boolean;
 }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -115,23 +121,46 @@ function CategoryBlock({
     onError: (e: Error) => setError(e.message),
   });
 
+  const move = useMutation({
+    mutationFn: (direction: 'up' | 'down') =>
+      api.moveCategory(category.id, direction),
+    onSuccess: onChange,
+    onError: (e: Error) => setError(e.message),
+  });
+
   return (
     <section className="rounded-lg border bg-white p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">{category.name}</h2>
-        <button
-          className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 disabled:opacity-50"
-          disabled={removeCategory.isPending}
-          onClick={() => {
-            if (
-              confirm(`Excluir a categoria "${category.name}"?`)
-            ) {
-              removeCategory.mutate();
-            }
-          }}
-        >
-          Excluir categoria
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            className="rounded border px-2 py-1 text-xs disabled:opacity-30"
+            title="Mover para cima"
+            disabled={isFirst || move.isPending}
+            onClick={() => move.mutate('up')}
+          >
+            ↑
+          </button>
+          <button
+            className="rounded border px-2 py-1 text-xs disabled:opacity-30"
+            title="Mover para baixo"
+            disabled={isLast || move.isPending}
+            onClick={() => move.mutate('down')}
+          >
+            ↓
+          </button>
+          <button
+            className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 disabled:opacity-50"
+            disabled={removeCategory.isPending}
+            onClick={() => {
+              if (confirm(`Excluir a categoria "${category.name}"?`)) {
+                removeCategory.mutate();
+              }
+            }}
+          >
+            Excluir categoria
+          </button>
+        </div>
       </div>
 
       <ul className="mt-2 divide-y">

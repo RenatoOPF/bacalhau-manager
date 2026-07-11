@@ -1,11 +1,17 @@
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
   Min,
   MinLength,
 } from 'class-validator';
+
+export class MoveCategoryDto {
+  @IsIn(['up', 'down'])
+  direction: 'up' | 'down';
+}
 
 export class CreateCategoryDto {
   @IsString()

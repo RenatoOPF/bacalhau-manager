@@ -279,6 +279,11 @@ export const api = {
     request<{ id: string }>(`/menu/items/${id}`, { method: 'DELETE' }),
   deleteCategory: (id: string) =>
     request<{ id: string }>(`/menu/categories/${id}`, { method: 'DELETE' }),
+  moveCategory: (id: string, direction: 'up' | 'down') =>
+    request<{ moved: boolean }>(`/menu/categories/${id}/move`, {
+      method: 'POST',
+      body: JSON.stringify({ direction }),
+    }),
 
   // ---- Opções (variações) do item ----
   createOption: (itemId: string, payload: CreateOptionPayload) =>
