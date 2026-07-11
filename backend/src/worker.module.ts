@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { PrintingModule } from './printing/printing.module';
 import { ORDERS_QUEUE, ORDERS_JOB_OPTIONS } from './queue/queue.constants';
 import { OrdersProcessor } from './queue/orders.processor';
+import { CaptureService } from './capture/capture.service';
 
 /**
  * Módulo do AGENTE DE IMPRESSÃO que roda no PC do caixa.
@@ -28,6 +29,6 @@ import { OrdersProcessor } from './queue/orders.processor';
     PrismaModule,
     PrintingModule,
   ],
-  providers: [OrdersProcessor],
+  providers: [OrdersProcessor, CaptureService],
 })
 export class WorkerModule {}

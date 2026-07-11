@@ -31,3 +31,7 @@ SETUP-VM-ORACLE.md
 # dados brutos exportados do sistema antigo (PII / volumoso — não versionar)
 arquivos-consumer/
 backend/prisma/data/legacy-orders.json
+
+# amostras de impressões capturadas (iFood/99) — dados de pedidos, não versionar
+backend/captures/
+captures/
