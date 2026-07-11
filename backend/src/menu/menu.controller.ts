@@ -16,6 +16,7 @@ import {
   UpdateMenuItemDto,
   CreateOptionDto,
   UpdateOptionDto,
+  MoveCategoryDto,
 } from './dto/menu.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -65,6 +66,13 @@ export class MenuController {
   @Roles(Role.ADMIN, Role.MANAGER)
   deleteItem(@Param('id') id: string) {
     return this.menu.deleteItem(id);
+  }
+
+  @Post('categories/:id/move')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
+  moveCategory(@Param('id') id: string, @Body() dto: MoveCategoryDto) {
+    return this.menu.moveCategory(id, dto.direction);
   }
 
   @Delete('categories/:id')
