@@ -279,8 +279,21 @@ export const api = {
     request<{ id: string }>(`/menu/items/${id}`, { method: 'DELETE' }),
   deleteCategory: (id: string) =>
     request<{ id: string }>(`/menu/categories/${id}`, { method: 'DELETE' }),
+  updateCategory: (
+    id: string,
+    payload: { name?: string; sortOrder?: number; active?: boolean },
+  ) =>
+    request<MenuCategory>(`/menu/categories/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
   moveCategory: (id: string, direction: 'up' | 'down') =>
     request<{ moved: boolean }>(`/menu/categories/${id}/move`, {
+      method: 'POST',
+      body: JSON.stringify({ direction }),
+    }),
+  moveItem: (id: string, direction: 'up' | 'down') =>
+    request<{ moved: boolean }>(`/menu/items/${id}/move`, {
       method: 'POST',
       body: JSON.stringify({ direction }),
     }),

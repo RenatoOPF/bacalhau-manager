@@ -30,6 +30,16 @@ export default function GestaoCardapioPage() {
   });
 
   const [newCategory, setNewCategory] = useState('');
+  // Categorias colapsadas (só o cabeçalho) — facilita ver todas e reordenar.
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  const toggleCollapse = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const addCategory = useMutation({
     mutationFn: (name: string) => api.createCategory(name),
@@ -38,6 +48,8 @@ export default function GestaoCardapioPage() {
       invalidate();
     },
   });
+
+  const categories = menu ?? [];
 
   return (
     <main className="mx-auto max-w-3xl p-6">
@@ -59,16 +71,35 @@ export default function GestaoCardapioPage() {
         </button>
       </div>
 
+      {categories.length > 0 && (
+        <div className="mt-4 flex gap-2 text-sm">
+          <button
+            className="rounded border px-3 py-1"
+            onClick={() => setCollapsed(new Set(categories.map((c) => c.id)))}
+          >
+            Minimizar todas
+          </button>
+          <button
+            className="rounded border px-3 py-1"
+            onClick={() => setCollapsed(new Set())}
+          >
+            Expandir todas
+          </button>
+        </div>
+      )}
+
       {isLoading && <p className="mt-6">Carregando...</p>}
 
       <div className="mt-6 space-y-6">
-        {(menu ?? []).map((category, i, arr) => (
+        {categories.map((category, i, arr) => (
           <CategoryBlock
             key={category.id}
             category={category}
             onChange={invalidate}
             isFirst={i === 0}
             isLast={i === arr.length - 1}
+            collapsed={collapsed.has(category.id)}
+            onToggleCollapse={() => toggleCollapse(category.id)}
           />
         ))}
       </div>
@@ -81,16 +112,22 @@ function CategoryBlock({
   onChange,
   isFirst,
   isLast,
+  collapsed,
+  onToggleCollapse,
 }: {
   category: MenuCategory;
   onChange: () => void;
   isFirst: boolean;
   isLast: boolean;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [catName, setCatName] = useState(category.name);
 
   const addItem = useMutation({
     mutationFn: () => {
@@ -128,10 +165,71 @@ function CategoryBlock({
     onError: (e: Error) => setError(e.message),
   });
 
+  const rename = useMutation({
+    mutationFn: () => api.updateCategory(category.id, { name: catName.trim() }),
+    onSuccess: () => {
+      setEditingName(false);
+      onChange();
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
   return (
     <section className="rounded-lg border bg-white p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{category.name}</h2>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-1 items-center gap-2">
+          <button
+            className="text-gray-500"
+            title={collapsed ? 'Expandir' : 'Minimizar'}
+            onClick={onToggleCollapse}
+          >
+            {collapsed ? '▸' : '▾'}
+          </button>
+          {editingName ? (
+            <>
+              <input
+                className="flex-1 rounded border p-1"
+                value={catName}
+                onChange={(e) => setCatName(e.target.value)}
+                autoFocus
+              />
+              <button
+                className="rounded bg-blue-600 px-2 py-1 text-xs text-white"
+                disabled={!catName.trim() || rename.isPending}
+                onClick={() => rename.mutate()}
+              >
+                Salvar
+              </button>
+              <button
+                className="rounded border px-2 py-1 text-xs"
+                onClick={() => {
+                  setCatName(category.name);
+                  setEditingName(false);
+                }}
+              >
+                Cancelar
+              </button>
+            </>
+          ) : (
+            <>
+              <h2
+                className="cursor-pointer text-lg font-semibold"
+                onClick={onToggleCollapse}
+              >
+                {category.name}
+                <span className="ml-2 text-sm font-normal text-gray-400">
+                  ({category.items.length})
+                </span>
+              </h2>
+              <button
+                className="rounded border px-2 py-1 text-xs"
+                onClick={() => setEditingName(true)}
+              >
+                Renomear
+              </button>
+            </>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           <button
             className="rounded border px-2 py-1 text-xs disabled:opacity-30"
@@ -158,49 +256,59 @@ function CategoryBlock({
               }
             }}
           >
-            Excluir categoria
+            Excluir
           </button>
         </div>
       </div>
 
-      <ul className="mt-2 divide-y">
-        {category.items.map((item) => (
-          <ItemRow key={item.id} item={item} onChange={onChange} />
-        ))}
-        {category.items.length === 0 && (
-          <li className="py-2 text-sm text-gray-400">Sem itens ainda.</li>
-        )}
-      </ul>
+      {!collapsed && (
+        <>
+          <ul className="mt-2 divide-y">
+            {category.items.map((item, i, arr) => (
+              <ItemRow
+                key={item.id}
+                item={item}
+                onChange={onChange}
+                isFirst={i === 0}
+                isLast={i === arr.length - 1}
+              />
+            ))}
+            {category.items.length === 0 && (
+              <li className="py-2 text-sm text-gray-400">Sem itens ainda.</li>
+            )}
+          </ul>
 
-      <div className="mt-3 grid grid-cols-1 gap-2 border-t pt-3 sm:grid-cols-[1fr_1fr_auto]">
-        <input
-          className="rounded border p-2"
-          placeholder="Nome do item"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          className="rounded border p-2"
-          placeholder="Descrição (opcional)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        <div className="flex gap-2">
-          <input
-            className="w-24 rounded border p-2"
-            placeholder="R$"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-          />
-          <button
-            className="rounded bg-green-600 px-3 py-2 text-white disabled:opacity-50"
-            disabled={addItem.isPending}
-            onClick={() => addItem.mutate()}
-          >
-            Adicionar
-          </button>
-        </div>
-      </div>
+          <div className="mt-3 grid grid-cols-1 gap-2 border-t pt-3 sm:grid-cols-[1fr_1fr_auto]">
+            <input
+              className="rounded border p-2"
+              placeholder="Nome do item"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <input
+              className="rounded border p-2"
+              placeholder="Descrição (opcional)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <input
+                className="w-24 rounded border p-2"
+                placeholder="R$"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+              />
+              <button
+                className="rounded bg-green-600 px-3 py-2 text-white disabled:opacity-50"
+                disabled={addItem.isPending}
+                onClick={() => addItem.mutate()}
+              >
+                Adicionar
+              </button>
+            </div>
+          </div>
+        </>
+      )}
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </section>
   );
@@ -209,9 +317,13 @@ function CategoryBlock({
 function ItemRow({
   item,
   onChange,
+  isFirst,
+  isLast,
 }: {
   item: MenuItem;
   onChange: () => void;
+  isFirst: boolean;
+  isLast: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(item.name);
@@ -231,6 +343,12 @@ function ItemRow({
 
   const remove = useMutation({
     mutationFn: () => api.deleteItem(item.id),
+    onSuccess: onChange,
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const move = useMutation({
+    mutationFn: (direction: 'up' | 'down') => api.moveItem(item.id, direction),
     onSuccess: onChange,
     onError: (e: Error) => setError(e.message),
   });
@@ -279,6 +397,24 @@ function ItemRow({
   return (
     <li className="py-2">
       <div className="flex items-center gap-3">
+        <div className="flex flex-col">
+          <button
+            className="text-xs leading-none text-gray-500 disabled:opacity-20"
+            title="Mover para cima"
+            disabled={isFirst || move.isPending}
+            onClick={() => move.mutate('up')}
+          >
+            ▲
+          </button>
+          <button
+            className="text-xs leading-none text-gray-500 disabled:opacity-20"
+            title="Mover para baixo"
+            disabled={isLast || move.isPending}
+            onClick={() => move.mutate('down')}
+          >
+            ▼
+          </button>
+        </div>
         <div className="flex-1">
           <p className={item.available ? 'font-medium' : 'font-medium text-gray-400 line-through'}>
             {item.name.toUpperCase()}

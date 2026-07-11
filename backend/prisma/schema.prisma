@@ -53,6 +53,8 @@ model MenuItem {
   // Usado quando o item NÃO tem opções; com opções, o preço vem da opção.
   priceCents  Int
   available   Boolean          @default(true)
+  // Ordem de exibição dentro da categoria (empate resolvido pelo nome).
+  sortOrder   Int              @default(0)
   options     MenuItemOption[]
   orderItems  OrderItem[]
   createdAt   DateTime         @default(now())
