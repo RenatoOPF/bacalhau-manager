@@ -30,7 +30,7 @@ export class CaptureService implements OnModuleInit, OnModuleDestroy {
   private server?: net.Server;
   private readonly port = Number(process.env.CAPTURE_PORT ?? 0);
   private readonly dir =
-    process.env.CAPTURE_DIR ?? path.join(process.cwd(), 'captures');
+    process.env.CAPTURE_DIR || path.join(process.cwd(), 'captures');
 
   onModuleInit() {
     if (!this.port) {
