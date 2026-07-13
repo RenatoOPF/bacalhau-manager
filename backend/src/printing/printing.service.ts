@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   printer as ThermalPrinter,
   types as PrinterTypes,
+  CharacterSet,
 } from 'node-thermal-printer';
 import type { Order, OrderItem } from '@prisma/client';
 
@@ -45,6 +46,7 @@ export class PrintingService {
       interface: interfaceUrl,
       width: this.width,
       removeSpecialCharacters: false,
+      characterSet: CharacterSet.PC860_PORTUGUESE,
     });
   }
 
