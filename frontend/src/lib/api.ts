@@ -109,10 +109,13 @@ export interface OrderItem {
   notes?: string | null;
 }
 
+export type OrderChannel = 'OWN' | 'IFOOD' | 'NOVENTA_NOVE' | 'GAMI';
+
 export interface Order {
   id: string;
   protocol: number;
   status: OrderStatus;
+  channel: OrderChannel;
   customerName: string;
   addressStreet: string;
   addressNumber?: string | null;
@@ -124,7 +127,21 @@ export interface Order {
   items: OrderItem[];
 }
 
-export type PaymentMethod = 'CASH' | 'PIX';
+export type PaymentMethod = 'CASH' | 'PIX' | 'ONLINE';
+
+/** Rótulos de canal e forma de pagamento para exibição. */
+export const CHANNEL_LABEL: Record<OrderChannel, string> = {
+  OWN: 'Cardápio',
+  IFOOD: 'iFood',
+  NOVENTA_NOVE: '99',
+  GAMI: 'Gami',
+};
+
+export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
+  CASH: 'Dinheiro',
+  PIX: 'PIX',
+  ONLINE: 'Online (app)',
+};
 
 export interface Transaction {
   id: string;
@@ -144,7 +161,7 @@ export interface RevenueReport {
 }
 
 export interface ChannelReportItem {
-  channel: 'OWN' | 'IFOOD' | 'GAMI';
+  channel: OrderChannel;
   count: number;
   totalCents: number;
 }

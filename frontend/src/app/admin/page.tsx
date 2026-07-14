@@ -7,6 +7,8 @@ import {
   api,
   formatBRL,
   printLabel,
+  CHANNEL_LABEL,
+  PAYMENT_LABEL,
   type Order,
   type OrderStatus,
 } from '@/lib/api';
@@ -78,8 +80,15 @@ export default function CaixaPage() {
               className="rounded-lg border bg-white p-4 shadow-sm"
             >
               <div className="flex items-center justify-between">
-                <span className="font-mono text-lg font-bold">
-                  #{order.protocol}
+                <span className="flex items-center gap-2">
+                  <span className="font-mono text-lg font-bold">
+                    #{order.protocol}
+                  </span>
+                  {order.channel !== 'OWN' && (
+                    <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                      {CHANNEL_LABEL[order.channel]}
+                    </span>
+                  )}
                 </span>
                 <span className="rounded bg-gray-100 px-2 py-1 text-xs">
                   {STATUS_LABEL[order.status]}
@@ -106,8 +115,7 @@ export default function CaixaPage() {
               </ul>
 
               <p className="mt-2 text-sm font-semibold">
-                {formatBRL(order.totalCents)} ·{' '}
-                {order.paymentMethod === 'PIX' ? 'PIX' : 'Dinheiro'}
+                {formatBRL(order.totalCents)} · {PAYMENT_LABEL[order.paymentMethod]}
               </p>
 
               <div className="mt-3 flex gap-2">

@@ -7,7 +7,8 @@ import { api, formatBRL } from '@/lib/api';
 const CHANNEL_LABEL: Record<string, string> = {
   OWN: 'Cardápio próprio',
   IFOOD: 'iFood',
-  GAMI: 'Gami / 99Food',
+  NOVENTA_NOVE: '99Food',
+  GAMI: 'Gami',
 };
 
 function isoDaysAgo(days: number): string {

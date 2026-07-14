@@ -49,10 +49,15 @@ export class CashService {
     });
   }
 
-  /** Histórico de transações (pagamentos recebidos) em um período. */
+  /**
+   * Histórico de transações (pagamentos recebidos no caixa) em um período.
+   * Exclui ONLINE (iFood/99): esse dinheiro não passa pela gaveta — entra só
+   * no faturamento por canal (relatórios).
+   */
   transactions(from?: string, to?: string) {
     const where: Prisma.OrderWhereInput = {
       paymentStatus: PaymentStatus.PAID,
+      paymentMethod: { not: PaymentMethod.ONLINE },
     };
     const paidAt = periodFilter(from, to);
     if (paidAt) where.paidAt = paidAt;
@@ -77,6 +82,7 @@ export class CashService {
     const paid = await this.prisma.order.findMany({
       where: {
         paymentStatus: PaymentStatus.PAID,
+        paymentMethod: { not: PaymentMethod.ONLINE }, // ONLINE não é gaveta
         paidAt: { gte: start, lt: end },
       },
       select: { paymentMethod: true, totalCents: true },

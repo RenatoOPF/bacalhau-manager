@@ -31,6 +31,9 @@ export class CaptureService implements OnModuleInit, OnModuleDestroy {
   private readonly port = Number(process.env.CAPTURE_PORT ?? 0);
   private readonly dir =
     process.env.CAPTURE_DIR || path.join(process.cwd(), 'captures');
+  // Para onde enviar a captura para virar pedido (API na nuvem) + chave.
+  private readonly ingestUrl = process.env.INTEGRATION_URL;
+  private readonly ingestKey = process.env.INTEGRATION_KEY;
 
   onModuleInit() {
     if (!this.port) {
@@ -47,7 +50,10 @@ export class CaptureService implements OnModuleInit, OnModuleDestroy {
       );
       socket.on('close', () => {
         const buf = Buffer.concat(chunks);
-        if (buf.length > 0) this.save(buf);
+        if (buf.length > 0) {
+          this.save(buf);
+          void this.forward(buf);
+        }
       });
     });
 
@@ -76,6 +82,38 @@ export class CaptureService implements OnModuleInit, OnModuleDestroy {
       );
     } catch (e) {
       this.logger.error(`Falha ao salvar captura: ${(e as Error).message}`);
+    }
+  }
+
+  /**
+   * Envia a captura para a API na nuvem virar pedido. O .bin já foi salvo, então
+   * uma falha aqui não perde a amostra (dá para reenviar/depurar depois).
+   */
+  private async forward(buf: Buffer) {
+    if (!this.ingestUrl || !this.ingestKey) {
+      this.logger.warn(
+        'INTEGRATION_URL/INTEGRATION_KEY não definidos — captura só arquivada.',
+      );
+      return;
+    }
+    try {
+      const res = await fetch(`${this.ingestUrl}/integrations/capture`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-integration-key': this.ingestKey,
+        },
+        body: JSON.stringify({ raw: buf.toString('base64') }),
+      });
+      const data = (await res.json().catch(() => ({}))) as Record<
+        string,
+        unknown
+      >;
+      this.logger.log(`Ingestão: HTTP ${res.status} ${JSON.stringify(data)}`);
+    } catch (e) {
+      this.logger.error(
+        `Falha ao enviar captura para ingestão: ${(e as Error).message}`,
+      );
     }
   }
 
