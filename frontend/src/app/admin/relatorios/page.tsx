@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api, formatBRL } from '@/lib/api';
+import { api, formatBRL, type ChannelReportItem } from '@/lib/api';
 
 const CHANNEL_LABEL: Record<string, string> = {
   OWN: 'Cardápio próprio',
@@ -127,6 +127,9 @@ export default function RelatoriosPage() {
         </div>
       </section>
 
+      {/* DRE — Receita */}
+      <DreReceita channels={channels.data ?? []} />
+
       {/* Mais vendidos */}
       <section className="mt-8">
         <h2 className="text-lg font-semibold">Itens mais vendidos</h2>
@@ -157,5 +160,146 @@ export default function RelatoriosPage() {
         </table>
       </section>
     </main>
+  );
+}
+
+// Comissão padrão por canal (%). A do marketplace é acertada no repasse (não
+// vem no ticket), então é estimada e ajustável para bater com o contrato.
+const DEFAULT_RATES: Record<string, number> = {
+  OWN: 0,
+  IFOOD: 23,
+  NOVENTA_NOVE: 20,
+  GAMI: 0,
+};
+
+/**
+ * DRE simplificado (só receita): Receita Bruta por canal → (-) comissões do
+ * marketplace (estimadas por %) → Receita Líquida. Reaproveita o faturamento
+ * por canal; as taxas ficam salvas no navegador.
+ */
+function DreReceita({ channels }: { channels: ChannelReportItem[] }) {
+  const [rates, setRates] = useState<Record<string, number>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dre-commissions');
+      if (saved) {
+        try {
+          return { ...DEFAULT_RATES, ...JSON.parse(saved) };
+        } catch {
+          /* ignora */
+        }
+      }
+    }
+    return DEFAULT_RATES;
+  });
+
+  const setRate = (channel: string, value: number) => {
+    const next = { ...rates, [channel]: Number.isFinite(value) ? value : 0 };
+    setRates(next);
+    localStorage.setItem('dre-commissions', JSON.stringify(next));
+  };
+
+  const rows = channels.map((c) => {
+    const rate = rates[c.channel] ?? 0;
+    const fee = Math.round((c.totalCents * rate) / 100);
+    return { channel: c.channel, gross: c.totalCents, rate, fee };
+  });
+  const grossTotal = rows.reduce((s, r) => s + r.gross, 0);
+  const feeTotal = rows.reduce((s, r) => s + r.fee, 0);
+  const netTotal = grossTotal - feeTotal;
+  const feeRows = rows.filter((r) => r.gross > 0 && r.rate > 0);
+
+  return (
+    <section className="mt-8">
+      <h2 className="text-lg font-semibold">DRE — Receita</h2>
+      <p className="text-sm text-gray-500">
+        A comissão do marketplace é estimada por canal — ajuste o % para bater
+        com o seu contrato.
+      </p>
+
+      <div className="mt-2 space-y-1 rounded-lg border bg-white p-4">
+        <Line label="Receita Bruta" value={formatBRL(grossTotal)} bold />
+        {rows.map((r) => (
+          <Line
+            key={r.channel}
+            indent
+            label={CHANNEL_LABEL[r.channel] ?? r.channel}
+            value={formatBRL(r.gross)}
+          />
+        ))}
+
+        <div className="pt-2" />
+        <Line
+          label="(-) Comissões marketplace"
+          value={`- ${formatBRL(feeTotal)}`}
+          bold
+          danger
+        />
+        {feeRows.map((r) => (
+          <div
+            key={r.channel}
+            className="flex items-center justify-between pl-4 text-sm text-gray-600"
+          >
+            <span className="flex items-center gap-1">
+              {CHANNEL_LABEL[r.channel] ?? r.channel}
+              <input
+                type="number"
+                min={0}
+                max={100}
+                className="w-14 rounded border p-0.5 text-right"
+                value={r.rate}
+                onChange={(e) => setRate(r.channel, Number(e.target.value))}
+              />
+              %
+            </span>
+            <span>- {formatBRL(r.fee)}</span>
+          </div>
+        ))}
+        {feeRows.length === 0 && (
+          <p className="pl-4 text-sm text-gray-400">
+            Sem vendas de marketplace no período.
+          </p>
+        )}
+
+        <div className="mt-2 border-t pt-2">
+          <Line
+            label="= Receita Líquida"
+            value={formatBRL(netTotal)}
+            bold
+            big
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Line({
+  label,
+  value,
+  bold,
+  danger,
+  big,
+  indent,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  danger?: boolean;
+  big?: boolean;
+  indent?: boolean;
+}) {
+  return (
+    <div
+      className={[
+        'flex items-center justify-between',
+        indent ? 'pl-4 text-sm text-gray-600' : '',
+        bold ? 'font-semibold' : '',
+        danger ? 'text-red-700' : '',
+        big ? 'text-lg font-bold' : '',
+      ].join(' ')}
+    >
+      <span>{label}</span>
+      <span>{value}</span>
+    </div>
   );
 }
