@@ -31,15 +31,18 @@ export function parseIfood(lines: string[]): ParsedExternalOrder | null {
     ? localizador.replace(/\s+/g, '')
     : firstMatch(/ID:\s*(\d+)/);
 
-  // Número curto: primeira linha só com dígitos logo após "EXPEDICAO".
-  let shortNumber: string | undefined;
-  const expIdx = lines.findIndex((l) => /EXPEDICAO/i.test(l));
-  if (expIdx >= 0) {
-    for (const l of lines.slice(expIdx + 1, expIdx + 6)) {
-      const m = l.match(/^\s*(\d+)\b/);
-      if (m) {
-        shortNumber = m[1];
-        break;
+  // Número curto exibido pelo iFood: "PEDIDO: #8156" (layout real). Fallback:
+  // dígitos logo após "EXPEDICAO" (layout do pedido de teste).
+  let shortNumber = firstMatch(/PEDIDO:?\s*#\s*(\d+)/);
+  if (!shortNumber) {
+    const expIdx = lines.findIndex((l) => /EXPEDICAO/i.test(l));
+    if (expIdx >= 0) {
+      for (const l of lines.slice(expIdx + 1, expIdx + 6)) {
+        const m = l.match(/^\s*(\d+)\b/);
+        if (m) {
+          shortNumber = m[1];
+          break;
+        }
       }
     }
   }
@@ -109,7 +112,9 @@ export function parseIfood(lines: string[]): ParsedExternalOrder | null {
     addressStreet: firstMatch(/Endereco:\s*(.+)/),
     addressComplement: firstMatch(/Comp:\s*(.+)/),
     addressNeighborhood: firstMatch(/Bairro:\s*(.+)/),
-    addressReference: firstMatch(/Cidade:\s*(.+)/),
+    addressReference: [firstMatch(/Ref:\s*(.+)/), firstMatch(/Cidade:\s*(.+)/)]
+      .filter(Boolean)
+      .join(' — ') || undefined,
     items,
     totalCents: totalStr ? brlToCents(totalStr) : 0,
     paidOnline: lines.some((l) => /Pagamento realizado/i.test(l)),
