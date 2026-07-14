@@ -177,6 +177,8 @@ export interface DailySummary {
   count: number;
   totalCents: number;
   byMethod: Record<string, { count: number; totalCents: number }>;
+  // Pedidos pagos online (iFood/99) do dia — à parte, não somam na gaveta.
+  online?: { count: number; totalCents: number };
 }
 
 // Payload reduzido do acompanhamento público (sem endereço/dados do cliente).
