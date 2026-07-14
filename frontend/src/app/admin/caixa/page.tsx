@@ -124,7 +124,7 @@ export default function CaixaFinanceiroPage() {
               {summary?.count ?? 0} pedido(s)
             </p>
           </div>
-          {(['CASH', 'PIX'] as const).map((m) => (
+          {(['CASH', 'PIX', 'ONLINE'] as const).map((m) => (
             <div key={m} className="rounded-lg border bg-white p-4">
               <p className="text-sm text-gray-500">{METHOD_LABEL[m]}</p>
               <p className="text-2xl font-bold">
@@ -135,15 +135,6 @@ export default function CaixaFinanceiroPage() {
               </p>
             </div>
           ))}
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-gray-500">Online (iFood/99)</p>
-            <p className="text-2xl font-bold">
-              {formatBRL(summary?.online?.totalCents ?? 0)}
-            </p>
-            <p className="text-sm text-gray-500">
-              {summary?.online?.count ?? 0} pedido(s) · fora da gaveta
-            </p>
-          </div>
         </div>
       </section>
 
