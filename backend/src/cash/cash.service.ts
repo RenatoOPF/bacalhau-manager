@@ -98,11 +98,27 @@ export class CashService {
       totalCents += o.totalCents;
     }
 
+    // Pedidos pagos online (iFood/99) do dia — mostrados à parte no fechamento
+    // (não entram no total da gaveta).
+    const online = await this.prisma.order.aggregate({
+      where: {
+        paymentStatus: PaymentStatus.PAID,
+        paymentMethod: PaymentMethod.ONLINE,
+        paidAt: { gte: start, lt: end },
+      },
+      _sum: { totalCents: true },
+      _count: true,
+    });
+
     return {
       date,
       count: paid.length,
       totalCents,
       byMethod,
+      online: {
+        count: online._count,
+        totalCents: online._sum.totalCents ?? 0,
+      },
     };
   }
 }
