@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { PaymentMethod, PaymentStatus } from '@prisma/client';
+import { OrderChannel, PaymentMethod, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import {
@@ -54,6 +54,9 @@ export class IntegrationsService {
       return { status: 'duplicate', protocol: existing.protocol };
     }
 
+    const channelLabel =
+      parsed.channel === OrderChannel.IFOOD ? 'iFood' : '99';
+
     const order = await this.prisma.order.create({
       data: {
         channel: parsed.channel,
@@ -70,12 +73,11 @@ export class IntegrationsService {
           : PaymentStatus.PENDING,
         paidAt: parsed.paidOnline ? new Date() : null,
         totalCents: parsed.totalCents,
-        notes: [
-          parsed.shortNumber ? `${parsed.channel} #${parsed.shortNumber}` : null,
-          `Loc ${parsed.externalId}`,
-        ]
-          .filter(Boolean)
-          .join(' · '),
+        // Referência exibida na comanda (ex.: "iFood #8156"). O localizador
+        // fica no externalId (dedup), não precisa poluir a nota.
+        notes: parsed.shortNumber
+          ? `${channelLabel} #${parsed.shortNumber}`
+          : `${channelLabel} · Loc ${parsed.externalId}`,
         items: {
           create: parsed.items.map((it) => ({
             menuItemId: null,

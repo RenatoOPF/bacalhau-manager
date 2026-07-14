@@ -4,6 +4,7 @@ import {
   types as PrinterTypes,
   CharacterSet,
 } from 'node-thermal-printer';
+import { OrderChannel } from '@prisma/client';
 import type { Order, OrderItem } from '@prisma/client';
 
 type OrderWithItems = Order & { items: OrderItem[] };
@@ -115,6 +116,11 @@ export class PrintingService {
     p.setTextDoubleHeight();
     p.println(`PEDIDO #${order.protocol}`);
     p.setTextNormal();
+    p.println(order.customerName.toUpperCase());
+    // Pedido externo: destaca a referência do canal (ex.: "iFood #8156").
+    if (order.channel !== OrderChannel.OWN && order.notes) {
+      p.println(order.notes);
+    }
     p.bold(false);
     p.println(new Date(order.createdAt).toLocaleTimeString('pt-BR'));
     p.drawLine();
@@ -129,7 +135,9 @@ export class PrintingService {
       p.bold(false);
       if (item.notes) p.println(`   >> ${item.notes}`);
     }
-    if (order.notes) {
+    // Obs. geral só para pedidos próprios (nos externos a nota é a referência,
+    // já mostrada no topo).
+    if (order.channel === OrderChannel.OWN && order.notes) {
       p.drawLine();
       p.println(`Obs. geral: ${order.notes}`);
     }
