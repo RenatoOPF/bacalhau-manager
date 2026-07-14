@@ -140,28 +140,25 @@ export class PrintingService {
     }
 
     const p = this.buildPrinter(iface);
+    // Sem negrito na cozinha. Ordem: nome do cliente, depois o pedido, depois o resto.
     p.alignCenter();
-    p.bold(true);
     p.setTextDoubleHeight();
-    p.println(`PEDIDO #${order.protocol}`);
-    p.setTextNormal();
     p.println(order.customerName.toUpperCase());
-    // Pedido externo: destaca a referência do canal (ex.: "iFood #8156").
+    p.setTextNormal();
+    p.println(`PEDIDO #${order.protocol}`);
+    // Pedido externo: referência do canal (ex.: "iFood #8156").
     if (order.channel !== OrderChannel.OWN && order.notes) {
       p.println(order.notes);
     }
-    p.bold(false);
     p.println(new Date(order.createdAt).toLocaleTimeString('pt-BR'));
     p.drawLine();
     p.alignLeft();
     for (const item of order.items) {
-      p.bold(true);
       // Nome (+ opção) em MAIÚSCULAS; opção no termo da cozinha (Individual/Inteira).
       const label = item.optionNameSnapshot
         ? `${item.nameSnapshot} (${toPrintOption(item.optionNameSnapshot)})`
         : item.nameSnapshot;
       p.println(`${item.quantity}x ${label.toUpperCase()}`);
-      p.bold(false);
       if (item.notes) p.println(`   >> ${item.notes}`);
     }
     // Obs. geral só para pedidos próprios (nos externos a nota é a referência,
