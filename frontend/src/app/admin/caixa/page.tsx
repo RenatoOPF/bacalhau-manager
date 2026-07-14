@@ -10,6 +10,7 @@ const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:3001';
 const METHOD_LABEL: Record<string, string> = {
   CASH: 'Dinheiro',
   PIX: 'PIX',
+  ONLINE: 'Online (app)',
 };
 
 function today(): string {
