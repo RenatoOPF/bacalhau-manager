@@ -28,6 +28,25 @@ function toPrintOption(name: string): string {
     .replace(/Porção Inteira/gi, 'Inteira');
 }
 
+const PAYMENT_LABEL: Record<string, string> = {
+  CASH: 'Dinheiro',
+  PIX: 'PIX',
+  ONLINE: 'Online',
+};
+
+/** Forma de pagamento legível, ex.: "Online (pago)". */
+function prettyPayment(method: string, status: string): string {
+  const m = PAYMENT_LABEL[method] ?? method;
+  return `${m} (${status === 'PAID' ? 'pago' : 'pendente'})`;
+}
+
+/** Data e hora do pedido, ex.: "14/07/2026 11:49" (hora local do caixa). */
+function formatDateTime(date: Date): string {
+  const d = new Date(date);
+  const p2 = (n: number) => String(n).padStart(2, '0');
+  return `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+}
+
 /**
  * Impressão dos tickets via ESC/POS. As duas impressoras são acionadas
  * pelo PC do caixa (ponto central de impressão).
@@ -67,17 +86,25 @@ export class PrintingService {
     p.println('BACALHAU & CIA');
     p.bold(false);
     p.println(`Pedido #${order.protocol}`);
+    // Pedido externo: referência do canal (ex.: "iFood #8156").
+    if (order.channel !== OrderChannel.OWN && order.notes) {
+      p.println(order.notes);
+    }
+    p.println(formatDateTime(order.createdAt));
     p.drawLine();
     p.alignLeft();
     p.println(`Cliente: ${order.customerName}`);
     if (order.customerPhone) p.println(`Tel: ${order.customerPhone}`);
-    p.println('Endereço:');
-    p.println(
-      `  ${order.addressStreet}${order.addressNumber ? ', ' + order.addressNumber : ''}`,
-    );
-    if (order.addressComplement) p.println(`  ${order.addressComplement}`);
-    if (order.addressNeighborhood) p.println(`  ${order.addressNeighborhood}`);
-    if (order.addressReference) p.println(`  Ref: ${order.addressReference}`);
+    // Endereço numa linha só, campos separados por espaço (o papel quebra sozinho).
+    const address = [
+      `${order.addressStreet}${order.addressNumber ? ', ' + order.addressNumber : ''}`,
+      order.addressComplement,
+      order.addressNeighborhood,
+      order.addressReference,
+    ]
+      .filter(Boolean)
+      .join(' ');
+    p.println(`Endereço: ${address}`);
     p.drawLine();
     for (const item of order.items) {
       // Nome (+ opção) em MAIÚSCULAS; opção no termo da cozinha (Individual/Inteira).
@@ -94,7 +121,9 @@ export class PrintingService {
     p.bold(true);
     p.println(`TOTAL: ${formatBRL(order.totalCents)}`);
     p.bold(false);
-    p.println(`Pagamento: ${order.paymentMethod} (${order.paymentStatus})`);
+    p.println(
+      `Pagamento: ${prettyPayment(order.paymentMethod, order.paymentStatus)}`,
+    );
     p.cut();
 
     await this.execute(p, 'CAIXA', order.protocol);
