@@ -84,7 +84,8 @@ model MenuItemOption {
 
 enum OrderChannel {
   OWN // cardápio próprio
-  IFOOD // futuro
+  IFOOD // capturado via impressora fake
+  NOVENTA_NOVE // 99Food, capturado via impressora fake
   GAMI // futuro
 }
 
@@ -100,7 +101,7 @@ enum OrderStatus {
 enum PaymentMethod {
   CASH // dinheiro
   PIX // PIX
-  // CARD entra na fase de integração (iFood/Gami)
+  ONLINE // pago no app (iFood/99) — não entra no fechamento de caixa
 }
 
 enum PaymentStatus {
@@ -115,6 +116,10 @@ model Order {
 
   channel OrderChannel @default(OWN)
   status  OrderStatus  @default(RECEIVED)
+
+  // Referência do pedido no canal externo (Localizador do iFood / código da 99).
+  // Único por canal para evitar duplicar ao reimprimir a mesma comanda.
+  externalId String?
 
   customerName  String
   customerPhone String?
@@ -140,6 +145,7 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([channel, externalId])
   @@index([status])
   @@index([createdAt])
   @@index([paidAt])

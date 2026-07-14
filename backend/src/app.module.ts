@@ -12,6 +12,7 @@ import { ReportsModule } from './reports/reports.module';
 import { QueueModule } from './queue/queue.module';
 import { PrintingModule } from './printing/printing.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { IntegrationsModule } from './integrations/integrations.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     OrdersModule,
     CashModule,
     ReportsModule,
+    IntegrationsModule,
   ],
 })
 export class AppModule {}
