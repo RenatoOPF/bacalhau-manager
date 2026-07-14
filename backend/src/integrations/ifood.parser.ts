@@ -112,9 +112,8 @@ export function parseIfood(lines: string[]): ParsedExternalOrder | null {
     addressStreet: firstMatch(/Endereco:\s*(.+)/),
     addressComplement: firstMatch(/Comp:\s*(.+)/),
     addressNeighborhood: firstMatch(/Bairro:\s*(.+)/),
-    addressReference: [firstMatch(/Ref:\s*(.+)/), firstMatch(/Cidade:\s*(.+)/)]
-      .filter(Boolean)
-      .join(' — ') || undefined,
+    // Só a referência de entrega; cidade/UF/CEP não vão para a comanda.
+    addressReference: firstMatch(/Ref:\s*(.+)/),
     items,
     totalCents: totalStr ? brlToCents(totalStr) : 0,
     paidOnline: lines.some((l) => /Pagamento realizado/i.test(l)),
