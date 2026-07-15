@@ -82,7 +82,7 @@ export default function CaixaPage() {
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <span className="font-mono text-lg font-bold">
-                    #{order.protocol}
+                    #{order.dailyNumber}
                   </span>
                   {order.channel !== 'OWN' && (
                     <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
@@ -139,7 +139,7 @@ export default function CaixaPage() {
                   className="rounded border border-red-300 px-3 py-2 text-sm text-red-600 disabled:opacity-50"
                   disabled={removeOrder.isPending}
                   onClick={() => {
-                    if (confirm(`Excluir o pedido #${order.protocol}?`)) {
+                    if (confirm(`Excluir o pedido #${order.dailyNumber}?`)) {
                       removeOrder.mutate(order.id);
                     }
                   }}

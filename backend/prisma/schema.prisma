@@ -111,8 +111,10 @@ enum PaymentStatus {
 
 model Order {
   id       String @id @default(cuid())
-  // Número curto/protocolo exibido ao cliente e nos tickets.
+  // Id global único — usado no link de acompanhamento e internamente.
   protocol Int    @unique @default(autoincrement())
+  // Número exibido ao cliente/cozinha/caixa, reinicia a cada dia (via DailyCounter).
+  dailyNumber Int  @default(0)
 
   channel OrderChannel @default(OWN)
   status  OrderStatus  @default(RECEIVED)
@@ -192,4 +194,11 @@ model LegacyOrder {
   importedAt   DateTime  @default(now())
 
   @@index([openedAt])
+}
+
+/// Contador diário do número de pedido (reinicia por dia). A chave é o dia
+/// local "YYYY-MM-DD" e lastNumber é o último número emitido naquele dia.
+model DailyCounter {
+  date       String @id
+  lastNumber Int    @default(0)
 }

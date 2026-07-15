@@ -14,6 +14,7 @@ import {
   PrintOrderJobData,
 } from '../queue/queue.constants';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { nextDailyNumber } from '../common/daily-number';
 
 @Injectable()
 export class OrdersService {
@@ -73,8 +74,11 @@ export class OrdersService {
       };
     });
 
+    const dailyNumber = await nextDailyNumber(this.prisma);
+
     const order = await this.prisma.order.create({
       data: {
+        dailyNumber,
         customerName: dto.customerName,
         customerPhone: dto.customerPhone,
         addressStreet: dto.addressStreet,
@@ -121,6 +125,7 @@ export class OrdersService {
       where: { protocol },
       select: {
         protocol: true,
+        dailyNumber: true,
         status: true,
         createdAt: true,
         items: {

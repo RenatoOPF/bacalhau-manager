@@ -114,6 +114,7 @@ export type OrderChannel = 'OWN' | 'IFOOD' | 'NOVENTA_NOVE' | 'GAMI';
 export interface Order {
   id: string;
   protocol: number;
+  dailyNumber: number;
   status: OrderStatus;
   channel: OrderChannel;
   customerName: string;
@@ -146,6 +147,7 @@ export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
 export interface Transaction {
   id: string;
   protocol: number;
+  dailyNumber: number;
   customerName: string;
   paymentMethod: PaymentMethod;
   totalCents: number;
@@ -182,6 +184,7 @@ export interface DailySummary {
 // Payload reduzido do acompanhamento público (sem endereço/dados do cliente).
 export interface TrackedOrder {
   protocol: number;
+  dailyNumber: number;
   status: OrderStatus;
   createdAt: string;
   items: {

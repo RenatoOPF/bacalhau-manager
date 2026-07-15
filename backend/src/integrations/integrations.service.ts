@@ -9,6 +9,7 @@ import {
   PRINT_ORDER_JOB,
   PrintOrderJobData,
 } from '../queue/queue.constants';
+import { nextDailyNumber } from '../common/daily-number';
 import { decodeEscPosBase64, toLines } from './escpos';
 import { isIfood, parseIfood } from './ifood.parser';
 import { ParsedExternalOrder } from './parsed-order';
@@ -56,9 +57,11 @@ export class IntegrationsService {
 
     const channelLabel =
       parsed.channel === OrderChannel.IFOOD ? 'iFood' : '99';
+    const dailyNumber = await nextDailyNumber(this.prisma);
 
     const order = await this.prisma.order.create({
       data: {
+        dailyNumber,
         channel: parsed.channel,
         externalId: parsed.externalId,
         customerName: parsed.customerName || 'Cliente',

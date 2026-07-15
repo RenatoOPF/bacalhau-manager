@@ -85,7 +85,7 @@ export class PrintingService {
     p.bold(true);
     p.println('BACALHAU & CIA');
     p.bold(false);
-    p.println(`Pedido #${order.protocol}`);
+    p.println(`Pedido #${order.dailyNumber}`);
     // Pedido externo: referência do canal (ex.: "iFood #8156").
     if (order.channel !== OrderChannel.OWN && order.notes) {
       p.println(order.notes);
@@ -148,7 +148,7 @@ export class PrintingService {
     p.setTextDoubleHeight();
     p.println(order.customerName.toUpperCase());
     p.setTextNormal();
-    p.println(`PEDIDO #${order.protocol}`);
+    p.println(`PEDIDO #${order.dailyNumber}`);
     // Pedido externo: referência do canal (ex.: "iFood #8156").
     if (order.channel !== OrderChannel.OWN && order.notes) {
       p.println(order.notes);

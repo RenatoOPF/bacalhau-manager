@@ -21,6 +21,9 @@ module.exports = {
         NODE_ENV: 'production',
         // Sem worker de impressão na nuvem: a VM não alcança as térmicas locais.
         PRINT_WORKER: 'off',
+        // Fuso do restaurante: o "dia" (reset do número, fechamento, relatórios)
+        // vira à meia-noite de Brasília, não em UTC.
+        TZ: 'America/Sao_Paulo',
       },
     },
   ],
