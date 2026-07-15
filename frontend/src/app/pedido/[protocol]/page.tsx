@@ -57,7 +57,7 @@ export default function AcompanhamentoPage({
   return (
     <main className="mx-auto max-w-md p-6">
       <h1 className="text-center text-2xl font-bold">
-        Pedido <span className="font-mono">#{data.protocol}</span>
+        Pedido <span className="font-mono">#{data.dailyNumber}</span>
       </h1>
       <p className="text-center text-gray-500">
         {data.items

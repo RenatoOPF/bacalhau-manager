@@ -75,9 +75,9 @@ export default function CardapioPage() {
       <main className="mx-auto max-w-md p-6 text-center">
         <h1 className="text-2xl font-bold">Pedido confirmado! 🎉</h1>
         <p className="mt-4 text-lg">
-          Seu protocolo é{' '}
+          Seu pedido é{' '}
           <span className="font-mono font-bold">
-            #{createOrder.data.protocol}
+            #{createOrder.data.dailyNumber}
           </span>
         </p>
         <p className="mt-2 text-gray-600">

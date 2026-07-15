@@ -65,6 +65,7 @@ export class CashService {
       select: {
         id: true,
         protocol: true,
+        dailyNumber: true,
         customerName: true,
         paymentMethod: true,
         totalCents: true,

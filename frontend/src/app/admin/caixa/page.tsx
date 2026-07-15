@@ -72,7 +72,7 @@ export default function CaixaFinanceiroPage() {
               key={o.id}
               className="flex flex-wrap items-center gap-3 rounded-lg border bg-white p-3"
             >
-              <span className="font-mono font-bold">#{o.protocol}</span>
+              <span className="font-mono font-bold">#{o.dailyNumber}</span>
               <span className="flex-1">{o.customerName}</span>
               <span className="text-sm text-gray-500">
                 escolheu: {METHOD_LABEL[o.paymentMethod]}
@@ -154,7 +154,7 @@ export default function CaixaFinanceiroPage() {
           <tbody>
             {(transactions ?? []).map((t) => (
               <tr key={t.id} className="border-b">
-                <td className="py-2 font-mono">#{t.protocol}</td>
+                <td className="py-2 font-mono">#{t.dailyNumber}</td>
                 <td>{t.customerName}</td>
                 <td>{METHOD_LABEL[t.paymentMethod]}</td>
                 <td className="text-right">{formatBRL(t.totalCents)}</td>
