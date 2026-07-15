@@ -73,6 +73,7 @@ export class IntegrationsService {
           : PaymentStatus.PENDING,
         paidAt: parsed.paidOnline ? new Date() : null,
         totalCents: parsed.totalCents,
+        deliveryFeeCents: parsed.deliveryFeeCents,
         // Referência exibida na comanda (ex.: "iFood #8156"). O localizador
         // fica no externalId (dedup), não precisa poluir a nota.
         notes: parsed.shortNumber

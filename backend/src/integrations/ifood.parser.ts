@@ -100,6 +100,9 @@ export function parseIfood(lines: string[]): ParsedExternalOrder | null {
   push();
 
   const totalStr = firstMatch(/Valor total do pedido:\s*R\$\s*([\d.,]+)/);
+  const deliveryStr = firstMatch(/Taxa de entrega:\s*R\$\s*([\d.,]+)/);
+  const itemsCents = totalStr ? brlToCents(totalStr) : 0;
+  const deliveryFeeCents = deliveryStr ? brlToCents(deliveryStr) : 0;
 
   if (!externalId || items.length === 0) return null;
 
@@ -115,7 +118,9 @@ export function parseIfood(lines: string[]): ParsedExternalOrder | null {
     // Só a referência de entrega; cidade/UF/CEP não vão para a comanda.
     addressReference: firstMatch(/Ref:\s*(.+)/),
     items,
-    totalCents: totalStr ? brlToCents(totalStr) : 0,
+    deliveryFeeCents,
+    // Total = itens + taxa de entrega (a taxa de serviço é do iFood, fica fora).
+    totalCents: itemsCents + deliveryFeeCents,
     paidOnline: lines.some((l) => /Pagamento realizado/i.test(l)),
   };
 }
