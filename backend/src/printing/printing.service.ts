@@ -118,6 +118,9 @@ export class PrintingService {
       p.alignLeft();
     }
     p.drawLine();
+    if (order.deliveryFeeCents > 0) {
+      p.println(`Taxa de entrega: ${formatBRL(order.deliveryFeeCents)}`);
+    }
     p.bold(true);
     p.println(`TOTAL: ${formatBRL(order.totalCents)}`);
     p.bold(false);

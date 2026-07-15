@@ -136,8 +136,10 @@ model Order {
   // Momento em que o pagamento foi registrado no caixa (base do fechamento diário).
   paidAt        DateTime?
 
-  // Total em centavos (soma dos itens).
+  // Total em centavos. Para pedidos externos inclui a taxa de entrega abaixo.
   totalCents Int    @default(0)
+  // Taxa de entrega (iFood/99), já inclusa no totalCents. 0 nos pedidos próprios.
+  deliveryFeeCents Int @default(0)
   notes      String?
 
   items OrderItem[]

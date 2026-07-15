@@ -19,7 +19,8 @@ export interface ParsedExternalOrder {
   addressNeighborhood?: string;
   addressReference?: string;
   items: ParsedExternalItem[];
-  totalCents: number;
+  deliveryFeeCents: number;
+  totalCents: number; // itens + taxa de entrega
   paidOnline: boolean;
 }
 
