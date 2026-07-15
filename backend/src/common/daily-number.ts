@@ -1,19 +1,28 @@
 import { PrismaService } from '../prisma/prisma.service';
-import { localDay } from './date-range';
+
+// Chave fixa do contador de pedidos (reaproveita a tabela DailyCounter).
+// O número NÃO reinicia por data — reinicia quando o caixa é fechado.
+const COUNTER_KEY = 'current';
 
 /**
- * Próximo número de pedido do dia (reinicia a cada dia, fuso do servidor).
- *
- * Atômico: um único `INSERT ... ON CONFLICT DO UPDATE` no contador diário
- * garante que dois pedidos simultâneos nunca recebam o mesmo número.
+ * Próximo número de pedido. Sequência contínua que só reinicia quando o caixa
+ * é fechado (ver resetOrderNumber). Atômico via INSERT ... ON CONFLICT — dois
+ * pedidos simultâneos nunca recebem o mesmo número.
  */
 export async function nextDailyNumber(prisma: PrismaService): Promise<number> {
-  const day = localDay(new Date());
   const rows = await prisma.$queryRaw<{ lastNumber: number }[]>`
-    INSERT INTO "DailyCounter" ("date", "lastNumber") VALUES (${day}, 1)
+    INSERT INTO "DailyCounter" ("date", "lastNumber") VALUES (${COUNTER_KEY}, 1)
     ON CONFLICT ("date")
     DO UPDATE SET "lastNumber" = "DailyCounter"."lastNumber" + 1
     RETURNING "lastNumber"
   `;
   return rows[0].lastNumber;
+}
+
+/** Zera a numeração de pedidos (chamado ao fechar o caixa). */
+export async function resetOrderNumber(prisma: PrismaService): Promise<void> {
+  await prisma.$executeRaw`
+    INSERT INTO "DailyCounter" ("date", "lastNumber") VALUES (${COUNTER_KEY}, 0)
+    ON CONFLICT ("date") DO UPDATE SET "lastNumber" = 0
+  `;
 }
