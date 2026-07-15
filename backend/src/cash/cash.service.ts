@@ -7,6 +7,7 @@ import { PaymentMethod, PaymentStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { dayRange, periodFilter } from '../common/date-range';
+import { resetOrderNumber } from '../common/daily-number';
 
 @Injectable()
 export class CashService {
@@ -35,6 +36,12 @@ export class CashService {
 
     this.realtime.emitOrderStatusChanged(updated);
     return updated;
+  }
+
+  /** Fecha o caixa: zera a numeração de pedidos (o próximo volta a ser #1). */
+  async close() {
+    await resetOrderNumber(this.prisma);
+    return { closed: true };
   }
 
   /** Pedidos ainda pendentes de pagamento (não cancelados). */

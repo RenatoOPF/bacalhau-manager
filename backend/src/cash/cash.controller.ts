@@ -26,6 +26,12 @@ export class CashController {
     return this.cash.payOrder(id, dto.paymentMethod);
   }
 
+  /** Fecha o caixa: zera a numeração de pedidos (o próximo volta a #1). */
+  @Post('close')
+  close() {
+    return this.cash.close();
+  }
+
   /** Pedidos pendentes de pagamento. */
   @Get('pending')
   pending() {

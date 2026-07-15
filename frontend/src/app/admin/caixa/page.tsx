@@ -57,6 +57,14 @@ export default function CaixaFinanceiroPage() {
     onSuccess: refreshAll,
   });
 
+  const closeCash = useMutation({
+    mutationFn: () => api.closeCash(),
+    onSuccess: () => {
+      refreshAll();
+      alert('Caixa fechado. A numeração dos pedidos foi zerada (próximo = #1).');
+    },
+  });
+
   return (
     <main className="mx-auto max-w-4xl p-6">
       <h1 className="text-2xl font-bold">Caixa</h1>
@@ -106,12 +114,29 @@ export default function CaixaFinanceiroPage() {
       <section className="mt-8">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold">Fechamento do dia</h2>
-          <input
-            type="date"
-            className="rounded border p-1 text-sm"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              className="rounded border p-1 text-sm"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+            <button
+              className="rounded bg-red-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+              disabled={closeCash.isPending}
+              onClick={() => {
+                if (
+                  confirm(
+                    'Fechar o caixa e zerar a numeração dos pedidos? O próximo pedido volta a ser #1.',
+                  )
+                ) {
+                  closeCash.mutate();
+                }
+              }}
+            >
+              Fechar caixa
+            </button>
+          </div>
         </div>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-3">

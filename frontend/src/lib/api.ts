@@ -359,6 +359,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(paymentMethod ? { paymentMethod } : {}),
     }),
+  closeCash: () =>
+    request<{ closed: boolean }>('/cash/close', { method: 'POST' }),
   pendingPayments: () => request<Order[]>('/cash/pending'),
   transactions: (from?: string, to?: string) => {
     const qs = new URLSearchParams();
