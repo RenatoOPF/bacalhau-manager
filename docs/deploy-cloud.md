@@ -145,7 +145,8 @@ apontando o `REDIS_URL`/`DATABASE_URL` para os mesmos Upstash/Supabase.
 
 ```bash
 cd ~/bacalhau && git pull && npm ci
-npm run prisma:deploy --workspace backend   # se houver migration nova
-npm run build --workspace backend
+npm run prisma:generate --workspace backend  # npm ci apaga o client gerado — sempre regerar
+npm run prisma:deploy   --workspace backend  # se houver migration nova
+npm run build           --workspace backend
 pm2 restart bacalhau-backend
 ```
