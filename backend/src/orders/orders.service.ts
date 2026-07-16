@@ -15,6 +15,7 @@ import {
 } from '../queue/queue.constants';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { nextDailyNumber } from '../common/daily-number';
+import { dayRange, localDay } from '../common/date-range';
 
 @Injectable()
 export class OrdersService {
@@ -101,10 +102,14 @@ export class OrdersService {
     return order;
   }
 
-  /** Fila do caixa: pedidos do dia (ou filtrados por status). */
+  /** Fila do caixa: apenas os pedidos do dia atual (ou filtrados por status). */
   list(status?: OrderStatus) {
+    const { start, end } = dayRange(localDay(new Date()));
     return this.prisma.order.findMany({
-      where: status ? { status } : undefined,
+      where: {
+        createdAt: { gte: start, lt: end },
+        ...(status ? { status } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       include: { items: true },
     });
