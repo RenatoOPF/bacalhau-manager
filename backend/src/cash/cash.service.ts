@@ -38,7 +38,11 @@ export class CashService {
     return updated;
   }
 
-  /** Fecha o caixa: zera a numeração de pedidos (o próximo volta a ser #1). */
+  /**
+   * Fecha o caixa manualmente: zera a numeração do dia (o próximo volta a #1).
+   * Na virada do dia isso já acontece sozinho — este endpoint é para fechar
+   * antes do fim do dia.
+   */
   async close() {
     await resetOrderNumber(this.prisma);
     return { closed: true };

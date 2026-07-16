@@ -63,6 +63,9 @@ export default function CaixaFinanceiroPage() {
       refreshAll();
       alert('Caixa fechado. A numeração dos pedidos foi zerada (próximo = #1).');
     },
+    onError: () => {
+      alert('Não foi possível fechar o caixa. Tente novamente.');
+    },
   });
 
   return (
@@ -127,7 +130,7 @@ export default function CaixaFinanceiroPage() {
               onClick={() => {
                 if (
                   confirm(
-                    'Fechar o caixa e zerar a numeração dos pedidos? O próximo pedido volta a ser #1.',
+                    'Fechar o caixa agora e zerar a numeração dos pedidos? O próximo pedido volta a ser #1. (O caixa também fecha sozinho na virada do dia.)',
                   )
                 ) {
                   closeCash.mutate();
@@ -138,6 +141,10 @@ export default function CaixaFinanceiroPage() {
             </button>
           </div>
         </div>
+        <p className="mt-1 text-xs text-gray-400">
+          A numeração reinicia sozinha a cada dia. Use “Fechar caixa” só para
+          zerar antes do fim do dia.
+        </p>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <div className="rounded-lg border bg-white p-4">
