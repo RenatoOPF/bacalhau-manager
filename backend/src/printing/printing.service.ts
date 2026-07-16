@@ -129,17 +129,25 @@ export class PrintingService {
       .join(' ');
     p.println(`Endereço: ${address}`);
     p.drawLine();
+    p.setTextDoubleHeight();
     for (const item of order.items) {
       // Nome (+ opção) em MAIÚSCULAS; opção no termo da cozinha (Individual/Inteira).
       const label = item.optionNameSnapshot
         ? `${item.nameSnapshot} (${toPrintOption(item.optionNameSnapshot)})`
         : item.nameSnapshot;
-      p.println(`${item.quantity}x ${label.toUpperCase()}`);
-      if (item.notes) p.println(`   obs: ${item.notes}`);
+      for (const line of wrapWords(`${item.quantity}x ${label.toUpperCase()}`, this.width)) {
+        p.println(line);
+      }
+      if (item.notes) {
+        for (const line of wrapWords(`   obs: ${item.notes}`, this.width)) {
+          p.println(line);
+        }
+      }
       p.alignRight();
       p.println(formatBRL(item.priceCents * item.quantity));
       p.alignLeft();
     }
+    p.setTextNormal();
     p.drawLine();
     if (order.deliveryFeeCents > 0) {
       p.println(`Taxa de entrega: ${formatBRL(order.deliveryFeeCents)}`);
@@ -183,7 +191,9 @@ export class PrintingService {
     // por palavra para não cortar o nome no meio.
     p.setTextDoubleHeight();
     for (const item of order.items) {
-      const label = item.nameSnapshot.toUpperCase();
+      const label = item.optionNameSnapshot
+        ? `${item.nameSnapshot} (${toPrintOption(item.optionNameSnapshot)})`.toUpperCase()
+        : item.nameSnapshot.toUpperCase();
       for (const line of wrapWords(`${item.quantity}x ${label}`, this.width)) {
         p.println(line);
       }
