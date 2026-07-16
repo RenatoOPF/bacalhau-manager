@@ -28,6 +28,13 @@ function toPrintOption(name: string): string {
     .replace(/Por[çc][ãa]o Inteira/gi, 'Inteira');
 }
 
+/** Formata a note de um item iFood: "1 Porcao Inteira" → "(INTEIRA)"; texto livre → "obs: ..." */
+function formatItemNote(note: string): string {
+  const m = toPrintOption(note).match(/^\d+\s+(Individual|Inteira)$/i);
+  if (m) return `(${m[1].toUpperCase()})`;
+  return `obs: ${note}`;
+}
+
 /**
  * Quebra o texto em linhas de no máximo `width` colunas SEM cortar palavra no
  * meio: cada palavra fica inteira numa linha; se não couber no que resta, vai
@@ -140,7 +147,7 @@ export class PrintingService {
         p.println(line);
       }
       if (item.notes) {
-        for (const line of wrapWords(`   obs: ${toPrintOption(item.notes)}`, this.width)) {
+        for (const line of wrapWords(formatItemNote(item.notes), this.width)) {
           p.println(line);
         }
       }
@@ -199,7 +206,7 @@ export class PrintingService {
         p.println(line);
       }
       if (item.notes) {
-        for (const line of wrapWords(`>> ${toPrintOption(item.notes)}`, this.width)) {
+        for (const line of wrapWords(formatItemNote(item.notes), this.width)) {
           p.println(line);
         }
       }
