@@ -132,9 +132,10 @@ export class PrintingService {
     p.setTextDoubleHeight();
     for (const item of order.items) {
       // Nome (+ opção) em MAIÚSCULAS; opção no termo da cozinha (Individual/Inteira).
+      // Pedidos iFood não têm optionNameSnapshot — a opção vem embutida no nome.
       const label = item.optionNameSnapshot
         ? `${item.nameSnapshot} (${toPrintOption(item.optionNameSnapshot)})`
-        : item.nameSnapshot;
+        : toPrintOption(item.nameSnapshot);
       for (const line of wrapWords(`${item.quantity}x ${label.toUpperCase()}`, this.width)) {
         p.println(line);
       }
@@ -193,7 +194,7 @@ export class PrintingService {
     for (const item of order.items) {
       const label = item.optionNameSnapshot
         ? `${item.nameSnapshot} (${toPrintOption(item.optionNameSnapshot)})`.toUpperCase()
-        : item.nameSnapshot.toUpperCase();
+        : toPrintOption(item.nameSnapshot).toUpperCase();
       for (const line of wrapWords(`${item.quantity}x ${label}`, this.width)) {
         p.println(line);
       }
