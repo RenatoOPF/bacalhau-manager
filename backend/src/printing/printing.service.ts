@@ -24,8 +24,8 @@ function formatBRL(cents: number): string {
  */
 function toPrintOption(name: string): string {
   return name
-    .replace(/Meia Porção/gi, 'Individual')
-    .replace(/Porção Inteira/gi, 'Inteira');
+    .replace(/Meia Por[çc][ãa]o/gi, 'Individual')
+    .replace(/Por[çc][ãa]o Inteira/gi, 'Inteira');
 }
 
 /**
@@ -140,7 +140,7 @@ export class PrintingService {
         p.println(line);
       }
       if (item.notes) {
-        for (const line of wrapWords(`   obs: ${item.notes}`, this.width)) {
+        for (const line of wrapWords(`   obs: ${toPrintOption(item.notes)}`, this.width)) {
           p.println(line);
         }
       }
@@ -199,7 +199,7 @@ export class PrintingService {
         p.println(line);
       }
       if (item.notes) {
-        for (const line of wrapWords(`>> ${item.notes}`, this.width)) {
+        for (const line of wrapWords(`>> ${toPrintOption(item.notes)}`, this.width)) {
           p.println(line);
         }
       }
