@@ -113,7 +113,7 @@ model Order {
   id       String @id @default(cuid())
   // Id global único — usado no link de acompanhamento e internamente.
   protocol Int    @unique @default(autoincrement())
-  // Número exibido ao cliente/cozinha/caixa, reinicia ao fechar o caixa (via DailyCounter).
+  // Número exibido ao cliente/cozinha/caixa, reinicia a cada dia ou ao fechar o caixa (via DailyCounter).
   dailyNumber Int  @default(0)
 
   channel OrderChannel @default(OWN)

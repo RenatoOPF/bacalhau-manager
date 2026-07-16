@@ -26,7 +26,7 @@ export class CashController {
     return this.cash.payOrder(id, dto.paymentMethod);
   }
 
-  /** Fecha o caixa: zera a numeração de pedidos (o próximo volta a #1). */
+  /** Fecha o caixa manualmente: zera a numeração do dia (o próximo volta a #1). */
   @Post('close')
   close() {
     return this.cash.close();
