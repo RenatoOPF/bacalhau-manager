@@ -28,6 +28,29 @@ function toPrintOption(name: string): string {
     .replace(/Porção Inteira/gi, 'Inteira');
 }
 
+/**
+ * Quebra o texto em linhas de no máximo `width` colunas SEM cortar palavra no
+ * meio: cada palavra fica inteira numa linha; se não couber no que resta, vai
+ * para a linha de baixo. (O papel térmico, sem isso, corta a palavra no limite
+ * da coluna.) Uma palavra maior que a largura fica sozinha na linha.
+ */
+function wrapWords(text: string, width: number): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    if (!line) {
+      line = word;
+    } else if (line.length + 1 + word.length <= width) {
+      line += ' ' + word;
+    } else {
+      lines.push(line);
+      line = word;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
+}
+
 const PAYMENT_LABEL: Record<string, string> = {
   CASH: 'Dinheiro',
   PIX: 'PIX',
@@ -156,14 +179,21 @@ export class PrintingService {
     p.println(new Date(order.createdAt).toLocaleTimeString('pt-BR'));
     p.drawLine();
     p.alignLeft();
+    // Itens em fonte maior (dupla altura). Sem o tamanho do prato e quebrando
+    // por palavra para não cortar o nome no meio.
+    p.setTextDoubleHeight();
     for (const item of order.items) {
-      // Nome (+ opção) em MAIÚSCULAS; opção no termo da cozinha (Individual/Inteira).
-      const label = item.optionNameSnapshot
-        ? `${item.nameSnapshot} (${toPrintOption(item.optionNameSnapshot)})`
-        : item.nameSnapshot;
-      p.println(`${item.quantity}x ${label.toUpperCase()}`);
-      if (item.notes) p.println(`   >> ${item.notes}`);
+      const label = item.nameSnapshot.toUpperCase();
+      for (const line of wrapWords(`${item.quantity}x ${label}`, this.width)) {
+        p.println(line);
+      }
+      if (item.notes) {
+        for (const line of wrapWords(`>> ${item.notes}`, this.width)) {
+          p.println(line);
+        }
+      }
     }
+    p.setTextNormal();
     // Obs. geral só para pedidos próprios (nos externos a nota é a referência,
     // já mostrada no topo).
     if (order.channel === OrderChannel.OWN && order.notes) {
