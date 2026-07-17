@@ -29,7 +29,7 @@ function toPrintOption(name: string): string {
 
 /** Formata a note de um item iFood: "1 Porcao Inteira" → "(INTEIRA)"; texto livre → "obs: ..." */
 function formatItemNote(note: string): string {
-  const m = toPrintOption(note).match(/^\d+\s+(Individual|Inteira)$/i);
+  const m = toPrintOption(note).match(/^(?:\d+\s+)?(Individual|Inteira)$/i);
   if (m) return `(${m[1].toUpperCase()})`;
   return `obs: ${note}`;
 }
@@ -55,6 +55,10 @@ function wrapWords(text: string, width: number): string[] {
   }
   if (line) lines.push(line);
   return lines.length ? lines : [''];
+}
+
+function firstTwoNames(name: string): string {
+  return name.trim().split(/\s+/).slice(0, 2).join(' ');
 }
 
 const PAYMENT_LABEL: Record<string, string> = {
@@ -122,9 +126,10 @@ export class PrintingService {
     p.println(formatDateTime(order.createdAt));
     p.drawLine();
     p.alignLeft();
-    p.println(`Cliente: ${order.customerName}`);
+    for (const line of wrapWords(`Cliente: ${firstTwoNames(order.customerName)}`, this.width)) {
+      p.println(line);
+    }
     if (order.customerPhone) p.println(`Tel: ${order.customerPhone}`);
-    // Endereço numa linha só, campos separados por espaço (o papel quebra sozinho).
     const address = [
       `${order.addressStreet}${order.addressNumber ? ', ' + order.addressNumber : ''}`,
       order.addressComplement,
@@ -133,7 +138,9 @@ export class PrintingService {
     ]
       .filter(Boolean)
       .join(' ');
-    p.println(`Endereço: ${address}`);
+    for (const line of wrapWords(`Endereço: ${address}`, this.width)) {
+      p.println(line);
+    }
     p.drawLine();
     p.setTextDoubleHeight();
     for (const item of order.items) {
@@ -184,7 +191,7 @@ export class PrintingService {
     // Sem negrito na cozinha. Ordem: nome do cliente, depois o pedido, depois o resto.
     p.alignCenter();
     p.setTextDoubleHeight();
-    p.println(order.customerName.toUpperCase());
+    p.println(firstTwoNames(order.customerName).toUpperCase());
     p.setTextNormal();
     p.println(`PEDIDO #${order.dailyNumber}`);
     // Pedido externo: referência do canal (ex.: "iFood #8156").
