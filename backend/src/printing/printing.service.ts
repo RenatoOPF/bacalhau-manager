@@ -200,9 +200,7 @@ export class PrintingService {
     p.println(new Date(order.createdAt).toLocaleTimeString('pt-BR'));
     p.drawLine();
     p.alignLeft();
-    // Itens em fonte maior (dupla altura). Sem o tamanho do prato e quebrando
-    // por palavra para não cortar o nome no meio.
-    p.setTextDoubleHeight();
+    p.setTextQuadArea();
     for (const item of order.items) {
       const label = item.optionNameSnapshot
         ? `${item.nameSnapshot} (${toPrintOption(item.optionNameSnapshot)})`.toUpperCase()
