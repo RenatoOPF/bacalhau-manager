@@ -207,17 +207,18 @@ export class PrintingService {
     p.println(new Date(order.createdAt).toLocaleTimeString('pt-BR'));
     p.drawLine();
     p.alignLeft();
-    p.setTextQuadArea();
+    p.setTextDoubleWidth();
+    const wideWidth = Math.floor(this.width / 2);
     for (const item of order.items) {
       const label = item.optionNameSnapshot
         ? `${item.nameSnapshot} (${toPrintOption(item.optionNameSnapshot)})`.toUpperCase()
         : toPrintOption(item.nameSnapshot).toUpperCase();
-      for (const line of wrapWords(`${item.quantity}x ${label}`, this.width)) {
+      for (const line of wrapWords(`${item.quantity}x ${label}`, wideWidth)) {
         p.println(line);
       }
       if (item.notes) {
         for (const segment of formatItemNote(item.notes)) {
-          for (const line of wrapWords(segment, this.width)) {
+          for (const line of wrapWords(segment, wideWidth)) {
             p.println(line);
           }
         }
