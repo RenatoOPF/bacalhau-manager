@@ -27,11 +27,18 @@ function toPrintOption(name: string): string {
     .replace(/Por[çc][ãa]o Inteira/gi, 'Inteira');
 }
 
-/** Formata a note de um item iFood: "1 Porcao Inteira" → "(INTEIRA)"; texto livre → "obs: ..." */
-function formatItemNote(note: string): string {
-  const m = toPrintOption(note).match(/^(?:\d+\s+)?(Individual|Inteira)$/i);
-  if (m) return `(${m[1].toUpperCase()})`;
-  return `obs: ${note}`;
+/**
+ * Formata as notes de um item iFood em segmentos prontos para imprimir.
+ * O iFood une opção + obs com " | " (ex: "1 Porcao Inteira | Obs: sem cebola").
+ * Cada segmento vira "(INTEIRA)" ou "obs: ..." separadamente.
+ */
+function formatItemNote(note: string): string[] {
+  return note.split(' | ').map((part) => {
+    const m = toPrintOption(part.trim()).match(/^(?:\d+\s+)?(Individual|Inteira)$/i);
+    if (m) return `(${m[1].toUpperCase()})`;
+    if (/^Obs:/i.test(part.trim())) return `obs: ${part.trim().slice(4).trim()}`;
+    return `obs: ${part.trim()}`;
+  });
 }
 
 /**
@@ -152,8 +159,10 @@ export class PrintingService {
         p.println(line);
       }
       if (item.notes) {
-        for (const line of wrapWords(formatItemNote(item.notes), this.width)) {
-          p.println(line);
+        for (const segment of formatItemNote(item.notes)) {
+          for (const line of wrapWords(segment, this.width)) {
+            p.println(line);
+          }
         }
       }
       p.alignRight();
@@ -207,8 +216,10 @@ export class PrintingService {
         p.println(line);
       }
       if (item.notes) {
-        for (const line of wrapWords(formatItemNote(item.notes), this.width)) {
-          p.println(line);
+        for (const segment of formatItemNote(item.notes)) {
+          for (const line of wrapWords(segment, this.width)) {
+            p.println(line);
+          }
         }
       }
     }
