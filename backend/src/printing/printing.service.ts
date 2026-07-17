@@ -142,7 +142,6 @@ export class PrintingService {
       p.println(line);
     }
     p.drawLine();
-    p.setTextDoubleHeight();
     for (const item of order.items) {
       // Nome (+ opção) em MAIÚSCULAS; opção no termo da cozinha (Individual/Inteira).
       // Pedidos iFood não têm optionNameSnapshot — a opção vem embutida no nome.
@@ -161,7 +160,6 @@ export class PrintingService {
       p.println(formatBRL(item.priceCents * item.quantity));
       p.alignLeft();
     }
-    p.setTextNormal();
     p.drawLine();
     if (order.deliveryFeeCents > 0) {
       p.println(`Taxa de entrega: ${formatBRL(order.deliveryFeeCents)}`);
@@ -189,7 +187,7 @@ export class PrintingService {
 
     const p = this.buildPrinter(iface);
     p.alignCenter();
-    p.setTextDoubleHeight();
+    p.setTextQuadArea();
     p.println(firstTwoNames(order.customerName).toUpperCase());
     p.setTextNormal();
     p.println(`PEDIDO #${order.dailyNumber}`);
