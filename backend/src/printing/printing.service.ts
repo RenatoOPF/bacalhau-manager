@@ -188,11 +188,12 @@ export class PrintingService {
     }
 
     const p = this.buildPrinter(iface);
-    p.setTypeFontB();
     p.alignCenter();
     p.setTextDoubleHeight();
+    p.setTypeFontB();
     p.println(firstTwoNames(order.customerName).toUpperCase());
     p.setTextNormal();
+    p.setTypeFontB();
     p.println(`PEDIDO #${order.dailyNumber}`);
     // Pedido externo: referência do canal (ex.: "iFood #8156").
     if (order.channel !== OrderChannel.OWN && order.notes) {
@@ -204,6 +205,7 @@ export class PrintingService {
     // Itens em fonte maior (dupla altura). Sem o tamanho do prato e quebrando
     // por palavra para não cortar o nome no meio.
     p.setTextDoubleHeight();
+    p.setTypeFontB();
     for (const item of order.items) {
       const label = item.optionNameSnapshot
         ? `${item.nameSnapshot} (${toPrintOption(item.optionNameSnapshot)})`.toUpperCase()
@@ -218,6 +220,7 @@ export class PrintingService {
       }
     }
     p.setTextNormal();
+    p.setTypeFontB();
     // Obs. geral só para pedidos próprios (nos externos a nota é a referência,
     // já mostrada no topo).
     if (order.channel === OrderChannel.OWN && order.notes) {
