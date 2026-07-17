@@ -10,10 +10,9 @@ import type { Order, OrderItem } from '@prisma/client';
 type OrderWithItems = Order & { items: OrderItem[] };
 
 function formatBRL(cents: number): string {
-  return (cents / 100).toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  });
+  return (cents / 100)
+    .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    .replace(/\u00a0/g, ' ');
 }
 
 /**
