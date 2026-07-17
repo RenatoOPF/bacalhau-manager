@@ -188,7 +188,7 @@ export class PrintingService {
     }
 
     const p = this.buildPrinter(iface);
-    // Sem negrito na cozinha. Ordem: nome do cliente, depois o pedido, depois o resto.
+    p.setTypeFontB();
     p.alignCenter();
     p.setTextDoubleHeight();
     p.println(firstTwoNames(order.customerName).toUpperCase());
