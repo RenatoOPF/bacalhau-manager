@@ -253,6 +253,9 @@ export interface StockItem {
   active: boolean;
   // Quantos pratos/opções do cardápio consomem este insumo.
   linkedCount: number;
+  // Matéria-prima da qual este insumo é produzido (ex.: porções de bacalhau
+  // vêm de "Bacalhau (kg)"). Habilita o registro de produção no painel.
+  source?: { id: string; name: string; unit: StockUnit } | null;
 }
 
 export interface StockMovementRow {
@@ -405,11 +408,11 @@ export const api = {
     request<{ id: string }>(`/stock/${id}`, { method: 'DELETE' }),
   stockMovements: (id: string) =>
     request<StockMovementRow[]>(`/stock/${id}/movements`),
-  // Produção manual: baixa a origem (kg) e credita o destino (porções).
+  // Produção manual (bacalhau): baixa a matéria-prima do insumo (kg) e
+  // credita as porções preparadas. fromQty = kg usados, toQty = porções feitas.
   produceStock: (payload: {
-    fromId: string;
-    fromQty: number;
     toId: string;
+    fromQty: number;
     toQty: number;
   }) =>
     request<{ produced: boolean }>('/stock/produce', {

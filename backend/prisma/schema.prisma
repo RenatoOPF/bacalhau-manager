@@ -112,6 +112,13 @@ model StockItem {
   active    Boolean @default(true)
   sortOrder Int     @default(0)
 
+  // Matéria-prima da qual este insumo é produzido (só bacalhau hoje:
+  // Desfiado/Lascas/Casquinha apontam para "Bacalhau (kg)"). A produção
+  // manual do painel só existe para insumos com origem definida.
+  source   StockItem?  @relation("StockSource", fields: [sourceId], references: [id], onDelete: SetNull)
+  sourceId String?
+  derived  StockItem[] @relation("StockSource")
+
   links     StockLink[]
   movements StockMovement[]
 

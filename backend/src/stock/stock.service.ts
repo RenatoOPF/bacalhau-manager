@@ -63,7 +63,10 @@ export class StockService {
   async list() {
     const items = await this.prisma.stockItem.findMany({
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      include: { _count: { select: { links: true } } },
+      include: {
+        _count: { select: { links: true } },
+        source: { select: { id: true, name: true, unit: true } },
+      },
     });
     return items.map((s) => ({
       id: s.id,
@@ -73,6 +76,8 @@ export class StockService {
       alertQty: fromMilli(s.alertMilli),
       active: s.active,
       linkedCount: s._count.links,
+      // Matéria-prima deste insumo (habilita a produção no painel).
+      source: s.source,
     }));
   }
 
@@ -163,19 +168,24 @@ export class StockService {
   // ---- Produção (conversão manual, ex.: kg de bacalhau → porções) ----
 
   /**
-   * Registra uma produção: baixa `fromQty` do insumo de origem (ex.: 1 kg de
-   * "Bacalhau (kg)") e credita `toQty` no destino (ex.: 3 porções de
-   * "Bacalhau Desfiado"). As duas movimentações citam o par para auditoria.
+   * Registra uma produção: baixa `fromQty` da MATÉRIA-PRIMA do insumo (ex.:
+   * 1 kg de "Bacalhau (kg)") e credita `toQty` no insumo preparado (ex.:
+   * 3 porções de "Bacalhau Desfiado"). Só é permitida para insumos com
+   * origem definida (sourceId) — hoje, as porções de bacalhau.
+   * As duas movimentações citam o par para auditoria.
    */
   async produce(dto: ProduceDto) {
-    if (dto.fromId === dto.toId) {
-      throw new BadRequestException('Origem e destino devem ser diferentes.');
+    const to = await this.prisma.stockItem.findUnique({
+      where: { id: dto.toId },
+      include: { source: true },
+    });
+    if (!to) throw new NotFoundException('Insumo não encontrado');
+    const from = to.source;
+    if (!from) {
+      throw new BadRequestException(
+        `"${to.name}" não tem matéria-prima definida — produção não se aplica.`,
+      );
     }
-    const [from, to] = await Promise.all([
-      this.prisma.stockItem.findUnique({ where: { id: dto.fromId } }),
-      this.prisma.stockItem.findUnique({ where: { id: dto.toId } }),
-    ]);
-    if (!from || !to) throw new NotFoundException('Insumo não encontrado');
 
     const fromMilliQty = toMilli(dto.fromQty);
     const toMilliQty = toMilli(dto.toQty);

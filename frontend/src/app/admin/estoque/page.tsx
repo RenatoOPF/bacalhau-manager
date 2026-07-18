@@ -124,8 +124,9 @@ export default function EstoquePage() {
 }
 
 /**
- * Produção manual: "usei X (origem, ex.: kg de bacalhau) para fazer Y
- * (destino, ex.: porções de desfiado)". Baixa a origem e credita o destino.
+ * Produção de bacalhau: "usei X kg para fazer Y porções de <destino>".
+ * Só aparecem os insumos com matéria-prima definida (Desfiado, Lascas,
+ * Casquinha → Bacalhau (kg)); a origem é deduzida do destino escolhido.
  */
 function ProduceWidget({
   stock,
@@ -134,9 +135,9 @@ function ProduceWidget({
   stock: StockItem[];
   onDone: () => void;
 }) {
-  const [fromId, setFromId] = useState('');
-  const [fromQty, setFromQty] = useState('');
+  const producible = stock.filter((s) => s.source);
   const [toId, setToId] = useState('');
+  const [fromQty, setFromQty] = useState('');
   const [toQty, setToQty] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -144,10 +145,10 @@ function ProduceWidget({
     mutationFn: () => {
       const f = parseQty(fromQty);
       const t = parseQty(toQty);
-      if (!fromId || !toId || !f || !t) {
-        throw new Error('Preencha origem, destino e quantidades.');
+      if (!toId || !f || !t) {
+        throw new Error('Preencha o destino e as quantidades.');
       }
-      return api.produceStock({ fromId, fromQty: f, toId, toQty: t });
+      return api.produceStock({ toId, fromQty: f, toQty: t });
     },
     onSuccess: () => {
       setFromQty('');
@@ -158,11 +159,13 @@ function ProduceWidget({
     onError: (e: Error) => setError(e.message),
   });
 
-  const unitOf = (id: string) => stock.find((s) => s.id === id)?.unit ?? '';
+  if (producible.length === 0) return null;
+  const to = producible.find((s) => s.id === toId);
+  const source = to?.source ?? producible[0].source!;
 
   return (
     <div className="mt-4 rounded-lg border bg-white p-3">
-      <p className="text-sm font-semibold">Produção</p>
+      <p className="text-sm font-semibold">Produção de bacalhau</p>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
         <span>Usei</span>
         <input
@@ -171,19 +174,9 @@ function ProduceWidget({
           value={fromQty}
           onChange={(e) => setFromQty(e.target.value)}
         />
-        <select
-          className="rounded border p-1"
-          value={fromId}
-          onChange={(e) => setFromId(e.target.value)}
-        >
-          <option value="">origem...</option>
-          {stock.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name} ({s.unit})
-            </option>
-          ))}
-        </select>
-        <span>para fazer</span>
+        <span>
+          {source.unit} de {source.name} para fazer
+        </span>
         <input
           className="w-20 rounded border p-1"
           placeholder="3"
@@ -195,27 +188,25 @@ function ProduceWidget({
           value={toId}
           onChange={(e) => setToId(e.target.value)}
         >
-          <option value="">destino...</option>
-          {stock.map((s) => (
+          <option value="">porções de...</option>
+          {producible.map((s) => (
             <option key={s.id} value={s.id}>
-              {s.name} ({s.unit})
+              {s.name}
             </option>
           ))}
         </select>
         <button
           className="rounded bg-green-600 px-3 py-1 text-white disabled:opacity-50"
-          disabled={produce.isPending}
+          disabled={produce.isPending || !toId}
           onClick={() => produce.mutate()}
         >
           Registrar
         </button>
       </div>
-      {fromId && toId && (
+      {to && fromQty && toQty && (
         <p className="mt-1 text-xs text-gray-500">
-          Ex.: {fromQty || 'X'} {unitOf(fromId)} de{' '}
-          {stock.find((s) => s.id === fromId)?.name} →{' '}
-          {toQty || 'Y'} {unitOf(toId)} de{' '}
-          {stock.find((s) => s.id === toId)?.name}
+          Baixa {fromQty} {source.unit} de {source.name} e credita {toQty}{' '}
+          {to.unit} de {to.name}.
         </p>
       )}
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}

@@ -65,17 +65,18 @@ export class UpdateStockItemDto {
   deltaQty?: number;
 }
 
-/** Produção manual: baixa a origem (ex.: kg) e credita o destino (porções). */
+/**
+ * Produção manual (só para insumos com matéria-prima definida — bacalhau):
+ * baixa `fromQty` da origem do insumo (ex.: kg de bacalhau) e credita
+ * `toQty` no próprio insumo (porções preparadas).
+ */
 export class ProduceDto {
   @IsString()
-  fromId: string;
+  toId: string;
 
   @IsNumber()
   @IsPositive()
   fromQty: number;
-
-  @IsString()
-  toId: string;
 
   @IsNumber()
   @IsPositive()

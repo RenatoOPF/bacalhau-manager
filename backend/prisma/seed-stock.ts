@@ -40,6 +40,14 @@ const STOCK_ITEMS: [string, string][] = [
   ['Cordeiro', 'porção'],
 ];
 
+// Insumo preparado → matéria-prima (habilita a produção manual no painel).
+// Posta fica de fora: é feita à parte, sem passar pelo estoque de kg.
+const SOURCES: Record<string, string> = {
+  'Bacalhau Desfiado': 'Bacalhau (kg)',
+  'Bacalhau em Lascas': 'Bacalhau (kg)',
+  'Casquinha de Bacalhau': 'Bacalhau (kg)',
+};
+
 // Categoria do cardápio → insumo (consumo 1 porção por Inteira; Meia = 0,5).
 const CATEGORY_TO_STOCK: Record<string, string> = {
   'Bacalhau Desfiado': 'Bacalhau Desfiado',
@@ -90,6 +98,12 @@ async function main() {
       create: { name, unit, sortOrder: i },
     });
     stockByName.set(name, s.id);
+  }
+  for (const [derived, source] of Object.entries(SOURCES)) {
+    await prisma.stockItem.update({
+      where: { name: derived },
+      data: { sourceId: stockByName.get(source)! },
+    });
   }
   console.log(`Insumos garantidos: ${STOCK_ITEMS.length}`);
 
