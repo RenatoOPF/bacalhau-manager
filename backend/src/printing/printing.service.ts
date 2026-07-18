@@ -98,7 +98,7 @@ function formatDateTime(date: Date): string {
 @Injectable()
 export class PrintingService {
   private readonly logger = new Logger(PrintingService.name);
-  private readonly width = Number(process.env.PRINTER_WIDTH ?? 48);
+  private readonly width = Number(process.env.PRINTER_WIDTH ?? 32);
 
   private buildPrinter(interfaceUrl: string): ThermalPrinter {
     return new ThermalPrinter({
