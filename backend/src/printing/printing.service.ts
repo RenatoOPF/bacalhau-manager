@@ -227,12 +227,15 @@ export class PrintingService {
         p.println(line);
       }
       if (item.notes) {
+        p.setTextNormal();
         for (const segment of formatItemNote(item.notes)) {
-          for (const line of wrapWords(segment, wideWidth)) {
+          for (const line of wrapWords(segment, this.width)) {
             p.println(line);
           }
         }
+        p.setTextDoubleWidth();
       }
+      p.println('');
     }
     p.setTextNormal();
     // Obs. geral só para pedidos próprios (nos externos a nota é a referência,
