@@ -208,7 +208,7 @@ export class PrintingService {
     p.drawLine();
     p.alignLeft();
     p.setTextDoubleWidth();
-    const wideWidth = Math.floor(this.width / 2);
+    const wideWidth = 16;
     for (const item of order.items) {
       const label = item.optionNameSnapshot
         ? `${item.nameSnapshot} (${toPrintOption(item.optionNameSnapshot)})`.toUpperCase()
