@@ -227,13 +227,20 @@ export class PrintingService {
         p.println(line);
       }
       if (item.notes) {
-        p.setTextNormal();
         for (const segment of formatItemNote(item.notes)) {
-          for (const line of wrapWords(segment, this.width)) {
-            p.println(line);
+          const isOption = segment.startsWith('(');
+          if (isOption) {
+            for (const line of wrapWords(segment, wideWidth)) {
+              p.println(line);
+            }
+          } else {
+            p.setTextNormal();
+            for (const line of wrapWords(segment, this.width)) {
+              p.println(line);
+            }
+            p.setTextDoubleWidth();
           }
         }
-        p.setTextDoubleWidth();
       }
       p.println('');
     }
