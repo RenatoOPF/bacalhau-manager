@@ -88,7 +88,7 @@ export class StockService {
         name: dto.name.trim(),
         unit: dto.unit ?? 'porção',
         qtyMilli,
-        alertMilli: toMilli(dto.alertQty ?? 2),
+        alertMilli: toMilli(dto.alertQty ?? 1),
       },
     });
     if (qtyMilli !== 0) {

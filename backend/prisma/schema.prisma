@@ -107,8 +107,8 @@ model StockItem {
   unit     String @default("porção")
   // Saldo em milésimos da unidade (1000 = 1 porção/kg/un).
   qtyMilli Int    @default(0)
-  // Alerta no admin quando qtyMilli <= alertMilli.
-  alertMilli Int  @default(2000)
+  // Alerta no admin quando qtyMilli <= alertMilli (padrão: 1 porção/kg/un).
+  alertMilli Int  @default(1000)
   active    Boolean @default(true)
   sortOrder Int     @default(0)
 
