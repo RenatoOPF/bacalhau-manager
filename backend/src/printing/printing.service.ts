@@ -64,8 +64,18 @@ function wrapWords(text: string, width: number): string[] {
   return lines.length ? lines : [''];
 }
 
+const NAME_PARTICLES = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'von', 'van']);
+
 function firstTwoNames(name: string): string {
-  return name.trim().split(/\s+/).slice(0, 2).join(' ');
+  const words = name.trim().split(/\s+/);
+  const result: string[] = [];
+  let count = 0;
+  for (const word of words) {
+    result.push(word);
+    if (!NAME_PARTICLES.has(word.toLowerCase())) count++;
+    if (count === 2) break;
+  }
+  return result.join(' ');
 }
 
 const PAYMENT_LABEL: Record<string, string> = {
