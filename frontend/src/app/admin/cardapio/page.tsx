@@ -11,6 +11,41 @@ import {
   type MenuItemOption,
 } from '@/lib/api';
 
+/**
+ * Seletor de insumo (estoque) de um prato ou opção. A lista de insumos vem do
+ * cache do react-query (uma busca só para a página toda).
+ */
+function StockSelect({
+  value,
+  onSelect,
+  disabled,
+}: {
+  value: string | null | undefined;
+  onSelect: (stockItemId: string | null) => void;
+  disabled?: boolean;
+}) {
+  const { data: stock } = useQuery({
+    queryKey: ['stock'],
+    queryFn: api.listStock,
+  });
+  return (
+    <select
+      className="rounded border p-1 text-xs text-gray-600"
+      title="Insumo descontado do estoque"
+      value={value ?? ''}
+      disabled={disabled}
+      onChange={(e) => onSelect(e.target.value || null)}
+    >
+      <option value="">sem estoque</option>
+      {(stock ?? []).map((s) => (
+        <option key={s.id} value={s.id}>
+          {s.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 /** Converte texto em reais ("89,90" ou "89.90") para centavos. */
 function reaisToCents(value: string): number | null {
   const normalized = value.replace(/\s/g, '').replace(',', '.');
@@ -430,6 +465,25 @@ function ItemRow({
             formatBRL(item.priceCents)
           )}
         </span>
+        <StockSelect
+          value={item.stockItemId}
+          disabled={update.isPending}
+          onSelect={(stockItemId) => update.mutate({ stockItemId })}
+        />
+        {!hasOptions && item.stockItemId && (
+          <select
+            className="rounded border p-1 text-xs text-gray-600"
+            title="Quanto cada venda desconta do estoque"
+            value={item.stockHalfUnits ?? 2}
+            disabled={update.isPending}
+            onChange={(e) =>
+              update.mutate({ stockHalfUnits: Number(e.target.value) })
+            }
+          >
+            <option value={1}>desconta ½</option>
+            <option value={2}>desconta 1</option>
+          </select>
+        )}
         <button
           className="rounded border px-2 py-1 text-xs"
           onClick={() => setEditing(true)}
@@ -592,6 +646,11 @@ function OptionRow({
         {toPrintOption(option.name).toUpperCase()}
       </span>
       <span>{formatBRL(option.priceCents)}</span>
+      <StockSelect
+        value={option.stockItemId}
+        disabled={update.isPending}
+        onSelect={(stockItemId) => update.mutate({ stockItemId })}
+      />
       <button
         className="rounded border px-2 py-0.5 text-xs"
         onClick={() => setEditing(true)}

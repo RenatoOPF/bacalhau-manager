@@ -13,6 +13,7 @@ import { QueueModule } from './queue/queue.module';
 import { PrintingModule } from './printing/printing.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { IntegrationsModule } from './integrations/integrations.module';
+import { StockModule } from './stock/stock.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { IntegrationsModule } from './integrations/integrations.module';
     CashModule,
     ReportsModule,
     IntegrationsModule,
+    StockModule,
   ],
 })
 export class AppModule {}

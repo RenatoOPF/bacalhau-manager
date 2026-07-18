@@ -57,6 +57,17 @@ model MenuItem {
   sortOrder   Int              @default(0)
   options     MenuItemOption[]
   orderItems  OrderItem[]
+
+  // Insumo consumido pelo prato (estoque em porções). SetNull: excluir o
+  // insumo não apaga o prato. Nos itens COM opções, o vínculo da opção
+  // (se houver) tem prioridade sobre este.
+  stockItem      StockItem? @relation(fields: [stockItemId], references: [id], onDelete: SetNull)
+  stockItemId    String?
+  // Consumo em meias porções por unidade vendida quando o item NÃO tem
+  // opções (2 = 1 porção; executivos = 1). Com opções, o consumo vem do
+  // nome da opção (Meia = 1, Inteira = 2).
+  stockHalfUnits Int        @default(2)
+
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
@@ -74,10 +85,58 @@ model MenuItemOption {
   priceCents Int
   sortOrder  Int      @default(0)
   available  Boolean  @default(true)
+
+  // Insumo da opção — necessário quando a proteína varia por opção
+  // (ex.: Tilápia/Sirigado/Salmão). Se nulo, vale o insumo do item.
+  stockItem   StockItem? @relation(fields: [stockItemId], references: [id], onDelete: SetNull)
+  stockItemId String?
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   @@index([menuItemId])
+}
+
+// ---------- Estoque (por porções) ----------
+
+/// Insumo controlado por porções (ex.: "Bacalhau em Posta", "Camarão",
+/// "Tilápia"). O saldo é guardado em MEIAS porções (halfUnits) para não ter
+/// fração no banco: Meia Porção desconta 1, Porção Inteira desconta 2.
+/// Estoque pode ficar negativo — zerado só alerta no admin, não bloqueia venda.
+model StockItem {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  // Saldo em meias porções (2 = 1 porção).
+  halfUnits Int     @default(0)
+  // Alerta no admin quando halfUnits <= alertHalfUnits.
+  alertHalfUnits Int @default(4)
+  active    Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  menuItems MenuItem[]
+  options   MenuItemOption[]
+  movements StockMovement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Movimentação de estoque (venda, estorno, reposição, ajuste). Permite
+/// auditar o saldo e estornar pedidos cancelados/excluídos de forma
+/// idempotente (o estorno zera o saldo líquido dos movimentos do pedido).
+model StockMovement {
+  id          String    @id @default(cuid())
+  stockItem   StockItem @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+  stockItemId String
+  // Em meias porções; negativo = saída (venda), positivo = entrada/estorno.
+  deltaHalfUnits Int
+  reason      String
+  // Pedido que originou o movimento (venda/estorno); nulo em ajustes manuais.
+  orderId     String?
+  createdAt   DateTime  @default(now())
+
+  @@index([stockItemId])
+  @@index([orderId])
 }
 
 // ---------- Pedidos ----------

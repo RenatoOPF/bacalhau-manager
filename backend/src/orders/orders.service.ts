@@ -16,12 +16,14 @@ import {
 import { CreateOrderDto } from './dto/create-order.dto';
 import { nextDailyNumber } from '../common/daily-number';
 import { dayRange, localDay } from '../common/date-range';
+import { StockService } from '../stock/stock.service';
 
 @Injectable()
 export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
+    private readonly stock: StockService,
     @InjectQueue(ORDERS_QUEUE)
     private readonly ordersQueue: Queue<PrintOrderJobData>,
   ) {}
@@ -98,6 +100,9 @@ export class OrdersService {
     // Enfileira a impressão — a fila garante o reprocessamento se falhar.
     await this.ordersQueue.add(PRINT_ORDER_JOB, { orderId: order.id });
 
+    // Baixa o estoque (nunca lança — falha só é registrada no log).
+    await this.stock.consumeForOrder(order);
+
     this.realtime.emitOrderCreated(order);
     return order;
   }
@@ -153,6 +158,12 @@ export class OrdersService {
       data: { status },
       include: { items: true },
     });
+    if (status === OrderStatus.CANCELED) {
+      await this.stock.restoreForOrder(
+        order.id,
+        `Estorno — pedido #${order.protocol} cancelado`,
+      );
+    }
     this.realtime.emitOrderStatusChanged(order);
     return order;
   }
@@ -167,6 +178,11 @@ export class OrdersService {
   /** Exclui o pedido (e seus itens, em cascata). */
   async deleteOrder(id: string) {
     const order = await this.findOne(id);
+    // Estorna antes de excluir (as movimentações guardam o orderId).
+    await this.stock.restoreForOrder(
+      order.id,
+      `Estorno — pedido #${order.protocol} excluído`,
+    );
     await this.prisma.order.delete({ where: { id: order.id } });
     return { deleted: true, protocol: order.protocol };
   }

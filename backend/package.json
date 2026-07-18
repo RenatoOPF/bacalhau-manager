@@ -16,7 +16,8 @@
     "prisma:studio": "prisma studio",
     "db:seed": "ts-node prisma/seed.ts",
     "menu:import": "ts-node prisma/import-menu.ts",
-    "legacy:import": "ts-node prisma/import-legacy-orders.ts"
+    "legacy:import": "ts-node prisma/import-legacy-orders.ts",
+    "stock:seed": "ts-node prisma/seed-stock.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^10.2.0",

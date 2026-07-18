@@ -56,6 +56,8 @@ export interface MenuItemOption {
   priceCents: number;
   available: boolean;
   sortOrder?: number;
+  // Insumo da opção (proteína por opção, ex.: Tilápia/Salmão).
+  stockItemId?: string | null;
 }
 
 export interface MenuItem {
@@ -67,6 +69,10 @@ export interface MenuItem {
   // Presente quando o item tem variações (ex.: Individual/Inteira). Quando há
   // opções, o preço vem da opção escolhida.
   options?: MenuItemOption[];
+  // Insumo consumido pelo prato (estoque por porções).
+  stockItemId?: string | null;
+  // Consumo em meias porções por unidade, para itens sem opções (2 = 1 porção).
+  stockHalfUnits?: number;
 }
 
 export interface MenuCategory {
@@ -90,6 +96,8 @@ export interface UpdateItemPayload {
   description?: string;
   priceCents?: number;
   available?: boolean;
+  stockItemId?: string | null;
+  stockHalfUnits?: number;
 }
 
 export type OrderStatus =
@@ -220,6 +228,39 @@ export interface UpdateOptionPayload {
   priceCents?: number;
   sortOrder?: number;
   available?: boolean;
+  stockItemId?: string | null;
+}
+
+// ---- Estoque (por porções) ----
+
+export interface StockItem {
+  id: string;
+  name: string;
+  // Saldo em porções (aceita meia: 12.5).
+  portions: number;
+  // Alerta de baixo estoque quando portions <= alertPortions.
+  alertPortions: number;
+  active: boolean;
+  // Quantos pratos/opções do cardápio consomem este insumo.
+  linkedCount: number;
+}
+
+export interface StockMovementRow {
+  id: string;
+  deltaPortions: number;
+  reason: string;
+  orderId?: string | null;
+  createdAt: string;
+}
+
+export interface UpdateStockPayload {
+  name?: string;
+  active?: boolean;
+  alertPortions?: number;
+  // Define o saldo absoluto (contagem) — exclusivo com deltaPortions.
+  setPortions?: number;
+  // Ajuste relativo: positivo repõe, negativo baixa.
+  deltaPortions?: number;
 }
 
 export type Role = 'ADMIN' | 'MANAGER' | 'KITCHEN' | 'DELIVERY';
@@ -331,6 +372,27 @@ export const api = {
     }),
   deleteOption: (id: string) =>
     request<{ id: string }>(`/menu/options/${id}`, { method: 'DELETE' }),
+
+  // ---- Estoque ----
+  listStock: () => request<StockItem[]>('/stock'),
+  createStock: (payload: {
+    name: string;
+    portions?: number;
+    alertPortions?: number;
+  }) =>
+    request<StockItem>('/stock', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateStock: (id: string, payload: UpdateStockPayload) =>
+    request<StockItem>(`/stock/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteStock: (id: string) =>
+    request<{ id: string }>(`/stock/${id}`, { method: 'DELETE' }),
+  stockMovements: (id: string) =>
+    request<StockMovementRow[]>(`/stock/${id}/movements`),
 
   createOrder: (payload: CreateOrderPayload) =>
     request<Order>('/orders', {

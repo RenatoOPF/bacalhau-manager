@@ -13,6 +13,7 @@ import { nextDailyNumber } from '../common/daily-number';
 import { decodeEscPosBase64, toLines } from './escpos';
 import { isIfood, parseIfood } from './ifood.parser';
 import { ParsedExternalOrder } from './parsed-order';
+import { StockService } from '../stock/stock.service';
 
 export type IngestResult =
   | { status: 'created'; protocol: number; channel: string }
@@ -26,6 +27,7 @@ export class IntegrationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
+    private readonly stock: StockService,
     @InjectQueue(ORDERS_QUEUE)
     private readonly ordersQueue: Queue<PrintOrderJobData>,
   ) {}
@@ -96,6 +98,10 @@ export class IntegrationsService {
     });
 
     await this.ordersQueue.add(PRINT_ORDER_JOB, { orderId: order.id });
+
+    // Baixa o estoque casando os itens por texto (nunca lança).
+    await this.stock.consumeForOrder(order);
+
     this.realtime.emitOrderCreated(order);
     this.logger.log(
       `Pedido ${parsed.channel} criado (#${order.protocol}, ${parsed.items.length} itens).`,
