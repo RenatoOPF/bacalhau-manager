@@ -58,15 +58,10 @@ model MenuItem {
   options     MenuItemOption[]
   orderItems  OrderItem[]
 
-  // Insumo consumido pelo prato (estoque em porções). SetNull: excluir o
-  // insumo não apaga o prato. Nos itens COM opções, o vínculo da opção
-  // (se houver) tem prioridade sobre este.
-  stockItem      StockItem? @relation(fields: [stockItemId], references: [id], onDelete: SetNull)
-  stockItemId    String?
-  // Consumo em meias porções por unidade vendida quando o item NÃO tem
-  // opções (2 = 1 porção; executivos = 1). Com opções, o consumo vem do
-  // nome da opção (Meia = 1, Inteira = 2).
-  stockHalfUnits Int        @default(2)
+  // Insumos consumidos pelo prato (um prato pode descontar de vários,
+  // ex.: Moqueca de Polvo com Camarão). Nos itens COM opções, os vínculos
+  // da opção (se houver) têm prioridade sobre os do item.
+  stockLinks StockLink[]
 
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
@@ -86,10 +81,9 @@ model MenuItemOption {
   sortOrder  Int      @default(0)
   available  Boolean  @default(true)
 
-  // Insumo da opção — necessário quando a proteína varia por opção
-  // (ex.: Tilápia/Sirigado/Salmão). Se nulo, vale o insumo do item.
-  stockItem   StockItem? @relation(fields: [stockItemId], references: [id], onDelete: SetNull)
-  stockItemId String?
+  // Insumos da opção — necessário quando a proteína varia por opção
+  // (ex.: Tilápia/Sirigado/Salmão). Se vazio, valem os vínculos do item.
+  stockLinks StockLink[]
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -97,39 +91,68 @@ model MenuItemOption {
   @@index([menuItemId])
 }
 
-// ---------- Estoque (por porções) ----------
+// ---------- Estoque ----------
 
-/// Insumo controlado por porções (ex.: "Bacalhau em Posta", "Camarão",
-/// "Tilápia"). O saldo é guardado em MEIAS porções (halfUnits) para não ter
-/// fração no banco: Meia Porção desconta 1, Porção Inteira desconta 2.
+/// Insumo de estoque com unidade própria: porções preparadas ("Bacalhau
+/// Desfiado"), matéria-prima em kg ("Bacalhau (kg)") ou unidades ("Bolinho
+/// de Bacalhau"). O saldo é guardado em MILÉSIMOS da unidade (qtyMilli) para
+/// não ter fração no banco: 3,5 porções = 3500; 1,2 kg = 1200.
+/// A conversão kg → porções é registrada manualmente (produção): "usei 1 kg
+/// para fazer 3 porções de desfiado".
 /// Estoque pode ficar negativo — zerado só alerta no admin, não bloqueia venda.
 model StockItem {
-  id        String  @id @default(cuid())
-  name      String  @unique
-  // Saldo em meias porções (2 = 1 porção).
-  halfUnits Int     @default(0)
-  // Alerta no admin quando halfUnits <= alertHalfUnits.
-  alertHalfUnits Int @default(4)
+  id       String @id @default(cuid())
+  name     String @unique
+  // Unidade de medida do saldo: "porção" | "kg" | "un".
+  unit     String @default("porção")
+  // Saldo em milésimos da unidade (1000 = 1 porção/kg/un).
+  qtyMilli Int    @default(0)
+  // Alerta no admin quando qtyMilli <= alertMilli.
+  alertMilli Int  @default(2000)
   active    Boolean @default(true)
   sortOrder Int     @default(0)
 
-  menuItems MenuItem[]
-  options   MenuItemOption[]
+  links     StockLink[]
   movements StockMovement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-/// Movimentação de estoque (venda, estorno, reposição, ajuste). Permite
-/// auditar o saldo e estornar pedidos cancelados/excluídos de forma
+/// Vínculo prato/opção → insumo, com a quantidade consumida por venda
+/// (em milésimos da unidade do insumo). Exatamente UM de menuItemId/optionId.
+/// Em itens com opções de tamanho, qtyMilli refere-se à Porção Inteira e a
+/// Meia Porção desconta metade.
+model StockLink {
+  id          String    @id @default(cuid())
+  stockItem   StockItem @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+  stockItemId String
+
+  menuItem   MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  menuItemId String?
+  option     MenuItemOption? @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  optionId   String?
+
+  // Consumo por venda em milésimos (1000 = 1 porção/kg/un; 500 = meia).
+  qtyMilli Int @default(1000)
+
+  createdAt DateTime @default(now())
+
+  @@unique([stockItemId, menuItemId])
+  @@unique([stockItemId, optionId])
+  @@index([menuItemId])
+  @@index([optionId])
+}
+
+/// Movimentação de estoque (venda, estorno, reposição, produção, ajuste).
+/// Permite auditar o saldo e estornar pedidos cancelados/excluídos de forma
 /// idempotente (o estorno zera o saldo líquido dos movimentos do pedido).
 model StockMovement {
   id          String    @id @default(cuid())
   stockItem   StockItem @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
   stockItemId String
-  // Em meias porções; negativo = saída (venda), positivo = entrada/estorno.
-  deltaHalfUnits Int
+  // Em milésimos da unidade; negativo = saída (venda/uso), positivo = entrada.
+  deltaMilli Int
   reason      String
   // Pedido que originou o movimento (venda/estorno); nulo em ajustes manuais.
   orderId     String?

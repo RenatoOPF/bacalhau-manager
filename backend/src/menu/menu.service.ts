@@ -33,7 +33,8 @@ export class MenuService {
     });
   }
 
-  /** Cardápio completo para o admin (inclui itens/opções indisponíveis). */
+  /** Cardápio completo para o admin (inclui itens/opções indisponíveis e os
+   *  vínculos de estoque de itens e opções). */
   getFullMenu() {
     return this.prisma.menuCategory.findMany({
       orderBy: { sortOrder: 'asc' },
@@ -41,7 +42,11 @@ export class MenuService {
         items: {
           orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
           include: {
-            options: { orderBy: [{ sortOrder: 'asc' }, { priceCents: 'asc' }] },
+            options: {
+              orderBy: [{ sortOrder: 'asc' }, { priceCents: 'asc' }],
+              include: { stockLinks: true },
+            },
+            stockLinks: true,
           },
         },
       },

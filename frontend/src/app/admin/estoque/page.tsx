@@ -2,18 +2,27 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, type StockItem } from '@/lib/api';
+import { api, type StockItem, type StockUnit } from '@/lib/api';
 
-/** "12,5" no lugar de "12.5" (e sem casa decimal quando inteiro). */
-function fmtPortions(n: number): string {
-  return n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+/** "12,5" no lugar de "12.5" (sem casa decimal quando inteiro). */
+function fmtQty(n: number): string {
+  return n.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 }
 
-/** Converte texto ("12,5" ou "12.5") em número de porções. */
-function parsePortions(value: string): number | null {
+/** Converte texto ("12,5" ou "12.5") em quantidade. */
+function parseQty(value: string): number | null {
   const n = Number(value.replace(/\s/g, '').replace(',', '.'));
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
+
+const UNITS: StockUnit[] = ['porção', 'kg', 'un'];
+
+// Botões rápidos de ajuste por unidade (kg repõe em incrementos maiores).
+const QUICK: Record<StockUnit, number[]> = {
+  porção: [-1, -0.5, 0.5, 1, 5],
+  kg: [-1, -0.5, 0.5, 1, 5],
+  un: [-6, -1, 1, 6, 12],
+};
 
 export default function EstoquePage() {
   const qc = useQueryClient();
@@ -25,53 +34,69 @@ export default function EstoquePage() {
   });
 
   const [newName, setNewName] = useState('');
-  const [newPortions, setNewPortions] = useState('');
+  const [newUnit, setNewUnit] = useState<StockUnit>('porção');
+  const [newQty, setNewQty] = useState('');
 
   const create = useMutation({
     mutationFn: () =>
       api.createStock({
         name: newName.trim(),
-        portions: parsePortions(newPortions) ?? 0,
+        unit: newUnit,
+        qty: parseQty(newQty) ?? 0,
       }),
     onSuccess: () => {
       setNewName('');
-      setNewPortions('');
+      setNewQty('');
       invalidate();
     },
   });
 
   const items = stock ?? [];
-  const low = items.filter((s) => s.active && s.portions <= s.alertPortions);
+  const low = items.filter((s) => s.active && s.qty <= s.alertQty);
 
   return (
     <main className="mx-auto max-w-3xl p-6">
       <h1 className="text-2xl font-bold">Estoque</h1>
       <p className="mt-1 text-sm text-gray-500">
-        Saldo em porções (meia porção desconta 0,5). Zerado não bloqueia a
-        venda — só alerta aqui. Vincule os pratos aos insumos na aba Cardápio.
+        Porções preparadas, matéria-prima (kg) e unidades. A venda desconta
+        sozinha (Meia = 0,5 porção); zerado não bloqueia — só alerta aqui. Use
+        “Produção” para converter kg em porções. Vínculos: aba Cardápio.
       </p>
 
       {low.length > 0 && (
         <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
           <strong>Estoque baixo:</strong>{' '}
           {low
-            .map((s) => `${s.name} (${fmtPortions(s.portions)})`)
+            .map((s) => `${s.name} (${fmtQty(s.qty)} ${s.unit})`)
             .join(' · ')}
         </div>
       )}
 
+      <ProduceWidget stock={items} onDone={invalidate} />
+
       <div className="mt-6 flex flex-wrap gap-2">
         <input
           className="flex-1 rounded border p-2"
-          placeholder="Novo insumo (ex: Bacalhau em Posta)"
+          placeholder="Novo insumo (ex: Bacalhau (kg))"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
         />
+        <select
+          className="rounded border p-2"
+          value={newUnit}
+          onChange={(e) => setNewUnit(e.target.value as StockUnit)}
+        >
+          {UNITS.map((u) => (
+            <option key={u} value={u}>
+              {u}
+            </option>
+          ))}
+        </select>
         <input
-          className="w-28 rounded border p-2"
-          placeholder="Porções"
-          value={newPortions}
-          onChange={(e) => setNewPortions(e.target.value)}
+          className="w-24 rounded border p-2"
+          placeholder="Qtd"
+          value={newQty}
+          onChange={(e) => setNewQty(e.target.value)}
         />
         <button
           className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
@@ -95,6 +120,106 @@ export default function EstoquePage() {
         )}
       </div>
     </main>
+  );
+}
+
+/**
+ * Produção manual: "usei X (origem, ex.: kg de bacalhau) para fazer Y
+ * (destino, ex.: porções de desfiado)". Baixa a origem e credita o destino.
+ */
+function ProduceWidget({
+  stock,
+  onDone,
+}: {
+  stock: StockItem[];
+  onDone: () => void;
+}) {
+  const [fromId, setFromId] = useState('');
+  const [fromQty, setFromQty] = useState('');
+  const [toId, setToId] = useState('');
+  const [toQty, setToQty] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const produce = useMutation({
+    mutationFn: () => {
+      const f = parseQty(fromQty);
+      const t = parseQty(toQty);
+      if (!fromId || !toId || !f || !t) {
+        throw new Error('Preencha origem, destino e quantidades.');
+      }
+      return api.produceStock({ fromId, fromQty: f, toId, toQty: t });
+    },
+    onSuccess: () => {
+      setFromQty('');
+      setToQty('');
+      setError(null);
+      onDone();
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const unitOf = (id: string) => stock.find((s) => s.id === id)?.unit ?? '';
+
+  return (
+    <div className="mt-4 rounded-lg border bg-white p-3">
+      <p className="text-sm font-semibold">Produção</p>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+        <span>Usei</span>
+        <input
+          className="w-20 rounded border p-1"
+          placeholder="1"
+          value={fromQty}
+          onChange={(e) => setFromQty(e.target.value)}
+        />
+        <select
+          className="rounded border p-1"
+          value={fromId}
+          onChange={(e) => setFromId(e.target.value)}
+        >
+          <option value="">origem...</option>
+          {stock.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name} ({s.unit})
+            </option>
+          ))}
+        </select>
+        <span>para fazer</span>
+        <input
+          className="w-20 rounded border p-1"
+          placeholder="3"
+          value={toQty}
+          onChange={(e) => setToQty(e.target.value)}
+        />
+        <select
+          className="rounded border p-1"
+          value={toId}
+          onChange={(e) => setToId(e.target.value)}
+        >
+          <option value="">destino...</option>
+          {stock.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name} ({s.unit})
+            </option>
+          ))}
+        </select>
+        <button
+          className="rounded bg-green-600 px-3 py-1 text-white disabled:opacity-50"
+          disabled={produce.isPending}
+          onClick={() => produce.mutate()}
+        >
+          Registrar
+        </button>
+      </div>
+      {fromId && toId && (
+        <p className="mt-1 text-xs text-gray-500">
+          Ex.: {fromQty || 'X'} {unitOf(fromId)} de{' '}
+          {stock.find((s) => s.id === fromId)?.name} →{' '}
+          {toQty || 'Y'} {unitOf(toId)} de{' '}
+          {stock.find((s) => s.id === toId)?.name}
+        </p>
+      )}
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+    </div>
   );
 }
 
@@ -132,8 +257,8 @@ function StockRow({
     enabled: showHistory,
   });
 
-  const zero = item.portions <= 0;
-  const lowStock = !zero && item.portions <= item.alertPortions;
+  const zero = item.qty <= 0;
+  const lowStock = !zero && item.qty <= item.alertQty;
 
   return (
     <div
@@ -149,8 +274,8 @@ function StockRow({
         <div className="min-w-32 flex-1">
           <p className="font-medium">{item.name}</p>
           <p className="text-xs text-gray-500">
-            {item.linkedCount} prato(s) vinculado(s) · alerta em{' '}
-            {fmtPortions(item.alertPortions)}
+            {item.linkedCount} vínculo(s) · alerta em {fmtQty(item.alertQty)}{' '}
+            {item.unit}
           </p>
         </div>
         <span
@@ -158,18 +283,20 @@ function StockRow({
             zero ? 'text-red-600' : lowStock ? 'text-amber-600' : ''
           }`}
         >
-          {fmtPortions(item.portions)}
-          <span className="ml-1 text-xs font-normal text-gray-500">porções</span>
+          {fmtQty(item.qty)}
+          <span className="ml-1 text-xs font-normal text-gray-500">
+            {item.unit}
+          </span>
         </span>
         <div className="flex items-center gap-1">
-          {[-1, -0.5, 0.5, 1, 5].map((d) => (
+          {(QUICK[item.unit] ?? QUICK['porção']).map((d) => (
             <button
               key={d}
               className="rounded border px-2 py-1 text-xs disabled:opacity-50"
               disabled={update.isPending}
-              onClick={() => update.mutate({ deltaPortions: d })}
+              onClick={() => update.mutate({ deltaQty: d })}
             >
-              {d > 0 ? `+${fmtPortions(d)}` : fmtPortions(d)}
+              {d > 0 ? `+${fmtQty(d)}` : fmtQty(d)}
             </button>
           ))}
         </div>
@@ -182,10 +309,10 @@ function StockRow({
           />
           <button
             className="rounded bg-blue-600 px-2 py-1 text-xs text-white disabled:opacity-50"
-            disabled={update.isPending || parsePortions(setValue) === null}
+            disabled={update.isPending || parseQty(setValue) === null}
             onClick={() => {
-              const portions = parsePortions(setValue);
-              if (portions !== null) update.mutate({ setPortions: portions });
+              const qty = parseQty(setValue);
+              if (qty !== null) update.mutate({ setQty: qty });
             }}
           >
             Definir
@@ -219,8 +346,8 @@ function StockRow({
           {(movements ?? []).map((m) => (
             <li key={m.id} className="flex justify-between py-0.5">
               <span>
-                {m.deltaPortions > 0 ? '+' : ''}
-                {fmtPortions(m.deltaPortions)} — {m.reason}
+                {m.deltaQty > 0 ? '+' : ''}
+                {fmtQty(m.deltaQty)} — {m.reason}
               </span>
               <span className="text-gray-400">
                 {new Date(m.createdAt).toLocaleString('pt-BR')}

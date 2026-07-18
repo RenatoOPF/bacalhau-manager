@@ -9,40 +9,151 @@ import {
   type MenuCategory,
   type MenuItem,
   type MenuItemOption,
+  type StockLink,
 } from '@/lib/api';
 
+/** "0,5" no lugar de "0.5". */
+function fmtQty(n: number): string {
+  return n.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+}
+
+function parseQty(value: string): number | null {
+  const n = Number(value.replace(/\s/g, '').replace(',', '.'));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 /**
- * Seletor de insumo (estoque) de um prato ou opção. A lista de insumos vem do
- * cache do react-query (uma busca só para a página toda).
+ * Vínculos de estoque de um prato ou opção. Um prato pode consumir vários
+ * insumos (ex.: Moqueca de Polvo com Camarão), cada um com a quantidade
+ * descontada por venda (em itens com opções de tamanho, vale para a Porção
+ * Inteira — a Meia desconta metade). A lista de insumos vem do cache do
+ * react-query (uma busca só para a página toda).
  */
-function StockSelect({
-  value,
-  onSelect,
-  disabled,
+function StockLinksEditor({
+  links,
+  menuItemId,
+  optionId,
+  defaultQty,
+  onChange,
 }: {
-  value: string | null | undefined;
-  onSelect: (stockItemId: string | null) => void;
-  disabled?: boolean;
+  links: StockLink[];
+  menuItemId?: string;
+  optionId?: string;
+  defaultQty?: number;
+  onChange: () => void;
 }) {
   const { data: stock } = useQuery({
     queryKey: ['stock'],
     queryFn: api.listStock,
   });
+  const [adding, setAdding] = useState(false);
+  const [stockItemId, setStockItemId] = useState('');
+  const [qty, setQty] = useState(fmtQty(defaultQty ?? 1));
+
+  const add = useMutation({
+    mutationFn: () => {
+      const q = parseQty(qty);
+      if (!stockItemId || q === null) throw new Error('Insumo e qtd válida.');
+      return api.createStockLink({
+        stockItemId,
+        ...(menuItemId ? { menuItemId } : { optionId }),
+        qty: q,
+      });
+    },
+    onSuccess: () => {
+      setAdding(false);
+      setStockItemId('');
+      onChange();
+    },
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => api.deleteStockLink(id),
+    onSuccess: onChange,
+  });
+  const updateQty = useMutation({
+    mutationFn: ({ id, q }: { id: string; q: number }) =>
+      api.updateStockLink(id, q),
+    onSuccess: onChange,
+  });
+
+  const nameOf = (id: string) =>
+    (stock ?? []).find((s) => s.id === id)?.name ?? '?';
+
   return (
-    <select
-      className="rounded border p-1 text-xs text-gray-600"
-      title="Insumo descontado do estoque"
-      value={value ?? ''}
-      disabled={disabled}
-      onChange={(e) => onSelect(e.target.value || null)}
-    >
-      <option value="">sem estoque</option>
-      {(stock ?? []).map((s) => (
-        <option key={s.id} value={s.id}>
-          {s.name}
-        </option>
+    <span className="inline-flex flex-wrap items-center gap-1 text-xs">
+      {links.map((l) => (
+        <span
+          key={l.id}
+          className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-blue-800"
+        >
+          <button
+            title="Clique para alterar a quantidade descontada por venda"
+            onClick={() => {
+              const input = prompt(
+                `Consumo de "${nameOf(l.stockItemId)}" por venda:`,
+                fmtQty(l.qtyMilli / 1000),
+              );
+              if (input === null) return;
+              const q = parseQty(input);
+              if (q !== null) updateQty.mutate({ id: l.id, q });
+            }}
+          >
+            {nameOf(l.stockItemId)} ×{fmtQty(l.qtyMilli / 1000)}
+          </button>
+          <button
+            className="text-blue-400 hover:text-red-600"
+            title="Remover vínculo"
+            disabled={remove.isPending}
+            onClick={() => remove.mutate(l.id)}
+          >
+            ✕
+          </button>
+        </span>
       ))}
-    </select>
+      {adding ? (
+        <>
+          <select
+            className="rounded border p-0.5"
+            value={stockItemId}
+            onChange={(e) => setStockItemId(e.target.value)}
+          >
+            <option value="">insumo...</option>
+            {(stock ?? []).map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} ({s.unit})
+              </option>
+            ))}
+          </select>
+          <input
+            className="w-12 rounded border p-0.5"
+            title="Quantidade descontada por venda"
+            value={qty}
+            onChange={(e) => setQty(e.target.value)}
+          />
+          <button
+            className="rounded bg-green-600 px-1.5 py-0.5 text-white disabled:opacity-50"
+            disabled={add.isPending}
+            onClick={() => add.mutate()}
+          >
+            ok
+          </button>
+          <button
+            className="rounded border px-1.5 py-0.5"
+            onClick={() => setAdding(false)}
+          >
+            ✕
+          </button>
+        </>
+      ) : (
+        <button
+          className="rounded border border-dashed px-1.5 py-0.5 text-gray-400 hover:text-gray-700"
+          title="Vincular insumo de estoque"
+          onClick={() => setAdding(true)}
+        >
+          + estoque
+        </button>
+      )}
+    </span>
   );
 }
 
@@ -465,25 +576,11 @@ function ItemRow({
             formatBRL(item.priceCents)
           )}
         </span>
-        <StockSelect
-          value={item.stockItemId}
-          disabled={update.isPending}
-          onSelect={(stockItemId) => update.mutate({ stockItemId })}
+        <StockLinksEditor
+          links={item.stockLinks ?? []}
+          menuItemId={item.id}
+          onChange={onChange}
         />
-        {!hasOptions && item.stockItemId && (
-          <select
-            className="rounded border p-1 text-xs text-gray-600"
-            title="Quanto cada venda desconta do estoque"
-            value={item.stockHalfUnits ?? 2}
-            disabled={update.isPending}
-            onChange={(e) =>
-              update.mutate({ stockHalfUnits: Number(e.target.value) })
-            }
-          >
-            <option value={1}>desconta ½</option>
-            <option value={2}>desconta 1</option>
-          </select>
-        )}
         <button
           className="rounded border px-2 py-1 text-xs"
           onClick={() => setEditing(true)}
@@ -646,10 +743,11 @@ function OptionRow({
         {toPrintOption(option.name).toUpperCase()}
       </span>
       <span>{formatBRL(option.priceCents)}</span>
-      <StockSelect
-        value={option.stockItemId}
-        disabled={update.isPending}
-        onSelect={(stockItemId) => update.mutate({ stockItemId })}
+      <StockLinksEditor
+        links={option.stockLinks ?? []}
+        optionId={option.id}
+        defaultQty={/meia|individual/i.test(option.name) ? 0.5 : 1}
+        onChange={onChange}
       />
       <button
         className="rounded border px-2 py-0.5 text-xs"

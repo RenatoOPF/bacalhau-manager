@@ -1,14 +1,18 @@
 import {
   IsBoolean,
+  IsIn,
   IsNumber,
   IsOptional,
+  IsPositive,
   IsString,
   Min,
   MinLength,
 } from 'class-validator';
 
-// As quantidades chegam em PORÇÕES (aceitam meia: 0.5, 1.5...); o service
-// converte para meias porções (inteiro) antes de gravar.
+// As quantidades chegam na UNIDADE do insumo (porções/kg/un, aceitam fração:
+// 0.5 porção, 1.2 kg); o service converte para milésimos antes de gravar.
+
+export const STOCK_UNITS = ['porção', 'kg', 'un'] as const;
 
 export class CreateStockItemDto {
   @IsString()
@@ -16,14 +20,18 @@ export class CreateStockItemDto {
   name: string;
 
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  portions?: number;
+  @IsIn(STOCK_UNITS as unknown as string[])
+  unit?: string;
 
   @IsOptional()
   @IsNumber()
   @Min(0)
-  alertPortions?: number;
+  qty?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  alertQty?: number;
 }
 
 export class UpdateStockItemDto {
@@ -33,22 +41,70 @@ export class UpdateStockItemDto {
   name?: string;
 
   @IsOptional()
+  @IsIn(STOCK_UNITS as unknown as string[])
+  unit?: string;
+
+  @IsOptional()
   @IsBoolean()
   active?: boolean;
 
   @IsOptional()
   @IsNumber()
   @Min(0)
-  alertPortions?: number;
+  alertQty?: number;
 
   // Define o saldo absoluto (contagem/inventário).
   @IsOptional()
   @IsNumber()
   @Min(0)
-  setPortions?: number;
+  setQty?: number;
 
   // Ajuste relativo: positivo repõe, negativo baixa.
   @IsOptional()
   @IsNumber()
-  deltaPortions?: number;
+  deltaQty?: number;
+}
+
+/** Produção manual: baixa a origem (ex.: kg) e credita o destino (porções). */
+export class ProduceDto {
+  @IsString()
+  fromId: string;
+
+  @IsNumber()
+  @IsPositive()
+  fromQty: number;
+
+  @IsString()
+  toId: string;
+
+  @IsNumber()
+  @IsPositive()
+  toQty: number;
+}
+
+/** Vínculo prato/opção → insumo (exatamente um de menuItemId/optionId). */
+export class CreateStockLinkDto {
+  @IsString()
+  stockItemId: string;
+
+  @IsOptional()
+  @IsString()
+  menuItemId?: string;
+
+  @IsOptional()
+  @IsString()
+  optionId?: string;
+
+  // Consumo por venda na unidade do insumo (em itens com opções de tamanho,
+  // refere-se à Porção Inteira; a Meia desconta metade).
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  qty?: number;
+}
+
+export class UpdateStockLinkDto {
+  @IsNumber()
+  @IsPositive()
+  qty: number;
 }

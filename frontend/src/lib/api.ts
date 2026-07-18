@@ -50,14 +50,25 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 // ---- Tipos compartilhados (espelham o backend) ----
 
+/** Vínculo prato/opção → insumo. qtyMilli = consumo por venda em milésimos
+ *  da unidade do insumo (1000 = 1 porção/kg/un). Em itens com opções de
+ *  tamanho refere-se à Porção Inteira (a Meia desconta metade). */
+export interface StockLink {
+  id: string;
+  stockItemId: string;
+  menuItemId?: string | null;
+  optionId?: string | null;
+  qtyMilli: number;
+}
+
 export interface MenuItemOption {
   id: string;
   name: string;
   priceCents: number;
   available: boolean;
   sortOrder?: number;
-  // Insumo da opção (proteína por opção, ex.: Tilápia/Salmão).
-  stockItemId?: string | null;
+  // Insumos da opção (proteína por opção, ex.: Tilápia/Salmão).
+  stockLinks?: StockLink[];
 }
 
 export interface MenuItem {
@@ -69,10 +80,8 @@ export interface MenuItem {
   // Presente quando o item tem variações (ex.: Individual/Inteira). Quando há
   // opções, o preço vem da opção escolhida.
   options?: MenuItemOption[];
-  // Insumo consumido pelo prato (estoque por porções).
-  stockItemId?: string | null;
-  // Consumo em meias porções por unidade, para itens sem opções (2 = 1 porção).
-  stockHalfUnits?: number;
+  // Insumos consumidos pelo prato (um prato pode descontar de vários).
+  stockLinks?: StockLink[];
 }
 
 export interface MenuCategory {
@@ -96,8 +105,6 @@ export interface UpdateItemPayload {
   description?: string;
   priceCents?: number;
   available?: boolean;
-  stockItemId?: string | null;
-  stockHalfUnits?: number;
 }
 
 export type OrderStatus =
@@ -228,18 +235,21 @@ export interface UpdateOptionPayload {
   priceCents?: number;
   sortOrder?: number;
   available?: boolean;
-  stockItemId?: string | null;
 }
 
-// ---- Estoque (por porções) ----
+// ---- Estoque ----
+
+export type StockUnit = 'porção' | 'kg' | 'un';
 
 export interface StockItem {
   id: string;
   name: string;
-  // Saldo em porções (aceita meia: 12.5).
-  portions: number;
-  // Alerta de baixo estoque quando portions <= alertPortions.
-  alertPortions: number;
+  // Unidade do saldo: porções preparadas, kg (matéria-prima) ou unidades.
+  unit: StockUnit;
+  // Saldo na unidade do insumo (aceita fração: 12.5 porções, 1.2 kg).
+  qty: number;
+  // Alerta de baixo estoque quando qty <= alertQty.
+  alertQty: number;
   active: boolean;
   // Quantos pratos/opções do cardápio consomem este insumo.
   linkedCount: number;
@@ -247,7 +257,7 @@ export interface StockItem {
 
 export interface StockMovementRow {
   id: string;
-  deltaPortions: number;
+  deltaQty: number;
   reason: string;
   orderId?: string | null;
   createdAt: string;
@@ -255,12 +265,13 @@ export interface StockMovementRow {
 
 export interface UpdateStockPayload {
   name?: string;
+  unit?: StockUnit;
   active?: boolean;
-  alertPortions?: number;
-  // Define o saldo absoluto (contagem) — exclusivo com deltaPortions.
-  setPortions?: number;
+  alertQty?: number;
+  // Define o saldo absoluto (contagem) — exclusivo com deltaQty.
+  setQty?: number;
   // Ajuste relativo: positivo repõe, negativo baixa.
-  deltaPortions?: number;
+  deltaQty?: number;
 }
 
 export type Role = 'ADMIN' | 'MANAGER' | 'KITCHEN' | 'DELIVERY';
@@ -377,8 +388,9 @@ export const api = {
   listStock: () => request<StockItem[]>('/stock'),
   createStock: (payload: {
     name: string;
-    portions?: number;
-    alertPortions?: number;
+    unit?: StockUnit;
+    qty?: number;
+    alertQty?: number;
   }) =>
     request<StockItem>('/stock', {
       method: 'POST',
@@ -393,6 +405,35 @@ export const api = {
     request<{ id: string }>(`/stock/${id}`, { method: 'DELETE' }),
   stockMovements: (id: string) =>
     request<StockMovementRow[]>(`/stock/${id}/movements`),
+  // Produção manual: baixa a origem (kg) e credita o destino (porções).
+  produceStock: (payload: {
+    fromId: string;
+    fromQty: number;
+    toId: string;
+    toQty: number;
+  }) =>
+    request<{ produced: boolean }>('/stock/produce', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  // Vínculos prato/opção → insumo.
+  createStockLink: (payload: {
+    stockItemId: string;
+    menuItemId?: string;
+    optionId?: string;
+    qty?: number;
+  }) =>
+    request<StockLink>('/stock/links', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateStockLink: (id: string, qty: number) =>
+    request<StockLink>(`/stock/links/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ qty }),
+    }),
+  deleteStockLink: (id: string) =>
+    request<{ id: string }>(`/stock/links/${id}`, { method: 'DELETE' }),
 
   createOrder: (payload: CreateOrderPayload) =>
     request<Order>('/orders', {
