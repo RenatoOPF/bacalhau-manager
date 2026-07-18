@@ -207,7 +207,9 @@ export class PrintingService {
     const p = this.buildPrinter(iface);
     p.alignCenter();
     p.setTextQuadArea();
-    p.println(firstTwoNames(order.customerName).toUpperCase());
+    for (const line of wrapWords(firstTwoNames(order.customerName).toUpperCase(), Math.floor(this.width / 2))) {
+      p.println(line);
+    }
     p.setTextNormal();
     p.println(`PEDIDO #${order.dailyNumber}`);
     // Pedido externo: referência do canal (ex.: "iFood #8156").
