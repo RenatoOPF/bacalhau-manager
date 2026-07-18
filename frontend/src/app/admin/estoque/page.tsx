@@ -15,6 +15,13 @@ function parseQty(value: string): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
+/** "porção" vira "porções" acima de 1 (kg e un não flexionam). */
+function unitLabel(unit: StockUnit, qty: number): string {
+  if (unit !== 'porção') return unit;
+  const abs = Math.abs(qty);
+  return abs > 0 && abs <= 1 ? 'porção' : 'porções';
+}
+
 const UNITS: StockUnit[] = ['porção', 'kg', 'un'];
 
 // Botões rápidos de ajuste por unidade (kg repõe em incrementos maiores).
@@ -67,7 +74,7 @@ export default function EstoquePage() {
         <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
           <strong>Estoque baixo:</strong>{' '}
           {low
-            .map((s) => `${s.name} (${fmtQty(s.qty)} ${s.unit})`)
+            .map((s) => `${s.name} (${fmtQty(s.qty)} ${unitLabel(s.unit, s.qty)})`)
             .join(' · ')}
         </div>
       )}
@@ -206,7 +213,7 @@ function ProduceWidget({
       {to && fromQty && toQty && (
         <p className="mt-1 text-xs text-gray-500">
           Baixa {fromQty} {source.unit} de {source.name} e credita {toQty}{' '}
-          {to.unit} de {to.name}.
+          {unitLabel(to.unit, parseQty(toQty) ?? 0)} de {to.name}.
         </p>
       )}
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
@@ -266,7 +273,7 @@ function StockRow({
           <p className="font-medium">{item.name}</p>
           <p className="text-xs text-gray-500">
             {item.linkedCount} vínculo(s) · alerta em {fmtQty(item.alertQty)}{' '}
-            {item.unit}
+            {unitLabel(item.unit, item.alertQty)}
           </p>
         </div>
         <span
@@ -276,7 +283,7 @@ function StockRow({
         >
           {fmtQty(item.qty)}
           <span className="ml-1 text-xs font-normal text-gray-500">
-            {item.unit}
+            {unitLabel(item.unit, item.qty)}
           </span>
         </span>
         <div className="flex items-center gap-1">
