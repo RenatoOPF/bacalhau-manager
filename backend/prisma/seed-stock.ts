@@ -29,6 +29,7 @@ const STOCK_ITEMS: [string, string][] = [
   ['Bacalhau em Lascas', 'porção'],
   ['Bacalhau em Posta', 'porção'],
   ['Casquinha de Bacalhau', 'porção'],
+  ['Salada de Bacalhau', 'porção'],
   ['Bolinho de Bacalhau', 'un'],
   ['Camarão', 'porção'],
   ['Tilápia', 'porção'],
@@ -46,6 +47,7 @@ const SOURCES: Record<string, string> = {
   'Bacalhau Desfiado': 'Bacalhau (kg)',
   'Bacalhau em Lascas': 'Bacalhau (kg)',
   'Casquinha de Bacalhau': 'Bacalhau (kg)',
+  'Salada de Bacalhau': 'Bacalhau (kg)',
 };
 
 // Categoria do cardápio → insumo (consumo 1 porção por Inteira; Meia = 0,5).
@@ -77,6 +79,7 @@ const ITEM_TO_STOCK: Record<string, [string, number]> = {
   'Moqueca de Polvo': ['Polvo', 1],
   'Arroz de Polvo': ['Polvo', 1],
   'Casquinha de Bacalhau': ['Casquinha de Bacalhau', 1],
+  'Salada de Bacalhau': ['Salada de Bacalhau', 1],
   'Bolinho de Bacalhau': ['Bolinho de Bacalhau', 1],
   'Porção de Bolinhos': ['Bolinho de Bacalhau', 6],
 };
