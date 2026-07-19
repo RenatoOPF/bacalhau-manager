@@ -198,7 +198,7 @@ export default function GestaoCardapioPage() {
   const categories = menu ?? [];
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
+    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
       <h1 className="page-title">Gestão do cardápio</h1>
 
       <div className="mt-6 flex gap-2">
@@ -541,7 +541,7 @@ function ItemRow({
 
   return (
     <li className="py-2">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="flex flex-col">
           <button
             className="text-xs leading-none text-brand-ink/50 disabled:opacity-20"
@@ -560,7 +560,7 @@ function ItemRow({
             ▼
           </button>
         </div>
-        <div className="flex-1">
+        <div className="min-w-40 flex-1">
           <p className={item.available ? 'font-semibold' : 'font-semibold text-brand-ink/40 line-through'}>
             {item.name.toUpperCase()}
           </p>
@@ -735,10 +735,12 @@ function OptionRow({
   }
 
   return (
-    <li className="flex items-center gap-2 text-sm">
+    <li className="flex flex-wrap items-center gap-2 text-sm">
       <span
         className={
-          option.available ? 'flex-1' : 'flex-1 text-brand-ink/40 line-through'
+          option.available
+            ? 'min-w-32 flex-1'
+            : 'min-w-32 flex-1 text-brand-ink/40 line-through'
         }
       >
         {toPrintOption(option.name).toUpperCase()}

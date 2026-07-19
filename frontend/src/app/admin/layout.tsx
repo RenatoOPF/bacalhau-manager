@@ -57,44 +57,50 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   const navClass = (href: string) =>
     pathname === href
-      ? 'rounded-md bg-brand-gold px-2.5 py-1 font-bold text-brand-ink'
-      : 'rounded-md px-2.5 py-1 font-medium text-brand-cream hover:bg-white/10';
+      ? 'whitespace-nowrap rounded-md bg-brand-gold px-2.5 py-1 font-bold text-brand-ink'
+      : 'whitespace-nowrap rounded-md px-2.5 py-1 font-medium text-brand-cream hover:bg-white/10';
 
   return (
     <AdminUserProvider user={user}>
-      <header className="border-b-4 border-brand-gold bg-brand-red">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 p-3">
-          <a href="/admin" className="flex items-center gap-2">
-            <img
-              src="/logo.jpeg"
-              alt="Restaurante Bacalhau & Cia"
-              className="h-9 w-9 rounded-full"
-            />
-            <span className="font-display text-lg font-bold text-white">
-              Bacalhau &amp; Cia
+      <header className="sticky top-0 z-20 border-b-4 border-brand-gold bg-brand-red">
+        <div className="mx-auto max-w-5xl px-3 pt-3">
+          <div className="flex items-center gap-3">
+            <a href="/admin" className="flex min-w-0 items-center gap-2">
+              <img
+                src="/logo.jpeg"
+                alt="Restaurante Bacalhau & Cia"
+                className="h-9 w-9 shrink-0 rounded-full"
+              />
+              <span className="truncate font-display text-lg font-bold text-white">
+                Bacalhau &amp; Cia
+              </span>
+            </a>
+            <span className="ml-auto hidden text-sm text-brand-cream/80 sm:inline">
+              {user.name} ({user.role})
             </span>
-          </a>
-          <nav className="flex flex-1 flex-wrap gap-1 text-sm">
+            <button
+              onClick={logout}
+              className="ml-auto shrink-0 rounded-md border border-brand-cream/40 px-2.5 py-1 text-sm text-brand-cream hover:bg-white/10 sm:ml-0"
+            >
+              Sair
+            </button>
+          </div>
+          {/* Navegação rolável no celular, igual à barra de categorias. */}
+          <nav className="-mx-3 mt-2 flex gap-1 overflow-x-auto px-3 pb-2 text-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {NAV.map((n) => (
               <a key={n.href} href={n.href} className={navClass(n.href)}>
                 {n.label}
               </a>
             ))}
             {user.role === 'ADMIN' && (
-              <a href="/admin/funcionarios" className={navClass('/admin/funcionarios')}>
+              <a
+                href="/admin/funcionarios"
+                className={navClass('/admin/funcionarios')}
+              >
                 Funcionários
               </a>
             )}
           </nav>
-          <span className="text-sm text-brand-cream/80">
-            {user.name} ({user.role})
-          </span>
-          <button
-            onClick={logout}
-            className="rounded-md border border-brand-cream/40 px-2.5 py-1 text-sm text-brand-cream hover:bg-white/10"
-          >
-            Sair
-          </button>
         </div>
       </header>
       {children}

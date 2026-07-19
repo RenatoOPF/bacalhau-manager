@@ -53,7 +53,7 @@ export default function FuncionariosPage() {
   });
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
+    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
       <h1 className="page-title">Funcionários</h1>
 
       {/* Cadastro */}
@@ -104,7 +104,8 @@ export default function FuncionariosPage() {
       {error && <p className="mt-1 text-sm text-brand-red">{error}</p>}
 
       {/* Lista */}
-      <table className="mt-6 w-full text-sm">
+      <div className="overflow-x-auto">
+      <table className="mt-6 w-full min-w-[520px] text-sm">
         <thead>
           <tr className="border-b-2 border-brand-gold/60 text-left text-brand-ink/60">
             <th className="py-2">Nome</th>
@@ -172,6 +173,7 @@ export default function FuncionariosPage() {
           ))}
         </tbody>
       </table>
+      </div>
     </main>
   );
 }

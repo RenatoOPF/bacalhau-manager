@@ -69,7 +69,7 @@ export default function CaixaFinanceiroPage() {
   });
 
   return (
-    <main className="mx-auto max-w-4xl p-6">
+    <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
       <h1 className="page-title">Caixa</h1>
 
       {/* Pendentes de pagamento */}
@@ -115,9 +115,9 @@ export default function CaixaFinanceiroPage() {
 
       {/* Fechamento do dia */}
       <section className="mt-8">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <h2 className="section-title">Fechamento do dia</h2>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               type="date"
               className="input p-1 text-sm"
@@ -173,7 +173,8 @@ export default function CaixaFinanceiroPage() {
       {/* Transações do dia */}
       <section className="mt-8">
         <h2 className="section-title">Transações do dia</h2>
-        <table className="mt-2 w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="mt-2 w-full min-w-[480px] text-sm">
           <thead>
             <tr className="border-b-2 border-brand-gold/60 text-left text-brand-ink/60">
               <th className="py-2">Pedido</th>
@@ -204,6 +205,7 @@ export default function CaixaFinanceiroPage() {
             )}
           </tbody>
         </table>
+        </div>
       </section>
     </main>
   );

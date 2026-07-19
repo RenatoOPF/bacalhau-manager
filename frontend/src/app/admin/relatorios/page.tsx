@@ -35,7 +35,7 @@ export default function RelatoriosPage() {
   });
 
   return (
-    <main className="mx-auto max-w-4xl p-6">
+    <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
       <h1 className="page-title">Relatórios</h1>
 
       {/* Período */}
@@ -81,7 +81,8 @@ export default function RelatoriosPage() {
           </div>
         </div>
 
-        <table className="mt-3 w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="mt-3 w-full min-w-[400px] text-sm">
           <thead>
             <tr className="border-b-2 border-brand-gold/60 text-left text-brand-ink/60">
               <th className="py-2">Dia</th>
@@ -106,6 +107,7 @@ export default function RelatoriosPage() {
             )}
           </tbody>
         </table>
+        </div>
       </section>
 
       {/* Por canal */}
@@ -135,7 +137,8 @@ export default function RelatoriosPage() {
       {/* Mais vendidos */}
       <section className="mt-8">
         <h2 className="section-title">Itens mais vendidos</h2>
-        <table className="mt-2 w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="mt-2 w-full min-w-[400px] text-sm">
           <thead>
             <tr className="border-b-2 border-brand-gold/60 text-left text-brand-ink/60">
               <th className="py-2">Item</th>
@@ -160,6 +163,7 @@ export default function RelatoriosPage() {
             )}
           </tbody>
         </table>
+        </div>
       </section>
     </main>
   );

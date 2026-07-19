@@ -68,7 +68,7 @@ export default function CaixaPage() {
   });
 
   return (
-    <main className="mx-auto max-w-5xl p-6">
+    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
       <h1 className="page-title">Fila de pedidos</h1>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -118,7 +118,7 @@ export default function CaixaPage() {
                 {formatBRL(order.totalCents)} · {PAYMENT_LABEL[order.paymentMethod]}
               </p>
 
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {next && (
                   <button
                     className="btn-primary flex-1 px-3 py-2 text-sm"
