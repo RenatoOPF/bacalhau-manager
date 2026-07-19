@@ -406,6 +406,11 @@ export const api = {
     }),
   deleteStock: (id: string) =>
     request<{ id: string }>(`/stock/${id}`, { method: 'DELETE' }),
+  moveStock: (id: string, direction: 'up' | 'down') =>
+    request<{ moved: boolean }>(`/stock/${id}/move`, {
+      method: 'POST',
+      body: JSON.stringify({ direction }),
+    }),
   stockMovements: (id: string) =>
     request<StockMovementRow[]>(`/stock/${id}/movements`),
   // Produção manual (bacalhau): baixa a matéria-prima do insumo (kg) e

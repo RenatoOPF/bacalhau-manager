@@ -62,7 +62,7 @@ export default function EstoquePage() {
   const low = items.filter((s) => s.active && s.qty <= s.alertQty);
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
+    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
       <h1 className="page-title">Estoque</h1>
       <p className="mt-1 text-sm text-brand-ink/60">
         Porções preparadas, matéria-prima (kg) e unidades. A venda desconta
@@ -117,8 +117,14 @@ export default function EstoquePage() {
       {isLoading && <p className="mt-6">Carregando...</p>}
 
       <div className="mt-6 space-y-2">
-        {items.map((s) => (
-          <StockRow key={s.id} item={s} onChange={invalidate} />
+        {items.map((s, i, arr) => (
+          <StockRow
+            key={s.id}
+            item={s}
+            onChange={invalidate}
+            isFirst={i === 0}
+            isLast={i === arr.length - 1}
+          />
         ))}
         {!isLoading && items.length === 0 && (
           <p className="text-sm text-brand-ink/40">
@@ -224,9 +230,13 @@ function ProduceWidget({
 function StockRow({
   item,
   onChange,
+  isFirst,
+  isLast,
 }: {
   item: StockItem;
   onChange: () => void;
+  isFirst: boolean;
+  isLast: boolean;
 }) {
   const [setValue, setSetValue] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -245,6 +255,12 @@ function StockRow({
 
   const remove = useMutation({
     mutationFn: () => api.deleteStock(item.id),
+    onSuccess: onChange,
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const move = useMutation({
+    mutationFn: (direction: 'up' | 'down') => api.moveStock(item.id, direction),
     onSuccess: onChange,
     onError: (e: Error) => setError(e.message),
   });
@@ -269,6 +285,24 @@ function StockRow({
       } ${item.active ? '' : 'opacity-50'}`}
     >
       <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col">
+          <button
+            className="text-xs leading-none text-brand-ink/50 disabled:opacity-20"
+            title="Mover para cima"
+            disabled={isFirst || move.isPending}
+            onClick={() => move.mutate('up')}
+          >
+            ▲
+          </button>
+          <button
+            className="text-xs leading-none text-brand-ink/50 disabled:opacity-20"
+            title="Mover para baixo"
+            disabled={isLast || move.isPending}
+            onClick={() => move.mutate('down')}
+          >
+            ▼
+          </button>
+        </div>
         <div className="min-w-32 flex-1">
           <p className="font-semibold">{item.name}</p>
           <p className="text-xs text-brand-ink/60">

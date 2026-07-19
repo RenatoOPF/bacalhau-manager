@@ -149,6 +149,35 @@ export class StockService {
     return { id };
   }
 
+  /**
+   * Move um insumo uma posição para cima/baixo na lista. Reatribui o
+   * sortOrder de todos em sequência (0,1,2...) para garantir uma ordem
+   * consistente mesmo que os valores atuais estejam repetidos.
+   */
+  async move(id: string, direction: 'up' | 'down') {
+    const items = await this.prisma.stockItem.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
+    const idx = items.findIndex((s) => s.id === id);
+    if (idx === -1) {
+      throw new BadRequestException('Insumo não encontrado');
+    }
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= items.length) {
+      return { moved: false }; // já está no topo/fim
+    }
+    [items[idx], items[swapIdx]] = [items[swapIdx], items[idx]];
+    await this.prisma.$transaction(
+      items.map((s, i) =>
+        this.prisma.stockItem.update({
+          where: { id: s.id },
+          data: { sortOrder: i },
+        }),
+      ),
+    );
+    return { moved: true };
+  }
+
   /** Últimas movimentações do insumo (auditoria). */
   async movements(id: string) {
     const rows = await this.prisma.stockMovement.findMany({

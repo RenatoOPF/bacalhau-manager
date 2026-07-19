@@ -109,3 +109,8 @@ export class UpdateStockLinkDto {
   @IsPositive()
   qty: number;
 }
+
+export class MoveStockDto {
+  @IsIn(['up', 'down'])
+  direction: 'up' | 'down';
+}

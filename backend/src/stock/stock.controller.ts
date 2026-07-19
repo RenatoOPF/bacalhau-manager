@@ -13,6 +13,7 @@ import { StockService } from './stock.service';
 import {
   CreateStockItemDto,
   CreateStockLinkDto,
+  MoveStockDto,
   ProduceDto,
   UpdateStockItemDto,
   UpdateStockLinkDto,
@@ -58,6 +59,11 @@ export class StockController {
   @Delete('links/:id')
   removeLink(@Param('id') id: string) {
     return this.stock.removeLink(id);
+  }
+
+  @Post(':id/move')
+  move(@Param('id') id: string, @Body() dto: MoveStockDto) {
+    return this.stock.move(id, dto.direction);
   }
 
   @Patch(':id')
