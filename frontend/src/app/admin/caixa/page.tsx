@@ -70,34 +70,34 @@ export default function CaixaFinanceiroPage() {
 
   return (
     <main className="mx-auto max-w-4xl p-6">
-      <h1 className="text-2xl font-bold">Caixa</h1>
+      <h1 className="page-title">Caixa</h1>
 
       {/* Pendentes de pagamento */}
       <section className="mt-6">
-        <h2 className="text-lg font-semibold">
+        <h2 className="section-title">
           Pendentes de pagamento ({pending?.length ?? 0})
         </h2>
         <div className="mt-2 space-y-2">
           {(pending ?? []).map((o) => (
             <div
               key={o.id}
-              className="flex flex-wrap items-center gap-3 rounded-lg border bg-white p-3"
+              className="card flex flex-wrap items-center gap-3 p-3"
             >
               <span className="font-mono font-bold">#{o.dailyNumber}</span>
               <span className="flex-1">{o.customerName}</span>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-brand-ink/60">
                 escolheu: {METHOD_LABEL[o.paymentMethod]}
               </span>
               <span className="font-semibold">{formatBRL(o.totalCents)}</span>
               <button
-                className="rounded bg-green-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+                className="btn-success px-3 py-1 text-sm"
                 disabled={pay.isPending}
                 onClick={() => pay.mutate({ id: o.id, method: 'CASH' })}
               >
                 Recebi em dinheiro
               </button>
               <button
-                className="rounded bg-emerald-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+                className="btn-gold px-3 py-1 text-sm"
                 disabled={pay.isPending}
                 onClick={() => pay.mutate({ id: o.id, method: 'PIX' })}
               >
@@ -106,7 +106,7 @@ export default function CaixaFinanceiroPage() {
             </div>
           ))}
           {(pending ?? []).length === 0 && (
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-brand-ink/40">
               Nenhum pagamento pendente. 🎉
             </p>
           )}
@@ -116,16 +116,16 @@ export default function CaixaFinanceiroPage() {
       {/* Fechamento do dia */}
       <section className="mt-8">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold">Fechamento do dia</h2>
+          <h2 className="section-title">Fechamento do dia</h2>
           <div className="flex items-center gap-2">
             <input
               type="date"
-              className="rounded border p-1 text-sm"
+              className="input p-1 text-sm"
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
             <button
-              className="rounded bg-red-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+              className="btn-danger px-3 py-1 text-sm"
               disabled={closeCash.isPending}
               onClick={() => {
                 if (
@@ -141,28 +141,28 @@ export default function CaixaFinanceiroPage() {
             </button>
           </div>
         </div>
-        <p className="mt-1 text-xs text-gray-400">
+        <p className="mt-1 text-xs text-brand-ink/40">
           A numeração reinicia sozinha a cada dia. Use “Fechar caixa” só para
           zerar antes do fim do dia.
         </p>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-lg border bg-white p-4">
-            <p className="text-sm text-gray-500">Total recebido</p>
-            <p className="text-2xl font-bold">
+          <div className="card border-l-4 border-l-brand-gold p-4">
+            <p className="text-sm text-brand-ink/60">Total recebido</p>
+            <p className="font-display text-2xl font-bold text-brand-red">
               {formatBRL(summary?.totalCents ?? 0)}
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-brand-ink/60">
               {summary?.count ?? 0} pedido(s)
             </p>
           </div>
           {(['CASH', 'PIX', 'ONLINE'] as const).map((m) => (
-            <div key={m} className="rounded-lg border bg-white p-4">
-              <p className="text-sm text-gray-500">{METHOD_LABEL[m]}</p>
-              <p className="text-2xl font-bold">
+            <div key={m} className="card p-4">
+              <p className="text-sm text-brand-ink/60">{METHOD_LABEL[m]}</p>
+              <p className="font-display text-2xl font-bold">
                 {formatBRL(summary?.byMethod?.[m]?.totalCents ?? 0)}
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-brand-ink/60">
                 {summary?.byMethod?.[m]?.count ?? 0} pedido(s)
               </p>
             </div>
@@ -172,10 +172,10 @@ export default function CaixaFinanceiroPage() {
 
       {/* Transações do dia */}
       <section className="mt-8">
-        <h2 className="text-lg font-semibold">Transações do dia</h2>
+        <h2 className="section-title">Transações do dia</h2>
         <table className="mt-2 w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-gray-500">
+            <tr className="border-b-2 border-brand-gold/60 text-left text-brand-ink/60">
               <th className="py-2">Pedido</th>
               <th>Cliente</th>
               <th>Pagamento</th>
@@ -185,19 +185,19 @@ export default function CaixaFinanceiroPage() {
           </thead>
           <tbody>
             {(transactions ?? []).map((t) => (
-              <tr key={t.id} className="border-b">
+              <tr key={t.id} className="border-b border-brand-cream-dark">
                 <td className="py-2 font-mono">#{t.dailyNumber}</td>
                 <td>{t.customerName}</td>
                 <td>{METHOD_LABEL[t.paymentMethod]}</td>
                 <td className="text-right">{formatBRL(t.totalCents)}</td>
-                <td className="text-right text-gray-500">
+                <td className="text-right text-brand-ink/60">
                   {new Date(t.paidAt).toLocaleTimeString('pt-BR')}
                 </td>
               </tr>
             ))}
             {(transactions ?? []).length === 0 && (
               <tr>
-                <td colSpan={5} className="py-3 text-gray-400">
+                <td colSpan={5} className="py-3 text-brand-ink/40">
                   Nenhuma transação nesse dia.
                 </td>
               </tr>

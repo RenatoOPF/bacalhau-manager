@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   api,
@@ -8,6 +8,7 @@ import {
   type CreateOrderPayload,
   type MenuItem,
 } from '@/lib/api';
+import { SiteFooter } from '@/components/site-footer';
 
 // Uma linha do carrinho: um item (ou uma opção específica dele).
 interface CartLine {
@@ -34,6 +35,13 @@ export default function CardapioPage() {
     paymentMethod: 'PIX' as 'CASH' | 'PIX',
   });
 
+  // Duas telas: cardápio e fechamento do pedido.
+  const [view, setView] = useState<'menu' | 'checkout'>('menu');
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
+
   const totalCents = useMemo(
     () =>
       Object.values(cart).reduce(
@@ -46,6 +54,44 @@ export default function CardapioPage() {
   const createOrder = useMutation({
     mutationFn: (payload: CreateOrderPayload) => api.createOrder(payload),
   });
+
+  // Barra de categorias fixa: qual seção está visível e rolagem até ela.
+  const [activeCat, setActiveCat] = useState<string | null>(null);
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+  const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  useEffect(() => {
+    if (view !== 'menu') return;
+    const onScroll = () => {
+      // Ativa a última categoria cujo topo já passou da barra fixa.
+      const entries = Object.entries(sectionRefs.current);
+      let current: string | null = entries[0]?.[0] ?? null;
+      for (const [id, el] of entries) {
+        if (el && el.getBoundingClientRect().top <= 120) current = id;
+      }
+      setActiveCat(current);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [menu, view]);
+
+  // Mantém o chip ativo à vista na barra (rolagem horizontal).
+  useEffect(() => {
+    if (activeCat) {
+      chipRefs.current[activeCat]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    }
+  }, [activeCat]);
+
+  const goTo = (id: string) =>
+    sectionRefs.current[id]?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
 
   const setQty = (line: Omit<CartLine, 'quantity'>, delta: number) =>
     setCart((prev) => {
@@ -73,19 +119,24 @@ export default function CardapioPage() {
   if (createOrder.data) {
     return (
       <main className="mx-auto max-w-md p-6 text-center">
-        <h1 className="text-2xl font-bold">Pedido confirmado! 🎉</h1>
+        <img
+          src="/logo.jpeg"
+          alt="Restaurante Bacalhau & Cia"
+          className="mx-auto mt-4 h-28 w-28 rounded-full shadow-md"
+        />
+        <h1 className="page-title mt-6">Pedido confirmado! 🎉</h1>
         <p className="mt-4 text-lg">
           Seu pedido é{' '}
           <span className="font-mono font-bold">
             #{createOrder.data.dailyNumber}
           </span>
         </p>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-2 text-brand-ink/60">
           Acompanhe o status pelo número acima.
         </p>
         <a
           href={`/pedido/${createOrder.data.protocol}`}
-          className="mt-6 inline-block rounded bg-blue-600 px-4 py-2 font-medium text-white"
+          className="btn-primary mt-6 inline-block px-6 py-2.5"
         >
           Acompanhar pedido
         </a>
@@ -93,90 +144,221 @@ export default function CardapioPage() {
     );
   }
 
-  return (
-    <main className="mx-auto max-w-2xl p-6">
-      <h1 className="text-3xl font-bold">Bacalhau &amp; Cia</h1>
-      <p className="text-gray-600">Monte seu pedido</p>
-
-      {isLoading && <p className="mt-6">Carregando cardápio...</p>}
-
-      <div className="mt-6 space-y-8">
-        {(menu ?? []).map((category) => (
-          <section key={category.id}>
-            <h2 className="text-xl font-semibold">{category.name}</h2>
-            <ul className="mt-2 divide-y">
-              {category.items.map((item) => (
-                <ItemRow
-                  key={item.id}
-                  item={item}
-                  qtyOf={qtyOf}
-                  setQty={setQty}
-                />
-              ))}
-            </ul>
-          </section>
-        ))}
-      </div>
-
-      <section className="mt-8 space-y-3 rounded-lg border bg-white p-4">
-        <h2 className="text-lg font-semibold">Seus dados</h2>
-        <input
-          className="w-full rounded border p-2"
-          placeholder="Nome"
-          value={form.customerName}
-          onChange={(e) => setForm({ ...form, customerName: e.target.value })}
-        />
-        <input
-          className="w-full rounded border p-2"
-          placeholder="Telefone"
-          value={form.customerPhone}
-          onChange={(e) => setForm({ ...form, customerPhone: e.target.value })}
-        />
-        <input
-          className="w-full rounded border p-2"
-          placeholder="Rua"
-          value={form.addressStreet}
-          onChange={(e) => setForm({ ...form, addressStreet: e.target.value })}
-        />
-        <input
-          className="w-full rounded border p-2"
-          placeholder="Número"
-          value={form.addressNumber}
-          onChange={(e) => setForm({ ...form, addressNumber: e.target.value })}
-        />
-        <select
-          className="w-full rounded border p-2"
-          value={form.paymentMethod}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              paymentMethod: e.target.value as 'CASH' | 'PIX',
-            })
-          }
-        >
-          <option value="PIX">PIX</option>
-          <option value="CASH">Dinheiro</option>
-        </select>
-
-        <div className="flex items-center justify-between pt-2">
-          <span className="text-lg font-bold">
-            Total: {formatBRL(totalCents)}
-          </span>
+  if (view === 'checkout') {
+    const lines = Object.values(cart);
+    return (
+      <main className="mx-auto max-w-2xl px-4 pb-28 pt-5">
+        <header className="flex items-center gap-3">
           <button
-            className="rounded bg-blue-600 px-4 py-2 font-medium text-white disabled:opacity-50"
-            disabled={totalCents === 0 || createOrder.isPending}
-            onClick={submit}
+            className="btn-outline px-3 py-1.5 text-sm"
+            onClick={() => setView('menu')}
           >
-            {createOrder.isPending ? 'Enviando...' : 'Confirmar pedido'}
+            ← Cardápio
           </button>
-        </div>
-        {createOrder.isError && (
-          <p className="text-sm text-red-600">
-            Erro ao enviar. Tente novamente.
+          <h1 className="page-title">Fechar pedido</h1>
+        </header>
+
+        {lines.length === 0 ? (
+          <div className="card mt-6 p-6 text-center text-brand-ink/60">
+            <p>Seu carrinho está vazio.</p>
+            <button
+              className="btn-primary mt-4 px-5 py-2"
+              onClick={() => setView('menu')}
+            >
+              Voltar ao cardápio
+            </button>
+          </div>
+        ) : (
+          <>
+            <section className="card mt-4 p-4">
+              <h2 className="section-title">Seu pedido</h2>
+              <ul className="mt-1 divide-y divide-brand-cream-dark">
+                {lines.map((line) => {
+                  const { quantity, ...rest } = line;
+                  const key = line.optionId ?? line.menuItemId;
+                  return (
+                    <li key={key} className="flex items-center gap-3 py-3">
+                      <div className="flex-1">
+                        <p className="font-semibold">{line.label}</p>
+                        <p className="text-sm font-bold text-brand-red">
+                          {formatBRL(line.priceCents * line.quantity)}
+                        </p>
+                      </div>
+                      <Stepper
+                        qty={quantity}
+                        onDec={() => setQty(rest, -1)}
+                        onInc={() => setQty(rest, 1)}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+
+            <section className="card mt-4 space-y-3 p-4">
+              <h2 className="section-title">Seus dados</h2>
+              <input
+                className="input w-full p-2"
+                placeholder="Nome"
+                value={form.customerName}
+                onChange={(e) =>
+                  setForm({ ...form, customerName: e.target.value })
+                }
+              />
+              <input
+                className="input w-full p-2"
+                placeholder="Telefone"
+                value={form.customerPhone}
+                onChange={(e) =>
+                  setForm({ ...form, customerPhone: e.target.value })
+                }
+              />
+              <input
+                className="input w-full p-2"
+                placeholder="Rua"
+                value={form.addressStreet}
+                onChange={(e) =>
+                  setForm({ ...form, addressStreet: e.target.value })
+                }
+              />
+              <input
+                className="input w-full p-2"
+                placeholder="Número"
+                value={form.addressNumber}
+                onChange={(e) =>
+                  setForm({ ...form, addressNumber: e.target.value })
+                }
+              />
+              <select
+                className="input w-full p-2"
+                value={form.paymentMethod}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    paymentMethod: e.target.value as 'CASH' | 'PIX',
+                  })
+                }
+              >
+                <option value="PIX">PIX</option>
+                <option value="CASH">Dinheiro</option>
+              </select>
+              {createOrder.isError && (
+                <p className="text-sm text-brand-red">
+                  Erro ao enviar. Tente novamente.
+                </p>
+              )}
+            </section>
+
+            {/* Confirmação fixa no rodapé. */}
+            <div className="fixed inset-x-0 bottom-0 z-20 border-t-2 border-brand-gold bg-brand-red p-3 shadow-lg">
+              <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+                <span className="font-display text-lg font-bold text-white">
+                  {formatBRL(totalCents)}
+                </span>
+                <button
+                  className="btn-gold px-5 py-2"
+                  disabled={totalCents === 0 || createOrder.isPending}
+                  onClick={submit}
+                >
+                  {createOrder.isPending ? 'Enviando...' : 'Confirmar pedido'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </main>
+    );
+  }
+
+  return (
+    <>
+      <main className="mx-auto max-w-2xl px-4 pt-5">
+        <header className="flex flex-col items-center text-center">
+          <img
+            src="/logo.jpeg"
+            alt="Restaurante Bacalhau & Cia"
+            className="h-24 w-24 rounded-full shadow-md"
+          />
+          <h1 className="font-display text-2xl font-extrabold text-brand-red">
+            Bacalhau &amp; Cia
+          </h1>
+          <p className="text-sm text-brand-ink/60">Monte seu pedido</p>
+        </header>
+
+        {/* Categorias sempre visíveis, fixas no topo. */}
+        <nav className="sticky top-0 z-20 -mx-4 mt-4 border-b border-brand-cream-dark bg-brand-cream shadow-sm">
+          <div className="flex gap-1.5 overflow-x-auto px-4 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {(menu ?? []).map((c) => (
+              <button
+                key={c.id}
+                ref={(el) => {
+                  chipRefs.current[c.id] = el;
+                }}
+                onClick={() => goTo(c.id)}
+                className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+                  activeCat === c.id
+                    ? 'bg-brand-red text-white'
+                    : 'text-brand-ink/70 hover:bg-brand-cream-dark'
+                }`}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </nav>
+
+        {isLoading && (
+          <p className="mt-6 text-center text-brand-ink/60">
+            Carregando cardápio...
           </p>
         )}
-      </section>
-    </main>
+
+        <div className="mt-5 space-y-5">
+          {(menu ?? []).map((category) => (
+            <section
+              key={category.id}
+              ref={(el) => {
+                sectionRefs.current[category.id] = el;
+              }}
+              className="card scroll-mt-16 p-4"
+            >
+              <h2 className="font-display text-xl font-bold text-brand-red">
+                {category.name}
+              </h2>
+              <ul className="mt-1 divide-y divide-brand-cream-dark">
+                {category.items.map((item) => (
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    qtyOf={qtyOf}
+                    setQty={setQty}
+                  />
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </main>
+
+      <SiteFooter className={totalCents > 0 ? 'pb-24' : ''} />
+
+      {/* Atalho fixo no rodapé: total do carrinho → tela de fechamento. */}
+      {totalCents > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t-2 border-brand-gold bg-brand-red p-3 shadow-lg">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+            <span className="font-display text-lg font-bold text-white">
+              {formatBRL(totalCents)}
+            </span>
+            <button
+              className="btn-gold px-5 py-2"
+              onClick={() => setView('checkout')}
+            >
+              Fechar pedido
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -191,11 +373,17 @@ function Stepper({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <button className="h-8 w-8 rounded bg-gray-200" onClick={onDec}>
+      <button
+        className="h-8 w-8 rounded-full border border-brand-ink/20 bg-white font-bold text-brand-ink transition-colors hover:bg-brand-cream"
+        onClick={onDec}
+      >
         −
       </button>
-      <span className="w-6 text-center">{qty}</span>
-      <button className="h-8 w-8 rounded bg-gray-200" onClick={onInc}>
+      <span className="w-6 text-center font-semibold">{qty}</span>
+      <button
+        className="h-8 w-8 rounded-full bg-brand-gold font-bold text-brand-ink transition-colors hover:bg-brand-gold-dark"
+        onClick={onInc}
+      >
         +
       </button>
     </div>
@@ -217,9 +405,9 @@ function ItemRow({
   if (options.length > 0) {
     return (
       <li className="py-3">
-        <p className="font-medium">{item.name}</p>
+        <p className="font-semibold">{item.name}</p>
         {item.description && (
-          <p className="text-sm text-gray-500">{item.description}</p>
+          <p className="text-sm text-brand-ink/60">{item.description}</p>
         )}
         <ul className="mt-2 space-y-2">
           {options.map((opt) => {
@@ -232,11 +420,13 @@ function ItemRow({
             return (
               <li
                 key={opt.id}
-                className="flex items-center gap-3 rounded bg-gray-50 px-3 py-2"
+                className="flex items-center gap-3 rounded-lg bg-brand-cream px-3 py-2"
               >
                 <div className="flex-1">
-                  <p className="text-sm font-medium">{opt.name}</p>
-                  <p className="text-sm">{formatBRL(opt.priceCents)}</p>
+                  <p className="text-sm font-semibold">{opt.name}</p>
+                  <p className="text-sm font-bold text-brand-red">
+                    {formatBRL(opt.priceCents)}
+                  </p>
                 </div>
                 <Stepper
                   qty={qtyOf(opt.id)}
@@ -260,11 +450,13 @@ function ItemRow({
   return (
     <li className="flex items-center gap-3 py-3">
       <div className="flex-1">
-        <p className="font-medium">{item.name}</p>
+        <p className="font-semibold">{item.name}</p>
         {item.description && (
-          <p className="text-sm text-gray-500">{item.description}</p>
+          <p className="text-sm text-brand-ink/60">{item.description}</p>
         )}
-        <p className="text-sm">{formatBRL(item.priceCents)}</p>
+        <p className="text-sm font-bold text-brand-red">
+          {formatBRL(item.priceCents)}
+        </p>
       </div>
       <Stepper
         qty={qtyOf(item.id)}

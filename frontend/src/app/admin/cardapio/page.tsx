@@ -84,7 +84,7 @@ function StockLinksEditor({
       {links.map((l) => (
         <span
           key={l.id}
-          className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-blue-800"
+          className="inline-flex items-center gap-1 rounded bg-brand-gold/20 px-1.5 py-0.5 text-brand-ink"
         >
           <button
             title="Clique para alterar a quantidade descontada por venda"
@@ -101,7 +101,7 @@ function StockLinksEditor({
             {nameOf(l.stockItemId)} ×{fmtQty(l.qtyMilli / 1000)}
           </button>
           <button
-            className="text-blue-400 hover:text-red-600"
+            className="text-brand-ink/40 hover:text-brand-red"
             title="Remover vínculo"
             disabled={remove.isPending}
             onClick={() => remove.mutate(l.id)}
@@ -113,7 +113,7 @@ function StockLinksEditor({
       {adding ? (
         <>
           <select
-            className="rounded border p-0.5"
+            className="input rounded p-0.5"
             value={stockItemId}
             onChange={(e) => setStockItemId(e.target.value)}
           >
@@ -125,20 +125,20 @@ function StockLinksEditor({
             ))}
           </select>
           <input
-            className="w-12 rounded border p-0.5"
+            className="input w-12 rounded p-0.5"
             title="Quantidade descontada por venda"
             value={qty}
             onChange={(e) => setQty(e.target.value)}
           />
           <button
-            className="rounded bg-green-600 px-1.5 py-0.5 text-white disabled:opacity-50"
+            className="btn-success rounded px-1.5 py-0.5"
             disabled={add.isPending}
             onClick={() => add.mutate()}
           >
             ok
           </button>
           <button
-            className="rounded border px-1.5 py-0.5"
+            className="btn-outline rounded px-1.5 py-0.5"
             onClick={() => setAdding(false)}
           >
             ✕
@@ -146,7 +146,7 @@ function StockLinksEditor({
         </>
       ) : (
         <button
-          className="rounded border border-dashed px-1.5 py-0.5 text-gray-400 hover:text-gray-700"
+          className="rounded border border-dashed border-brand-ink/30 px-1.5 py-0.5 text-brand-ink/40 hover:text-brand-ink"
           title="Vincular insumo de estoque"
           onClick={() => setAdding(true)}
         >
@@ -199,17 +199,17 @@ export default function GestaoCardapioPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-bold">Gestão do cardápio</h1>
+      <h1 className="page-title">Gestão do cardápio</h1>
 
       <div className="mt-6 flex gap-2">
         <input
-          className="flex-1 rounded border p-2"
+          className="input flex-1 p-2"
           placeholder="Nova categoria (ex: Sobremesas)"
           value={newCategory}
           onChange={(e) => setNewCategory(e.target.value)}
         />
         <button
-          className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+          className="btn-primary px-4 py-2"
           disabled={!newCategory.trim() || addCategory.isPending}
           onClick={() => addCategory.mutate(newCategory.trim())}
         >
@@ -220,13 +220,13 @@ export default function GestaoCardapioPage() {
       {categories.length > 0 && (
         <div className="mt-4 flex gap-2 text-sm">
           <button
-            className="rounded border px-3 py-1"
+            className="btn-outline px-3 py-1"
             onClick={() => setCollapsed(new Set(categories.map((c) => c.id)))}
           >
             Minimizar todas
           </button>
           <button
-            className="rounded border px-3 py-1"
+            className="btn-outline px-3 py-1"
             onClick={() => setCollapsed(new Set())}
           >
             Expandir todas
@@ -321,11 +321,11 @@ function CategoryBlock({
   });
 
   return (
-    <section className="rounded-lg border bg-white p-4">
+    <section className="card p-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-1 items-center gap-2">
           <button
-            className="text-gray-500"
+            className="text-brand-ink/50"
             title={collapsed ? 'Expandir' : 'Minimizar'}
             onClick={onToggleCollapse}
           >
@@ -334,20 +334,20 @@ function CategoryBlock({
           {editingName ? (
             <>
               <input
-                className="flex-1 rounded border p-1"
+                className="input flex-1 p-1"
                 value={catName}
                 onChange={(e) => setCatName(e.target.value)}
                 autoFocus
               />
               <button
-                className="rounded bg-blue-600 px-2 py-1 text-xs text-white"
+                className="btn-primary px-2 py-1 text-xs"
                 disabled={!catName.trim() || rename.isPending}
                 onClick={() => rename.mutate()}
               >
                 Salvar
               </button>
               <button
-                className="rounded border px-2 py-1 text-xs"
+                className="btn-outline px-2 py-1 text-xs"
                 onClick={() => {
                   setCatName(category.name);
                   setEditingName(false);
@@ -359,16 +359,16 @@ function CategoryBlock({
           ) : (
             <>
               <h2
-                className="cursor-pointer text-lg font-semibold"
+                className="section-title cursor-pointer"
                 onClick={onToggleCollapse}
               >
                 {category.name}
-                <span className="ml-2 text-sm font-normal text-gray-400">
+                <span className="ml-2 font-sans text-sm font-normal text-brand-ink/40">
                   ({category.items.length})
                 </span>
               </h2>
               <button
-                className="rounded border px-2 py-1 text-xs"
+                className="btn-outline px-2 py-1 text-xs"
                 onClick={() => setEditingName(true)}
               >
                 Renomear
@@ -378,7 +378,7 @@ function CategoryBlock({
         </div>
         <div className="flex items-center gap-1">
           <button
-            className="rounded border px-2 py-1 text-xs disabled:opacity-30"
+            className="btn-outline px-2 py-1 text-xs disabled:opacity-30"
             title="Mover para cima"
             disabled={isFirst || move.isPending}
             onClick={() => move.mutate('up')}
@@ -386,7 +386,7 @@ function CategoryBlock({
             ↑
           </button>
           <button
-            className="rounded border px-2 py-1 text-xs disabled:opacity-30"
+            className="btn-outline px-2 py-1 text-xs disabled:opacity-30"
             title="Mover para baixo"
             disabled={isLast || move.isPending}
             onClick={() => move.mutate('down')}
@@ -394,7 +394,7 @@ function CategoryBlock({
             ↓
           </button>
           <button
-            className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 disabled:opacity-50"
+            className="btn-danger px-2 py-1 text-xs"
             disabled={removeCategory.isPending}
             onClick={() => {
               if (confirm(`Excluir a categoria "${category.name}"?`)) {
@@ -409,7 +409,7 @@ function CategoryBlock({
 
       {!collapsed && (
         <>
-          <ul className="mt-2 divide-y">
+          <ul className="mt-2 divide-y divide-brand-cream-dark">
             {category.items.map((item, i, arr) => (
               <ItemRow
                 key={item.id}
@@ -420,32 +420,34 @@ function CategoryBlock({
               />
             ))}
             {category.items.length === 0 && (
-              <li className="py-2 text-sm text-gray-400">Sem itens ainda.</li>
+              <li className="py-2 text-sm text-brand-ink/40">
+                Sem itens ainda.
+              </li>
             )}
           </ul>
 
-          <div className="mt-3 grid grid-cols-1 gap-2 border-t pt-3 sm:grid-cols-[1fr_1fr_auto]">
+          <div className="mt-3 grid grid-cols-1 gap-2 border-t border-brand-cream-dark pt-3 sm:grid-cols-[1fr_1fr_auto]">
             <input
-              className="rounded border p-2"
+              className="input p-2"
               placeholder="Nome do item"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
             <input
-              className="rounded border p-2"
+              className="input p-2"
               placeholder="Descrição (opcional)"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
             <div className="flex gap-2">
               <input
-                className="w-24 rounded border p-2"
+                className="input w-24 p-2"
                 placeholder="R$"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
               />
               <button
-                className="rounded bg-green-600 px-3 py-2 text-white disabled:opacity-50"
+                className="btn-success px-3 py-2"
                 disabled={addItem.isPending}
                 onClick={() => addItem.mutate()}
               >
@@ -455,7 +457,7 @@ function CategoryBlock({
           </div>
         </>
       )}
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-brand-red">{error}</p>}
     </section>
   );
 }
@@ -512,28 +514,25 @@ function ItemRow({
     return (
       <li className="flex flex-wrap items-center gap-2 py-2">
         <input
-          className="flex-1 rounded border p-1"
+          className="input flex-1 p-1"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <input
-          className="w-24 rounded border p-1"
+          className="input w-24 p-1"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
         />
-        <button
-          className="rounded bg-blue-600 px-3 py-1 text-sm text-white"
-          onClick={save}
-        >
+        <button className="btn-primary px-3 py-1 text-sm" onClick={save}>
           Salvar
         </button>
         <button
-          className="rounded border px-3 py-1 text-sm"
+          className="btn-outline px-3 py-1 text-sm"
           onClick={() => setEditing(false)}
         >
           Cancelar
         </button>
-        {error && <span className="text-sm text-red-600">{error}</span>}
+        {error && <span className="text-sm text-brand-red">{error}</span>}
       </li>
     );
   }
@@ -545,7 +544,7 @@ function ItemRow({
       <div className="flex items-center gap-3">
         <div className="flex flex-col">
           <button
-            className="text-xs leading-none text-gray-500 disabled:opacity-20"
+            className="text-xs leading-none text-brand-ink/50 disabled:opacity-20"
             title="Mover para cima"
             disabled={isFirst || move.isPending}
             onClick={() => move.mutate('up')}
@@ -553,7 +552,7 @@ function ItemRow({
             ▲
           </button>
           <button
-            className="text-xs leading-none text-gray-500 disabled:opacity-20"
+            className="text-xs leading-none text-brand-ink/50 disabled:opacity-20"
             title="Mover para baixo"
             disabled={isLast || move.isPending}
             onClick={() => move.mutate('down')}
@@ -562,16 +561,18 @@ function ItemRow({
           </button>
         </div>
         <div className="flex-1">
-          <p className={item.available ? 'font-medium' : 'font-medium text-gray-400 line-through'}>
+          <p className={item.available ? 'font-semibold' : 'font-semibold text-brand-ink/40 line-through'}>
             {item.name.toUpperCase()}
           </p>
           {item.description && (
-            <p className="text-sm text-gray-500">{item.description}</p>
+            <p className="text-sm text-brand-ink/60">{item.description}</p>
           )}
         </div>
-        <span className="text-sm">
+        <span className="text-sm font-semibold text-brand-red">
           {hasOptions ? (
-            <span className="text-gray-400">preço nas opções</span>
+            <span className="font-normal text-brand-ink/40">
+              preço nas opções
+            </span>
           ) : (
             formatBRL(item.priceCents)
           )}
@@ -582,20 +583,20 @@ function ItemRow({
           onChange={onChange}
         />
         <button
-          className="rounded border px-2 py-1 text-xs"
+          className="btn-outline px-2 py-1 text-xs"
           onClick={() => setEditing(true)}
         >
           Editar
         </button>
         <button
-          className={`rounded px-2 py-1 text-xs text-white ${item.available ? 'bg-gray-500' : 'bg-green-600'}`}
+          className={`btn px-2 py-1 text-xs text-white ${item.available ? 'bg-brand-ink/50 hover:bg-brand-ink/60' : 'bg-brand-green hover:brightness-110'}`}
           disabled={update.isPending}
           onClick={() => update.mutate({ available: !item.available })}
         >
           {item.available ? 'Desativar' : 'Ativar'}
         </button>
         <button
-          className="rounded bg-red-600 px-2 py-1 text-xs text-white disabled:opacity-50"
+          className="btn-danger px-2 py-1 text-xs"
           disabled={remove.isPending}
           onClick={() => {
             if (confirm(`Excluir o item "${item.name}"?`)) remove.mutate();
@@ -604,7 +605,7 @@ function ItemRow({
           Excluir
         </button>
       </div>
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-brand-red">{error}</p>}
       <OptionsManager item={item} onChange={onChange} />
     </li>
   );
@@ -641,7 +642,7 @@ function OptionsManager({
   });
 
   return (
-    <div className="ml-3 mt-2 border-l-2 pl-3">
+    <div className="ml-3 mt-2 border-l-2 border-brand-gold/50 pl-3">
       {options.length > 0 && (
         <ul className="space-y-1">
           {options.map((opt) => (
@@ -651,26 +652,26 @@ function OptionsManager({
       )}
       <div className="mt-2 flex flex-wrap gap-2">
         <input
-          className="flex-1 rounded border p-1 text-sm"
+          className="input flex-1 p-1 text-sm"
           placeholder="Nova opção (ex: Inteira)"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <input
-          className="w-20 rounded border p-1 text-sm"
+          className="input w-20 p-1 text-sm"
           placeholder="R$"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
         />
         <button
-          className="rounded bg-green-600 px-2 py-1 text-xs text-white disabled:opacity-50"
+          className="btn-success px-2 py-1 text-xs"
           disabled={add.isPending}
           onClick={() => add.mutate()}
         >
           + opção
         </button>
       </div>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs text-brand-red">{error}</p>}
     </div>
   );
 }
@@ -703,17 +704,17 @@ function OptionRow({
     return (
       <li className="flex flex-wrap items-center gap-2 text-sm">
         <input
-          className="flex-1 rounded border p-1"
+          className="input flex-1 p-1"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <input
-          className="w-20 rounded border p-1"
+          className="input w-20 p-1"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
         />
         <button
-          className="rounded bg-blue-600 px-2 py-1 text-xs text-white"
+          className="btn-primary px-2 py-1 text-xs"
           onClick={() => {
             const priceCents = reaisToCents(price);
             if (name.trim() && priceCents !== null) {
@@ -724,7 +725,7 @@ function OptionRow({
           Salvar
         </button>
         <button
-          className="rounded border px-2 py-1 text-xs"
+          className="btn-outline px-2 py-1 text-xs"
           onClick={() => setEditing(false)}
         >
           Cancelar
@@ -737,12 +738,14 @@ function OptionRow({
     <li className="flex items-center gap-2 text-sm">
       <span
         className={
-          option.available ? 'flex-1' : 'flex-1 text-gray-400 line-through'
+          option.available ? 'flex-1' : 'flex-1 text-brand-ink/40 line-through'
         }
       >
         {toPrintOption(option.name).toUpperCase()}
       </span>
-      <span>{formatBRL(option.priceCents)}</span>
+      <span className="font-semibold text-brand-red">
+        {formatBRL(option.priceCents)}
+      </span>
       <StockLinksEditor
         links={option.stockLinks ?? []}
         optionId={option.id}
@@ -750,20 +753,20 @@ function OptionRow({
         onChange={onChange}
       />
       <button
-        className="rounded border px-2 py-0.5 text-xs"
+        className="btn-outline px-2 py-0.5 text-xs"
         onClick={() => setEditing(true)}
       >
         Editar
       </button>
       <button
-        className={`rounded px-2 py-0.5 text-xs text-white ${option.available ? 'bg-gray-500' : 'bg-green-600'}`}
+        className={`btn px-2 py-0.5 text-xs text-white ${option.available ? 'bg-brand-ink/50 hover:bg-brand-ink/60' : 'bg-brand-green hover:brightness-110'}`}
         disabled={update.isPending}
         onClick={() => update.mutate({ available: !option.available })}
       >
         {option.available ? 'Desativar' : 'Ativar'}
       </button>
       <button
-        className="rounded bg-red-600 px-2 py-0.5 text-xs text-white disabled:opacity-50"
+        className="btn-danger px-2 py-0.5 text-xs"
         disabled={remove.isPending}
         onClick={() => remove.mutate()}
       >

@@ -49,46 +49,50 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   if (!ready || !user) {
     return (
-      <div className="p-10 text-center text-gray-400">Carregando painel...</div>
+      <div className="p-10 text-center text-brand-ink/40">
+        Carregando painel...
+      </div>
     );
   }
 
+  const navClass = (href: string) =>
+    pathname === href
+      ? 'rounded-md bg-brand-gold px-2.5 py-1 font-bold text-brand-ink'
+      : 'rounded-md px-2.5 py-1 font-medium text-brand-cream hover:bg-white/10';
+
   return (
     <AdminUserProvider user={user}>
-      <header className="border-b bg-white">
+      <header className="border-b-4 border-brand-gold bg-brand-red">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 p-3">
-          <span className="font-bold">Bacalhau &amp; Cia</span>
-          <nav className="flex flex-1 flex-wrap gap-3 text-sm">
+          <a href="/admin" className="flex items-center gap-2">
+            <img
+              src="/logo.jpeg"
+              alt="Restaurante Bacalhau & Cia"
+              className="h-9 w-9 rounded-full"
+            />
+            <span className="font-display text-lg font-bold text-white">
+              Bacalhau &amp; Cia
+            </span>
+          </a>
+          <nav className="flex flex-1 flex-wrap gap-1 text-sm">
             {NAV.map((n) => (
-              <a
-                key={n.href}
-                href={n.href}
-                className={
-                  pathname === n.href
-                    ? 'font-semibold text-blue-700'
-                    : 'text-blue-600'
-                }
-              >
+              <a key={n.href} href={n.href} className={navClass(n.href)}>
                 {n.label}
               </a>
             ))}
             {user.role === 'ADMIN' && (
-              <a
-                href="/admin/funcionarios"
-                className={
-                  pathname === '/admin/funcionarios'
-                    ? 'font-semibold text-blue-700'
-                    : 'text-blue-600'
-                }
-              >
+              <a href="/admin/funcionarios" className={navClass('/admin/funcionarios')}>
                 Funcionários
               </a>
             )}
           </nav>
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-brand-cream/80">
             {user.name} ({user.role})
           </span>
-          <button onClick={logout} className="text-sm text-red-600 underline">
+          <button
+            onClick={logout}
+            className="rounded-md border border-brand-cream/40 px-2.5 py-1 text-sm text-brand-cream hover:bg-white/10"
+          >
             Sair
           </button>
         </div>

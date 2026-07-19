@@ -36,7 +36,7 @@ export default function RelatoriosPage() {
 
   return (
     <main className="mx-auto max-w-4xl p-6">
-      <h1 className="text-2xl font-bold">Relatórios</h1>
+      <h1 className="page-title">Relatórios</h1>
 
       {/* Período */}
       <div className="mt-4 flex flex-wrap items-end gap-3">
@@ -44,7 +44,7 @@ export default function RelatoriosPage() {
           De
           <input
             type="date"
-            className="ml-2 rounded border p-1"
+            className="input ml-2 p-1"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
           />
@@ -53,14 +53,14 @@ export default function RelatoriosPage() {
           Até
           <input
             type="date"
-            className="ml-2 rounded border p-1"
+            className="input ml-2 p-1"
             value={to}
             onChange={(e) => setTo(e.target.value)}
           />
         </label>
         <button
           onClick={() => api.downloadTransactionsCsv(from, to)}
-          className="rounded border px-3 py-1 text-sm text-blue-600"
+          className="btn-outline px-3 py-1 text-sm text-brand-red"
         >
           Exportar CSV
         </button>
@@ -68,14 +68,14 @@ export default function RelatoriosPage() {
 
       {/* Faturamento */}
       <section className="mt-6">
-        <h2 className="text-lg font-semibold">Faturamento</h2>
+        <h2 className="section-title">Faturamento</h2>
         <div className="mt-2 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border bg-white p-4">
-            <p className="text-sm text-gray-500">Total no período</p>
-            <p className="text-2xl font-bold">
+          <div className="card border-l-4 border-l-brand-gold p-4">
+            <p className="text-sm text-brand-ink/60">Total no período</p>
+            <p className="font-display text-2xl font-bold text-brand-red">
               {formatBRL(revenue.data?.totalCents ?? 0)}
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-brand-ink/60">
               {revenue.data?.count ?? 0} pedido(s)
             </p>
           </div>
@@ -83,7 +83,7 @@ export default function RelatoriosPage() {
 
         <table className="mt-3 w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-gray-500">
+            <tr className="border-b-2 border-brand-gold/60 text-left text-brand-ink/60">
               <th className="py-2">Dia</th>
               <th className="text-right">Pedidos</th>
               <th className="text-right">Faturamento</th>
@@ -91,7 +91,7 @@ export default function RelatoriosPage() {
           </thead>
           <tbody>
             {(revenue.data?.byDay ?? []).map((d) => (
-              <tr key={d.date} className="border-b">
+              <tr key={d.date} className="border-b border-brand-cream-dark">
                 <td className="py-2">{d.date}</td>
                 <td className="text-right">{d.count}</td>
                 <td className="text-right">{formatBRL(d.totalCents)}</td>
@@ -99,7 +99,7 @@ export default function RelatoriosPage() {
             ))}
             {(revenue.data?.byDay ?? []).length === 0 && (
               <tr>
-                <td colSpan={3} className="py-3 text-gray-400">
+                <td colSpan={3} className="py-3 text-brand-ink/40">
                   Sem vendas no período.
                 </td>
               </tr>
@@ -110,19 +110,21 @@ export default function RelatoriosPage() {
 
       {/* Por canal */}
       <section className="mt-8">
-        <h2 className="text-lg font-semibold">Por canal</h2>
+        <h2 className="section-title">Por canal</h2>
         <div className="mt-2 grid gap-3 sm:grid-cols-3">
           {(channels.data ?? []).map((c) => (
-            <div key={c.channel} className="rounded-lg border bg-white p-4">
-              <p className="text-sm text-gray-500">
+            <div key={c.channel} className="card p-4">
+              <p className="text-sm text-brand-ink/60">
                 {CHANNEL_LABEL[c.channel] ?? c.channel}
               </p>
-              <p className="text-xl font-bold">{formatBRL(c.totalCents)}</p>
-              <p className="text-sm text-gray-500">{c.count} pedido(s)</p>
+              <p className="font-display text-xl font-bold">
+                {formatBRL(c.totalCents)}
+              </p>
+              <p className="text-sm text-brand-ink/60">{c.count} pedido(s)</p>
             </div>
           ))}
           {(channels.data ?? []).length === 0 && (
-            <p className="text-sm text-gray-400">Sem dados no período.</p>
+            <p className="text-sm text-brand-ink/40">Sem dados no período.</p>
           )}
         </div>
       </section>
@@ -132,10 +134,10 @@ export default function RelatoriosPage() {
 
       {/* Mais vendidos */}
       <section className="mt-8">
-        <h2 className="text-lg font-semibold">Itens mais vendidos</h2>
+        <h2 className="section-title">Itens mais vendidos</h2>
         <table className="mt-2 w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-gray-500">
+            <tr className="border-b-2 border-brand-gold/60 text-left text-brand-ink/60">
               <th className="py-2">Item</th>
               <th className="text-right">Qtd</th>
               <th className="text-right">Faturamento</th>
@@ -143,7 +145,7 @@ export default function RelatoriosPage() {
           </thead>
           <tbody>
             {(topItems.data ?? []).map((it) => (
-              <tr key={it.name} className="border-b">
+              <tr key={it.name} className="border-b border-brand-cream-dark">
                 <td className="py-2">{it.name}</td>
                 <td className="text-right">{it.quantity}</td>
                 <td className="text-right">{formatBRL(it.totalCents)}</td>
@@ -151,7 +153,7 @@ export default function RelatoriosPage() {
             ))}
             {(topItems.data ?? []).length === 0 && (
               <tr>
-                <td colSpan={3} className="py-3 text-gray-400">
+                <td colSpan={3} className="py-3 text-brand-ink/40">
                   Sem vendas no período.
                 </td>
               </tr>
@@ -210,13 +212,13 @@ function DreReceita({ channels }: { channels: ChannelReportItem[] }) {
 
   return (
     <section className="mt-8">
-      <h2 className="text-lg font-semibold">DRE — Receita</h2>
-      <p className="text-sm text-gray-500">
+      <h2 className="section-title">DRE — Receita</h2>
+      <p className="text-sm text-brand-ink/60">
         A comissão do marketplace é estimada por canal — ajuste o % para bater
         com o seu contrato.
       </p>
 
-      <div className="mt-2 space-y-1 rounded-lg border bg-white p-4">
+      <div className="card mt-2 space-y-1 p-4">
         <Line label="Receita Bruta" value={formatBRL(grossTotal)} bold />
         {rows.map((r) => (
           <Line
@@ -237,7 +239,7 @@ function DreReceita({ channels }: { channels: ChannelReportItem[] }) {
         {feeRows.map((r) => (
           <div
             key={r.channel}
-            className="flex items-center justify-between pl-4 text-sm text-gray-600"
+            className="flex items-center justify-between pl-4 text-sm text-brand-ink/70"
           >
             <span className="flex items-center gap-1">
               {CHANNEL_LABEL[r.channel] ?? r.channel}
@@ -245,7 +247,7 @@ function DreReceita({ channels }: { channels: ChannelReportItem[] }) {
                 type="number"
                 min={0}
                 max={100}
-                className="w-14 rounded border p-0.5 text-right"
+                className="input w-14 p-0.5 text-right"
                 value={r.rate}
                 onChange={(e) => setRate(r.channel, Number(e.target.value))}
               />
@@ -255,12 +257,12 @@ function DreReceita({ channels }: { channels: ChannelReportItem[] }) {
           </div>
         ))}
         {feeRows.length === 0 && (
-          <p className="pl-4 text-sm text-gray-400">
+          <p className="pl-4 text-sm text-brand-ink/40">
             Sem vendas de marketplace no período.
           </p>
         )}
 
-        <div className="mt-2 border-t pt-2">
+        <div className="mt-2 border-t-2 border-brand-gold/60 pt-2">
           <Line
             label="= Receita Líquida"
             value={formatBRL(netTotal)}
@@ -292,9 +294,9 @@ function Line({
     <div
       className={[
         'flex items-center justify-between',
-        indent ? 'pl-4 text-sm text-gray-600' : '',
+        indent ? 'pl-4 text-sm text-brand-ink/70' : '',
         bold ? 'font-semibold' : '',
-        danger ? 'text-red-700' : '',
+        danger ? 'text-brand-red' : '',
         big ? 'text-lg font-bold' : '',
       ].join(' ')}
     >

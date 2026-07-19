@@ -28,34 +28,43 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center p-6">
-      <h1 className="text-2xl font-bold">Bacalhau &amp; Cia</h1>
-      <p className="text-gray-500">Acesso ao painel</p>
+      <div className="card p-6">
+        <div className="flex flex-col items-center text-center">
+          <img
+            src="/logo.jpeg"
+            alt="Restaurante Bacalhau & Cia"
+            className="h-24 w-24 rounded-full shadow-md"
+          />
+          <h1 className="page-title mt-3">Bacalhau &amp; Cia</h1>
+          <p className="text-sm text-brand-ink/60">Acesso ao painel</p>
+        </div>
 
-      <form onSubmit={submit} className="mt-6 space-y-3">
-        <input
-          className="w-full rounded border p-2"
-          placeholder="Usuário"
-          autoComplete="username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-        <input
-          className="w-full rounded border p-2"
-          type="password"
-          placeholder="Senha"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button
-          type="submit"
-          className="w-full rounded bg-blue-600 px-4 py-2 font-medium text-white disabled:opacity-50"
-          disabled={loading || !username || !password}
-        >
-          {loading ? 'Entrando...' : 'Entrar'}
-        </button>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-      </form>
+        <form onSubmit={submit} className="mt-6 space-y-3">
+          <input
+            className="input w-full p-2"
+            placeholder="Usuário"
+            autoComplete="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <input
+            className="input w-full p-2"
+            type="password"
+            placeholder="Senha"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button
+            type="submit"
+            className="btn-primary w-full px-4 py-2.5"
+            disabled={loading || !username || !password}
+          >
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
+          {error && <p className="text-sm text-brand-red">{error}</p>}
+        </form>
+      </div>
     </main>
   );
 }

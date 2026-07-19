@@ -54,31 +54,31 @@ export default function FuncionariosPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-bold">Funcionários</h1>
+      <h1 className="page-title">Funcionários</h1>
 
       {/* Cadastro */}
-      <section className="mt-4 grid grid-cols-1 gap-2 rounded-lg border bg-white p-4 sm:grid-cols-[1fr_1fr_1fr_auto_auto]">
+      <section className="card mt-4 grid grid-cols-1 gap-2 p-4 sm:grid-cols-[1fr_1fr_1fr_auto_auto]">
         <input
-          className="rounded border p-2"
+          className="input p-2"
           placeholder="Nome"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
         <input
-          className="rounded border p-2"
+          className="input p-2"
           placeholder="Usuário"
           value={form.username}
           onChange={(e) => setForm({ ...form, username: e.target.value })}
         />
         <input
-          className="rounded border p-2"
+          className="input p-2"
           type="password"
           placeholder="Senha (mín. 6)"
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
         />
         <select
-          className="rounded border p-2"
+          className="input p-2"
           value={form.role}
           onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
         >
@@ -89,7 +89,7 @@ export default function FuncionariosPage() {
           ))}
         </select>
         <button
-          className="rounded bg-green-600 px-3 py-2 text-white disabled:opacity-50"
+          className="btn-success px-3 py-2"
           disabled={
             create.isPending ||
             !form.name ||
@@ -101,12 +101,12 @@ export default function FuncionariosPage() {
           Adicionar
         </button>
       </section>
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-brand-red">{error}</p>}
 
       {/* Lista */}
       <table className="mt-6 w-full text-sm">
         <thead>
-          <tr className="border-b text-left text-gray-500">
+          <tr className="border-b-2 border-brand-gold/60 text-left text-brand-ink/60">
             <th className="py-2">Nome</th>
             <th>Usuário</th>
             <th>Perfil</th>
@@ -116,12 +116,12 @@ export default function FuncionariosPage() {
         </thead>
         <tbody>
           {(employees ?? []).map((e) => (
-            <tr key={e.id} className="border-b">
+            <tr key={e.id} className="border-b border-brand-cream-dark">
               <td className="py-2">{e.name}</td>
               <td className="font-mono">{e.username}</td>
               <td>
                 <select
-                  className="rounded border p-1"
+                  className="input p-1"
                   value={e.role}
                   onChange={(ev) =>
                     update.mutate({
@@ -139,14 +139,14 @@ export default function FuncionariosPage() {
               </td>
               <td>
                 {e.active ? (
-                  <span className="text-green-600">ativo</span>
+                  <span className="font-semibold text-brand-green">ativo</span>
                 ) : (
-                  <span className="text-gray-400">inativo</span>
+                  <span className="text-brand-ink/40">inativo</span>
                 )}
               </td>
               <td className="space-x-2 text-right">
                 <button
-                  className="text-xs text-blue-600 underline"
+                  className="text-xs text-brand-red underline"
                   onClick={() => {
                     const pwd = window.prompt('Nova senha (mín. 6):');
                     if (pwd && pwd.length >= 6) {
@@ -157,7 +157,7 @@ export default function FuncionariosPage() {
                   redefinir senha
                 </button>
                 <button
-                  className="text-xs text-gray-600 underline"
+                  className="text-xs text-brand-ink/60 underline"
                   onClick={() =>
                     update.mutate({
                       id: e.id,

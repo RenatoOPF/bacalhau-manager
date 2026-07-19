@@ -69,7 +69,7 @@ export default function CaixaPage() {
 
   return (
     <main className="mx-auto max-w-5xl p-6">
-      <h1 className="text-2xl font-bold">Fila de pedidos</h1>
+      <h1 className="page-title">Fila de pedidos</h1>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {(orders ?? []).map((order: Order) => {
@@ -77,7 +77,7 @@ export default function CaixaPage() {
           return (
             <div
               key={order.id}
-              className="rounded-lg border bg-white p-4 shadow-sm"
+              className="card p-4"
             >
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
@@ -85,12 +85,12 @@ export default function CaixaPage() {
                     #{order.dailyNumber}
                   </span>
                   {order.channel !== 'OWN' && (
-                    <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                    <span className="rounded bg-brand-red/10 px-2 py-0.5 text-xs font-semibold text-brand-red">
                       {CHANNEL_LABEL[order.channel]}
                     </span>
                   )}
                 </span>
-                <span className="rounded bg-gray-100 px-2 py-1 text-xs">
+                <span className="rounded-full bg-brand-gold/25 px-2.5 py-1 text-xs font-semibold text-brand-ink">
                   {STATUS_LABEL[order.status]}
                 </span>
               </div>
@@ -98,7 +98,7 @@ export default function CaixaPage() {
               <p className="mt-2 text-sm font-medium">
                 {order.customerName}
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-brand-ink/60">
                 {order.addressStreet}
                 {order.addressNumber ? `, ${order.addressNumber}` : ''}
               </p>
@@ -108,7 +108,7 @@ export default function CaixaPage() {
                   <li key={it.id}>
                     {it.quantity}x {printLabel(it.nameSnapshot, it.optionNameSnapshot)}
                     {it.notes && (
-                      <span className="text-gray-500"> — {it.notes}</span>
+                      <span className="text-brand-ink/60"> — {it.notes}</span>
                     )}
                   </li>
                 ))}
@@ -121,7 +121,7 @@ export default function CaixaPage() {
               <div className="mt-3 flex gap-2">
                 {next && (
                   <button
-                    className="flex-1 rounded bg-blue-600 px-3 py-2 text-sm text-white"
+                    className="btn-primary flex-1 px-3 py-2 text-sm"
                     onClick={() =>
                       advance.mutate({ id: order.id, status: next })
                     }
@@ -130,13 +130,13 @@ export default function CaixaPage() {
                   </button>
                 )}
                 <button
-                  className="rounded border px-3 py-2 text-sm"
+                  className="btn-outline px-3 py-2 text-sm"
                   onClick={() => reprint.mutate(order.id)}
                 >
                   Reimprimir
                 </button>
                 <button
-                  className="rounded border border-red-300 px-3 py-2 text-sm text-red-600 disabled:opacity-50"
+                  className="btn-danger px-3 py-2 text-sm"
                   disabled={removeOrder.isPending}
                   onClick={() => {
                     if (confirm(`Excluir o pedido #${order.dailyNumber}?`)) {

@@ -3,5 +3,44 @@
 @tailwind utilities;
 
 body {
-  @apply bg-gray-50 text-gray-900;
+  @apply bg-brand-cream text-brand-ink antialiased;
+}
+
+@layer components {
+  /* Cartão padrão sobre o fundo creme. */
+  .card {
+    @apply rounded-xl border border-brand-cream-dark bg-white shadow-sm;
+  }
+
+  /* Botões: cor/forma aqui; padding fica em cada uso. */
+  .btn {
+    @apply rounded-lg font-semibold transition-colors disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand-red text-white hover:bg-brand-red-dark;
+  }
+  .btn-gold {
+    @apply btn bg-brand-gold text-brand-ink hover:bg-brand-gold-dark;
+  }
+  .btn-success {
+    @apply btn bg-brand-green text-white hover:brightness-110;
+  }
+  .btn-outline {
+    @apply btn border border-brand-ink/20 bg-white font-medium hover:bg-brand-cream;
+  }
+  .btn-danger {
+    @apply btn border border-brand-red/40 bg-white font-medium text-brand-red hover:bg-red-50;
+  }
+
+  .input {
+    @apply rounded-lg border border-brand-ink/20 bg-white outline-none placeholder:text-brand-ink/35 focus:border-brand-red focus:ring-1 focus:ring-brand-red/30;
+  }
+
+  /* Título de seção com o traço dourado do logo. */
+  .section-title {
+    @apply font-display text-lg font-bold text-brand-ink;
+  }
+  .page-title {
+    @apply font-display text-2xl font-extrabold text-brand-red;
+  }
 }

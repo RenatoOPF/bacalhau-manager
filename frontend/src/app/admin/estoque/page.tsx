@@ -63,15 +63,15 @@ export default function EstoquePage() {
 
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-bold">Estoque</h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <h1 className="page-title">Estoque</h1>
+      <p className="mt-1 text-sm text-brand-ink/60">
         Porções preparadas, matéria-prima (kg) e unidades. A venda desconta
         sozinha (Meia = 0,5 porção); zerado não bloqueia — só alerta aqui. Use
         “Produção” para converter kg em porções. Vínculos: aba Cardápio.
       </p>
 
       {low.length > 0 && (
-        <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="mt-4 rounded-lg border border-brand-gold bg-brand-gold/15 p-3 text-sm text-brand-ink">
           <strong>Estoque baixo:</strong>{' '}
           {low
             .map((s) => `${s.name} (${fmtQty(s.qty)} ${unitLabel(s.unit, s.qty)})`)
@@ -83,13 +83,13 @@ export default function EstoquePage() {
 
       <div className="mt-6 flex flex-wrap gap-2">
         <input
-          className="flex-1 rounded border p-2"
+          className="input flex-1 p-2"
           placeholder="Novo insumo (ex: Bacalhau (kg))"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
         />
         <select
-          className="rounded border p-2"
+          className="input p-2"
           value={newUnit}
           onChange={(e) => setNewUnit(e.target.value as StockUnit)}
         >
@@ -100,13 +100,13 @@ export default function EstoquePage() {
           ))}
         </select>
         <input
-          className="w-24 rounded border p-2"
+          className="input w-24 p-2"
           placeholder="Qtd"
           value={newQty}
           onChange={(e) => setNewQty(e.target.value)}
         />
         <button
-          className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+          className="btn-primary px-4 py-2"
           disabled={!newName.trim() || create.isPending}
           onClick={() => create.mutate()}
         >
@@ -121,7 +121,7 @@ export default function EstoquePage() {
           <StockRow key={s.id} item={s} onChange={invalidate} />
         ))}
         {!isLoading && items.length === 0 && (
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-brand-ink/40">
             Nenhum insumo cadastrado ainda.
           </p>
         )}
@@ -171,12 +171,12 @@ function ProduceWidget({
   const source = to?.source ?? producible[0].source!;
 
   return (
-    <div className="mt-4 rounded-lg border bg-white p-3">
-      <p className="text-sm font-semibold">Produção de bacalhau</p>
+    <div className="card mt-4 border-l-4 border-l-brand-gold p-3">
+      <p className="section-title text-sm">Produção de bacalhau</p>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
         <span>Usei</span>
         <input
-          className="w-20 rounded border p-1"
+          className="input w-20 p-1"
           placeholder="1"
           value={fromQty}
           onChange={(e) => setFromQty(e.target.value)}
@@ -185,13 +185,13 @@ function ProduceWidget({
           {source.unit} de {source.name} para fazer
         </span>
         <input
-          className="w-20 rounded border p-1"
+          className="input w-20 p-1"
           placeholder="3"
           value={toQty}
           onChange={(e) => setToQty(e.target.value)}
         />
         <select
-          className="rounded border p-1"
+          className="input p-1"
           value={toId}
           onChange={(e) => setToId(e.target.value)}
         >
@@ -203,7 +203,7 @@ function ProduceWidget({
           ))}
         </select>
         <button
-          className="rounded bg-green-600 px-3 py-1 text-white disabled:opacity-50"
+          className="btn-success px-3 py-1"
           disabled={produce.isPending || !toId}
           onClick={() => produce.mutate()}
         >
@@ -211,12 +211,12 @@ function ProduceWidget({
         </button>
       </div>
       {to && fromQty && toQty && (
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-brand-ink/60">
           Baixa {fromQty} {source.unit} de {source.name} e credita {toQty}{' '}
           {unitLabel(to.unit, parseQty(toQty) ?? 0)} de {to.name}.
         </p>
       )}
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-brand-red">{error}</p>}
     </div>
   );
 }
@@ -260,29 +260,29 @@ function StockRow({
 
   return (
     <div
-      className={`rounded-lg border bg-white p-3 ${
+      className={`card p-3 ${
         zero
-          ? 'border-red-300 bg-red-50'
+          ? 'border-brand-red/40 bg-red-50'
           : lowStock
-            ? 'border-amber-300 bg-amber-50'
+            ? 'border-brand-gold bg-brand-gold/10'
             : ''
       } ${item.active ? '' : 'opacity-50'}`}
     >
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-32 flex-1">
-          <p className="font-medium">{item.name}</p>
-          <p className="text-xs text-gray-500">
+          <p className="font-semibold">{item.name}</p>
+          <p className="text-xs text-brand-ink/60">
             {item.linkedCount} vínculo(s) · alerta em {fmtQty(item.alertQty)}{' '}
             {unitLabel(item.unit, item.alertQty)}
           </p>
         </div>
         <span
-          className={`text-xl font-bold ${
-            zero ? 'text-red-600' : lowStock ? 'text-amber-600' : ''
+          className={`font-display text-xl font-bold ${
+            zero ? 'text-brand-red' : lowStock ? 'text-brand-gold-dark' : ''
           }`}
         >
           {fmtQty(item.qty)}
-          <span className="ml-1 text-xs font-normal text-gray-500">
+          <span className="ml-1 font-sans text-xs font-normal text-brand-ink/60">
             {unitLabel(item.unit, item.qty)}
           </span>
         </span>
@@ -290,7 +290,7 @@ function StockRow({
           {(QUICK[item.unit] ?? QUICK['porção']).map((d) => (
             <button
               key={d}
-              className="rounded border px-2 py-1 text-xs disabled:opacity-50"
+              className="btn-outline px-2 py-1 text-xs"
               disabled={update.isPending}
               onClick={() => update.mutate({ deltaQty: d })}
             >
@@ -300,13 +300,13 @@ function StockRow({
         </div>
         <div className="flex items-center gap-1">
           <input
-            className="w-20 rounded border p-1 text-sm"
+            className="input w-20 p-1 text-sm"
             placeholder="Contagem"
             value={setValue}
             onChange={(e) => setSetValue(e.target.value)}
           />
           <button
-            className="rounded bg-blue-600 px-2 py-1 text-xs text-white disabled:opacity-50"
+            className="btn-primary px-2 py-1 text-xs"
             disabled={update.isPending || parseQty(setValue) === null}
             onClick={() => {
               const qty = parseQty(setValue);
@@ -317,13 +317,13 @@ function StockRow({
           </button>
         </div>
         <button
-          className="rounded border px-2 py-1 text-xs"
+          className="btn-outline px-2 py-1 text-xs"
           onClick={() => setShowHistory((v) => !v)}
         >
           {showHistory ? 'Fechar' : 'Histórico'}
         </button>
         <button
-          className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 disabled:opacity-50"
+          className="btn-danger px-2 py-1 text-xs"
           disabled={remove.isPending}
           onClick={() => {
             if (
@@ -340,24 +340,24 @@ function StockRow({
       </div>
 
       {showHistory && (
-        <ul className="mt-2 border-t pt-2 text-xs text-gray-600">
+        <ul className="mt-2 border-t border-brand-cream-dark pt-2 text-xs text-brand-ink/70">
           {(movements ?? []).map((m) => (
             <li key={m.id} className="flex justify-between py-0.5">
               <span>
                 {m.deltaQty > 0 ? '+' : ''}
                 {fmtQty(m.deltaQty)} — {m.reason}
               </span>
-              <span className="text-gray-400">
+              <span className="text-brand-ink/40">
                 {new Date(m.createdAt).toLocaleString('pt-BR')}
               </span>
             </li>
           ))}
           {(movements ?? []).length === 0 && (
-            <li className="py-0.5 text-gray-400">Sem movimentações.</li>
+            <li className="py-0.5 text-brand-ink/40">Sem movimentações.</li>
           )}
         </ul>
       )}
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-brand-red">{error}</p>}
     </div>
   );
 }

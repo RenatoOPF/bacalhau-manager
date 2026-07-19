@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import { api, type OrderStatus } from '@/lib/api';
+import { SiteFooter } from '@/components/site-footer';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:3001';
 
@@ -55,64 +56,72 @@ export default function AcompanhamentoPage({
   const currentIndex = STEPS.findIndex((s) => s.status === data.status);
 
   return (
-    <main className="mx-auto max-w-md p-6">
-      <h1 className="text-center text-2xl font-bold">
-        Pedido <span className="font-mono">#{data.dailyNumber}</span>
-      </h1>
-      <p className="text-center text-gray-500">
-        {data.items
-          .map(
-            (i) =>
-              `${i.quantity}x ${i.nameSnapshot}` +
-              (i.optionNameSnapshot ? ` (${i.optionNameSnapshot})` : ''),
-          )
-          .join(', ')}
-      </p>
-
-      {canceled ? (
-        <p className="mt-8 rounded bg-red-50 p-4 text-center font-medium text-red-700">
-          Pedido cancelado.
+    <>
+      <main className="mx-auto max-w-md p-6">
+        <img
+          src="/logo.jpeg"
+          alt="Restaurante Bacalhau & Cia"
+          className="mx-auto mb-4 h-20 w-20 rounded-full shadow-md"
+        />
+        <h1 className="page-title text-center">
+          Pedido <span className="font-mono">#{data.dailyNumber}</span>
+        </h1>
+        <p className="text-center text-brand-ink/60">
+          {data.items
+            .map(
+              (i) =>
+                `${i.quantity}x ${i.nameSnapshot}` +
+                (i.optionNameSnapshot ? ` (${i.optionNameSnapshot})` : ''),
+            )
+            .join(', ')}
         </p>
-      ) : (
-        <ol className="mt-8 space-y-3">
-          {STEPS.map((step, i) => {
-            const done = i < currentIndex;
-            const active = i === currentIndex;
-            return (
-              <li
-                key={step.status}
-                className={`flex items-center gap-3 rounded-lg border p-3 ${
-                  active
-                    ? 'border-blue-500 bg-blue-50'
-                    : done
-                      ? 'border-green-200 bg-green-50'
-                      : 'border-gray-200 opacity-60'
-                }`}
-              >
-                <span className="text-xl">{step.emoji}</span>
-                <span className="flex-1 font-medium">{step.label}</span>
-                {done && <span className="text-green-600">✓</span>}
-                {active && (
-                  <span className="text-sm font-semibold text-blue-600">
-                    agora
-                  </span>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      )}
 
-      <p className="mt-6 text-center text-xs text-gray-400">
-        Esta página atualiza sozinha conforme seu pedido avança.
-      </p>
-    </main>
+        {canceled ? (
+          <p className="mt-8 rounded-lg border border-brand-red/30 bg-red-50 p-4 text-center font-medium text-brand-red">
+            Pedido cancelado.
+          </p>
+        ) : (
+          <ol className="mt-8 space-y-3">
+            {STEPS.map((step, i) => {
+              const done = i < currentIndex;
+              const active = i === currentIndex;
+              return (
+                <li
+                  key={step.status}
+                  className={`flex items-center gap-3 rounded-lg border bg-white p-3 ${
+                    active
+                      ? 'border-brand-gold bg-brand-gold/15 shadow-sm'
+                      : done
+                        ? 'border-brand-green/30 bg-green-50'
+                        : 'border-brand-cream-dark opacity-60'
+                  }`}
+                >
+                  <span className="text-xl">{step.emoji}</span>
+                  <span className="flex-1 font-medium">{step.label}</span>
+                  {done && <span className="text-brand-green">✓</span>}
+                  {active && (
+                    <span className="text-sm font-bold text-brand-red">
+                      agora
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        )}
+
+        <p className="mt-6 text-center text-xs text-brand-ink/40">
+          Esta página atualiza sozinha conforme seu pedido avança.
+        </p>
+      </main>
+      <SiteFooter />
+    </>
   );
 }
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <main className="mx-auto max-w-md p-10 text-center text-gray-600">
+    <main className="mx-auto max-w-md p-10 text-center text-brand-ink/60">
       {children}
     </main>
   );
