@@ -475,6 +475,7 @@ function ItemRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(item.name);
+  const [description, setDescription] = useState(item.description ?? '');
   const [price, setPrice] = useState((item.priceCents / 100).toFixed(2));
   const [error, setError] = useState<string | null>(null);
 
@@ -507,32 +508,48 @@ function ItemRow({
       setError('Nome e preço válidos são obrigatórios.');
       return;
     }
-    update.mutate({ name: name.trim(), priceCents });
+    update.mutate({
+      name: name.trim(),
+      priceCents,
+      description: description.trim() || undefined,
+    });
   };
 
   if (editing) {
     return (
-      <li className="flex flex-wrap items-center gap-2 py-2">
+      <li className="flex flex-col gap-2 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            className="input flex-1 p-1"
+            placeholder="Nome"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <input
+            className="input w-24 p-1"
+            placeholder="R$"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
+        </div>
         <input
-          className="input flex-1 p-1"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          className="input w-full p-1 text-sm"
+          placeholder="Descrição (opcional)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
         />
-        <input
-          className="input w-24 p-1"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-        />
-        <button className="btn-primary px-3 py-1 text-sm" onClick={save}>
-          Salvar
-        </button>
-        <button
-          className="btn-outline px-3 py-1 text-sm"
-          onClick={() => setEditing(false)}
-        >
-          Cancelar
-        </button>
-        {error && <span className="text-sm text-brand-red">{error}</span>}
+        <div className="flex gap-2">
+          <button className="btn-primary px-3 py-1 text-sm" onClick={save}>
+            Salvar
+          </button>
+          <button
+            className="btn-outline px-3 py-1 text-sm"
+            onClick={() => setEditing(false)}
+          >
+            Cancelar
+          </button>
+          {error && <span className="text-sm text-brand-red">{error}</span>}
+        </div>
       </li>
     );
   }
