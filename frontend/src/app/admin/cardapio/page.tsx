@@ -625,6 +625,8 @@ function OptionsManager({
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
 
   const add = useMutation({
     mutationFn: () => {
@@ -643,12 +645,52 @@ function OptionsManager({
     onError: (e: Error) => setError(e.message),
   });
 
+  const reorder = useMutation({
+    mutationFn: (orderedIds: string[]) =>
+      api.reorderOptions(item.id, orderedIds),
+    onSuccess: onChange,
+  });
+
+  const handleDragStart = (index: number) => setDragIndex(index);
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setOverIndex(index);
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (dragIndex === null || overIndex === null || dragIndex === overIndex) {
+      setDragIndex(null);
+      setOverIndex(null);
+      return;
+    }
+    const reordered = [...options];
+    const [moved] = reordered.splice(dragIndex, 1);
+    reordered.splice(overIndex, 0, moved);
+    setDragIndex(null);
+    setOverIndex(null);
+    reorder.mutate(reordered.map((o) => o.id));
+  };
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    setOverIndex(null);
+  };
+
   return (
     <div className="ml-3 mt-2 border-l-2 border-brand-gold/50 pl-3">
       {options.length > 0 && (
         <ul className="space-y-1">
-          {options.map((opt) => (
-            <OptionRow key={opt.id} option={opt} onChange={onChange} />
+          {options.map((opt, i) => (
+            <OptionRow
+              key={opt.id}
+              option={opt}
+              onChange={onChange}
+              dragging={dragIndex === i}
+              dragOver={overIndex === i && dragIndex !== i}
+              onDragStart={() => handleDragStart(i)}
+              onDragOver={(e) => handleDragOver(e, i)}
+              onDrop={handleDrop}
+              onDragEnd={handleDragEnd}
+            />
           ))}
         </ul>
       )}
@@ -681,9 +723,21 @@ function OptionsManager({
 function OptionRow({
   option,
   onChange,
+  dragging,
+  dragOver,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: {
   option: MenuItemOption;
   onChange: () => void;
+  dragging?: boolean;
+  dragOver?: boolean;
+  onDragStart?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  onDragEnd?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(option.name);
@@ -737,7 +791,22 @@ function OptionRow({
   }
 
   return (
-    <li className="flex flex-wrap items-center gap-2 text-sm">
+    <li
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={`flex flex-wrap items-center gap-2 rounded text-sm transition-opacity ${
+        dragging ? 'opacity-40' : 'opacity-100'
+      } ${dragOver ? 'bg-brand-gold/20 outline outline-1 outline-brand-gold' : ''}`}
+    >
+      <span
+        className="cursor-grab px-0.5 text-brand-ink/30 hover:text-brand-ink/60 active:cursor-grabbing"
+        title="Arrastar para reordenar"
+      >
+        ⠿
+      </span>
       <span
         className={
           option.available

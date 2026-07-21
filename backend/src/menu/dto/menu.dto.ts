@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsBoolean,
   IsIn,
   IsInt,
@@ -87,6 +88,12 @@ export class CreateOptionDto {
   @IsOptional()
   @IsInt()
   sortOrder?: number;
+}
+
+export class ReorderOptionsDto {
+  @IsArray()
+  @IsString({ each: true })
+  orderedIds: string[];
 }
 
 export class UpdateOptionDto {

@@ -384,6 +384,11 @@ export const api = {
     }),
   deleteOption: (id: string) =>
     request<{ id: string }>(`/menu/options/${id}`, { method: 'DELETE' }),
+  reorderOptions: (itemId: string, orderedIds: string[]) =>
+    request<{ reordered: boolean }>(`/menu/items/${itemId}/options/reorder`, {
+      method: 'POST',
+      body: JSON.stringify({ orderedIds }),
+    }),
 
   // ---- Estoque ----
   listStock: () => request<StockItem[]>('/stock'),

@@ -17,6 +17,7 @@ import {
   UpdateMenuItemDto,
   CreateOptionDto,
   UpdateOptionDto,
+  ReorderOptionsDto,
   MoveDto,
 } from './dto/menu.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -107,6 +108,16 @@ export class MenuController {
     @Body() dto: CreateOptionDto,
   ) {
     return this.menu.createOption(itemId, dto);
+  }
+
+  @Post('items/:itemId/options/reorder')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
+  reorderOptions(
+    @Param('itemId') itemId: string,
+    @Body() dto: ReorderOptionsDto,
+  ) {
+    return this.menu.reorderOptions(itemId, dto.orderedIds);
   }
 
   @Patch('options/:id')

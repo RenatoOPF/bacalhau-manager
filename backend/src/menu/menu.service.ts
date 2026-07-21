@@ -159,4 +159,28 @@ export class MenuService {
   deleteOption(id: string) {
     return this.prisma.menuItemOption.delete({ where: { id } });
   }
+
+  /** Reordena as opções de um item a partir de uma lista ordenada de IDs. */
+  async reorderOptions(menuItemId: string, orderedIds: string[]) {
+    const options = await this.prisma.menuItemOption.findMany({
+      where: { menuItemId },
+      select: { id: true },
+    });
+    const idsInItem = new Set(options.map((o) => o.id));
+    if (
+      orderedIds.length !== idsInItem.size ||
+      !orderedIds.every((id) => idsInItem.has(id))
+    ) {
+      throw new BadRequestException('Lista de IDs inválida para este item.');
+    }
+    await this.prisma.$transaction(
+      orderedIds.map((id, i) =>
+        this.prisma.menuItemOption.update({
+          where: { id },
+          data: { sortOrder: i },
+        }),
+      ),
+    );
+    return { reordered: true };
+  }
 }
