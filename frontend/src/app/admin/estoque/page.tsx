@@ -121,6 +121,7 @@ export default function EstoquePage() {
           <StockRow
             key={s.id}
             item={s}
+            allItems={items}
             onChange={invalidate}
             isFirst={i === 0}
             isLast={i === arr.length - 1}
@@ -229,17 +230,24 @@ function ProduceWidget({
 
 function StockRow({
   item,
+  allItems,
   onChange,
   isFirst,
   isLast,
 }: {
   item: StockItem;
+  allItems: StockItem[];
   onChange: () => void;
   isFirst: boolean;
   isLast: boolean;
 }) {
   const [setValue, setSetValue] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
+  const [subId, setSubId] = useState<string>(item.substituteId ?? '');
+  const [subFactor, setSubFactor] = useState<string>(
+    String(item.substituteFactor ?? 1),
+  );
   const [error, setError] = useState<string | null>(null);
 
   const update = useMutation({
@@ -357,6 +365,12 @@ function StockRow({
           {showHistory ? 'Fechar' : 'Histórico'}
         </button>
         <button
+          className="btn-outline px-2 py-1 text-xs"
+          onClick={() => setShowConfig((v) => !v)}
+        >
+          {showConfig ? 'Fechar config' : 'Config'}
+        </button>
+        <button
           className="btn-danger px-2 py-1 text-xs"
           disabled={remove.isPending}
           onClick={() => {
@@ -372,6 +386,66 @@ function StockRow({
           Excluir
         </button>
       </div>
+
+      {showConfig && (
+        <div className="mt-2 border-t border-brand-cream-dark pt-2">
+          <p className="mb-1 text-xs font-semibold text-brand-ink/60">
+            Substituto quando zerado
+          </p>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <select
+              className="input flex-1 p-1 text-sm"
+              value={subId}
+              onChange={(e) => setSubId(e.target.value)}
+            >
+              <option value="">Nenhum</option>
+              {allItems
+                .filter((s) => s.id !== item.id)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+            </select>
+            {subId && (
+              <>
+                <label className="text-xs text-brand-ink/60">Fator</label>
+                <input
+                  type="number"
+                  min="0.001"
+                  step="0.5"
+                  className="input w-16 p-1 text-sm"
+                  value={subFactor}
+                  onChange={(e) => setSubFactor(e.target.value)}
+                />
+                <span className="text-xs text-brand-ink/40">
+                  (ao usar este zerado, consome {subFactor}{' '}
+                  {allItems.find((s) => s.id === subId)?.name ?? '—'})
+                </span>
+              </>
+            )}
+            <button
+              className="btn-primary px-2 py-1 text-xs"
+              disabled={update.isPending}
+              onClick={() =>
+                update.mutate({
+                  substituteId: subId || null,
+                  substituteFactor: subId ? (parseQty(subFactor) ?? 1) : 1,
+                })
+              }
+            >
+              Salvar
+            </button>
+          </div>
+          {item.substituteId && (
+            <p className="mt-1 text-xs text-brand-ink/50">
+              Atual: ao usar <strong>{item.name}</strong> zerado → consome{' '}
+              {item.substituteFactor ?? 1} de{' '}
+              <strong>{item.substitute?.name ?? '—'}</strong>
+            </p>
+          )}
+        </div>
+      )}
 
       {showHistory && (
         <ul className="mt-2 border-t border-brand-cream-dark pt-2 text-xs text-brand-ink/70">

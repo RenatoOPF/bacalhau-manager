@@ -244,18 +244,16 @@ export type StockUnit = 'porção' | 'kg' | 'un';
 export interface StockItem {
   id: string;
   name: string;
-  // Unidade do saldo: porções preparadas, kg (matéria-prima) ou unidades.
   unit: StockUnit;
-  // Saldo na unidade do insumo (aceita fração: 12.5 porções, 1.2 kg).
   qty: number;
-  // Alerta de baixo estoque quando qty <= alertQty.
   alertQty: number;
   active: boolean;
-  // Quantos pratos/opções do cardápio consomem este insumo.
   linkedCount: number;
-  // Matéria-prima da qual este insumo é produzido (ex.: porções de bacalhau
-  // vêm de "Bacalhau (kg)"). Habilita o registro de produção no painel.
   source?: { id: string; name: string; unit: StockUnit } | null;
+  // Substituto quando zerado (ex.: Porção 200g ↔ 400g).
+  substituteId?: string | null;
+  substituteFactor?: number;
+  substitute?: { id: string; name: string } | null;
 }
 
 export interface StockMovementRow {
@@ -271,10 +269,10 @@ export interface UpdateStockPayload {
   unit?: StockUnit;
   active?: boolean;
   alertQty?: number;
-  // Define o saldo absoluto (contagem) — exclusivo com deltaQty.
   setQty?: number;
-  // Ajuste relativo: positivo repõe, negativo baixa.
   deltaQty?: number;
+  substituteId?: string | null;
+  substituteFactor?: number;
 }
 
 export type Role = 'ADMIN' | 'MANAGER' | 'KITCHEN' | 'DELIVERY';

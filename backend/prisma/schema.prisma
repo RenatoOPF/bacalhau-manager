@@ -119,6 +119,14 @@ model StockItem {
   sourceId String?
   derived  StockItem[] @relation("StockSource")
 
+  // Substituto quando este insumo estiver zerado (ex.: Porção 200g ↔ 400g).
+  // substituteFactor: quantas unidades do substituto equivalem a 1 desta
+  // (200g→400g: 0.5; 400g→200g: 2.0).
+  substitute       StockItem?  @relation("StockSubstitute", fields: [substituteId], references: [id], onDelete: SetNull)
+  substituteId     String?
+  substituteFactor Float       @default(1)
+  substituteOf     StockItem[] @relation("StockSubstitute")
+
   links     StockLink[]
   movements StockMovement[]
 

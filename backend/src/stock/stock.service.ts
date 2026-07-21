@@ -66,6 +66,7 @@ export class StockService {
       include: {
         _count: { select: { links: true } },
         source: { select: { id: true, name: true, unit: true } },
+        substitute: { select: { id: true, name: true } },
       },
     });
     return items.map((s) => ({
@@ -76,8 +77,10 @@ export class StockService {
       alertQty: fromMilli(s.alertMilli),
       active: s.active,
       linkedCount: s._count.links,
-      // Matéria-prima deste insumo (habilita a produção no painel).
       source: s.source,
+      substituteId: s.substituteId,
+      substituteFactor: s.substituteFactor,
+      substitute: s.substitute,
     }));
   }
 
@@ -131,6 +134,12 @@ export class StockService {
             ? { alertMilli: toMilli(dto.alertQty) }
             : {}),
           ...(delta !== 0 ? { qtyMilli: { increment: delta } } : {}),
+          ...(dto.substituteId !== undefined
+            ? { substituteId: dto.substituteId }
+            : {}),
+          ...(dto.substituteFactor !== undefined
+            ? { substituteFactor: dto.substituteFactor }
+            : {}),
         },
       }),
       ...(delta !== 0
@@ -423,7 +432,46 @@ export class StockService {
         );
       }
     }
-    return totals;
+    // Substituição: se um insumo estiver zerado e tiver substituto com saldo,
+    // redireciona o consumo (ex.: Porção 200g zerada → usa 0,5 de Porção 400g).
+    const stockItemIds = [...totals.keys()];
+    if (stockItemIds.length === 0) return totals;
+
+    const stockItems = await this.prisma.stockItem.findMany({
+      where: { id: { in: stockItemIds } },
+      select: {
+        id: true,
+        name: true,
+        qtyMilli: true,
+        substituteId: true,
+        substituteFactor: true,
+        substitute: { select: { id: true, qtyMilli: true } },
+      },
+    });
+
+    const resolved = new Map<string, number>();
+    for (const [stockItemId, neededMilli] of totals.entries()) {
+      const si = stockItems.find((s) => s.id === stockItemId);
+      if (
+        si &&
+        si.qtyMilli <= 0 &&
+        si.substituteId &&
+        si.substitute &&
+        si.substitute.qtyMilli > 0
+      ) {
+        const subMilli = Math.round(neededMilli * si.substituteFactor);
+        resolved.set(
+          si.substituteId,
+          (resolved.get(si.substituteId) ?? 0) + subMilli,
+        );
+        this.logger.log(
+          `Substituição: "${si.name}" zerado → usando ${fromMilli(subMilli)} do substituto (fator ${si.substituteFactor}).`,
+        );
+      } else {
+        resolved.set(stockItemId, (resolved.get(stockItemId) ?? 0) + neededMilli);
+      }
+    }
+    return resolved;
   }
 
   /** Casa um nome vindo do iFood com um item do cardápio (texto normalizado). */

@@ -7,6 +7,7 @@ import {
   IsString,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 // As quantidades chegam na UNIDADE do insumo (porções/kg/un, aceitam fração:
@@ -63,6 +64,18 @@ export class UpdateStockItemDto {
   @IsOptional()
   @IsNumber()
   deltaQty?: number;
+
+  // Substituto quando zerado (null = remover). Junto com o fator de conversão
+  // (unidades do substituto por 1 desta: 0.5 para 200g→400g, 2 para 400g→200g).
+  @IsOptional()
+  @ValidateIf((o) => o.substituteId !== null)
+  @IsString()
+  substituteId?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0.001)
+  substituteFactor?: number;
 }
 
 /**
