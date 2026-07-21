@@ -577,11 +577,13 @@ function ItemRow({
             formatBRL(item.priceCents)
           )}
         </span>
-        <StockLinksEditor
-          links={item.stockLinks ?? []}
-          menuItemId={item.id}
-          onChange={onChange}
-        />
+        {!hasOptions && (
+          <StockLinksEditor
+            links={item.stockLinks ?? []}
+            menuItemId={item.id}
+            onChange={onChange}
+          />
+        )}
         <button
           className="btn-outline px-2 py-1 text-xs"
           onClick={() => setEditing(true)}
