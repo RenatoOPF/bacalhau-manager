@@ -54,6 +54,11 @@ export class CreateMenuItemDto {
   @IsInt()
   @Min(0)
   priceCents: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  extraCostCents?: number;
 }
 
 export class UpdateMenuItemDto {
@@ -70,6 +75,11 @@ export class UpdateMenuItemDto {
   @IsInt()
   @Min(0)
   priceCents?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  extraCostCents?: number;
 
   @IsOptional()
   @IsBoolean()

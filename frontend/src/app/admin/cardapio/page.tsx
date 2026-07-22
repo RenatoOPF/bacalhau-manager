@@ -477,6 +477,9 @@ function ItemRow({
   const [name, setName] = useState(item.name);
   const [description, setDescription] = useState(item.description ?? '');
   const [price, setPrice] = useState((item.priceCents / 100).toFixed(2));
+  const [extraCost, setExtraCost] = useState(
+    item.extraCostCents ? (item.extraCostCents / 100).toFixed(2) : '',
+  );
   const [error, setError] = useState<string | null>(null);
 
   const update = useMutation({
@@ -508,9 +511,15 @@ function ItemRow({
       setError('Nome e preço válidos são obrigatórios.');
       return;
     }
+    const extraCostCents = extraCost.trim() ? reaisToCents(extraCost) : 0;
+    if (extraCostCents === null) {
+      setError('Custo adicional inválido.');
+      return;
+    }
     update.mutate({
       name: name.trim(),
       priceCents,
+      extraCostCents,
       description: description.trim() || undefined,
     });
   };
@@ -538,6 +547,19 @@ function ItemRow({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
+        <label className="flex items-center gap-2 text-sm text-brand-ink/60">
+          <span className="whitespace-nowrap">Custo adicional R$</span>
+          <input
+            className="input w-24 p-1"
+            placeholder="0,00"
+            title="Ingredientes fora do estoque (tempero, guarnição). Soma ao CMV; meia porção usa metade."
+            value={extraCost}
+            onChange={(e) => setExtraCost(e.target.value)}
+          />
+          <span className="text-xs text-brand-ink/40">
+            tempero/guarnição fora do estoque — entra no CMV
+          </span>
+        </label>
         <div className="flex gap-2">
           <button className="btn-primary px-3 py-1 text-sm" onClick={save}>
             Salvar
@@ -583,6 +605,11 @@ function ItemRow({
           </p>
           {item.description && (
             <p className="text-sm text-brand-ink/60">{item.description}</p>
+          )}
+          {(item.extraCostCents ?? 0) > 0 && (
+            <p className="text-xs text-brand-ink/40">
+              + custo adicional {formatBRL(item.extraCostCents ?? 0)}
+            </p>
           )}
         </div>
         <span className="text-sm font-semibold text-brand-red">

@@ -52,6 +52,10 @@ model MenuItem {
   // Preço em centavos para evitar imprecisão de ponto flutuante.
   // Usado quando o item NÃO tem opções; com opções, o preço vem da opção.
   priceCents  Int
+  // Custo adicional em CENTAVOS por porção inteira, para ingredientes que não
+  // são controlados como insumo de estoque (tempero, guarnição, molho). Soma
+  // ao CMV; a Meia Porção desconta metade (mesma regra dos vínculos).
+  extraCostCents Int           @default(0)
   available   Boolean          @default(true)
   // Ordem de exibição dentro da categoria (empate resolvido pelo nome).
   sortOrder   Int              @default(0)

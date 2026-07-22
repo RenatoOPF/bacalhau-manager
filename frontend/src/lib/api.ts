@@ -76,6 +76,8 @@ export interface MenuItem {
   name: string;
   description?: string | null;
   priceCents: number;
+  // Custo adicional por porção inteira (ingredientes fora do estoque). Soma ao CMV.
+  extraCostCents?: number;
   available: boolean;
   // Presente quando o item tem variações (ex.: Individual/Inteira). Quando há
   // opções, o preço vem da opção escolhida.
@@ -104,6 +106,7 @@ export interface UpdateItemPayload {
   name?: string;
   description?: string;
   priceCents?: number;
+  extraCostCents?: number;
   available?: boolean;
 }
 

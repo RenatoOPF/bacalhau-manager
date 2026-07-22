@@ -562,6 +562,8 @@ export class StockService {
   > {
     type LinkCost = { qtyMilli: number; stockItem: { costCents: number } };
     type ItemCost = {
+      name: string;
+      extraCostCents: number;
       options: { name: string; stockLinks: LinkCost[] }[];
       stockLinks: LinkCost[];
     };
@@ -573,7 +575,7 @@ export class StockService {
         },
         stockLinks: { include: { stockItem: { select: { costCents: true } } } },
       },
-    })) as unknown as (ItemCost & { name: string })[];
+    })) as unknown as ItemCost[];
 
     const byName = new Map(menuItems.map((m) => [normalize(m.name), m]));
 
@@ -591,6 +593,11 @@ export class StockService {
       const context = normalize(
         [nameSnapshot, optionNameSnapshot, notes].filter(Boolean).join(' '),
       );
+      const factor = sizeFactor(context) ?? 1;
+      // Custo adicional (tempero/guarnição não controlados em estoque): vale por
+      // Porção Inteira e a Meia desconta metade, igual aos vínculos do item.
+      const extra = Math.round(menuItem.extraCostCents * factor);
+
       const option = this.matchOptionByContext(
         menuItem.options,
         optionNameSnapshot,
@@ -599,11 +606,9 @@ export class StockService {
       // Vínculo da opção já embute o tamanho (fator 1); vínculo do item vale por
       // Porção Inteira e a Meia desconta metade (fator do texto).
       if (option && option.stockLinks.length > 0) {
-        return linkCost(option.stockLinks, 1);
+        return linkCost(option.stockLinks, 1) + extra;
       }
-      if (menuItem.stockLinks.length === 0) return 0;
-      const factor = sizeFactor(context) ?? 1;
-      return linkCost(menuItem.stockLinks, factor);
+      return linkCost(menuItem.stockLinks, factor) + extra;
     };
   }
 }
