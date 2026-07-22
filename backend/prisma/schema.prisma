@@ -109,6 +109,9 @@ model StockItem {
   qtyMilli Int    @default(0)
   // Alerta no admin quando qtyMilli <= alertMilli (padrão: 1 porção/kg/un).
   alertMilli Int  @default(1000)
+  // Custo em CENTAVOS por 1 unidade inteira (1 porção/kg/un). Base do CMV:
+  // o custo de um consumo de vínculo = round(qtyMilli * costCents / 1000).
+  costCents Int    @default(0)
   active    Boolean @default(true)
   sortOrder Int     @default(0)
 
@@ -298,4 +301,46 @@ model LegacyOrder {
 model DailyCounter {
   date       String @id
   lastNumber Int    @default(0)
+}
+
+// ---------- Financeiro ----------
+
+enum ExpenseCategory {
+  RENT // aluguel
+  PAYROLL // funcionários
+  PACKAGING // embalagem
+  DELIVERY // motoboy / combustível
+  SUPPLIES // insumos / fornecedores (compras)
+  TAXES // impostos
+  OTHER // outros
+}
+
+/// Despesa/saída financeira. `dueDate` é a competência (entra no DRE do
+/// período); `paidAt` é o pagamento efetivo (entra no fluxo de caixa). Com
+/// `paidAt` nulo, a despesa é uma conta a pagar em aberto.
+model Expense {
+  id          String          @id @default(cuid())
+  description String
+  category    ExpenseCategory @default(OTHER)
+  amountCents Int
+  dueDate     DateTime
+  paidAt      DateTime?
+  // Marca despesas fixas recorrentes (aluguel etc.) — informativo por ora.
+  recurring   Boolean         @default(false)
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([dueDate])
+  @@index([paidAt])
+  @@index([category])
+}
+
+/// Configuração por canal de venda. Hoje só a comissão do marketplace usada
+/// no DRE (em basis points: 2300 = 23%). Fonte única de verdade (antes ficava
+/// no localStorage do navegador).
+model ChannelConfig {
+  channel       OrderChannel @id
+  commissionBps Int          @default(0)
+  updatedAt     DateTime     @updatedAt
 }

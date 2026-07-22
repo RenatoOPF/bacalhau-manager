@@ -189,6 +189,118 @@ export interface TopItem {
   totalCents: number;
 }
 
+export interface SalesSummary {
+  from?: string;
+  to?: string;
+  totalCents: number;
+  count: number;
+  avgTicketCents: number;
+  prev: { totalCents: number; count: number } | null;
+  deltaPct: number | null;
+}
+
+export interface PeakHour {
+  weekday: number; // 0 = domingo
+  hour: number;
+  count: number;
+  totalCents: number;
+}
+
+export interface CancellationReport {
+  total: number;
+  canceled: number;
+  ratePct: number;
+  lostCents: number;
+}
+
+export interface ProductRow {
+  name: string;
+  quantity: number;
+  totalCents: number;
+  cumulativePct: number;
+  class: 'A' | 'B' | 'C';
+}
+
+export interface BasketPair {
+  a: string;
+  b: string;
+  count: number;
+}
+
+export interface MarginRow {
+  name: string;
+  optionName: string | null;
+  unitPriceCents: number;
+  unitCostCents: number;
+  marginCents: number;
+  marginPct: number;
+  quantity: number;
+  contributionCents: number;
+  hasCost: boolean;
+}
+
+export interface DreReport {
+  from?: string;
+  to?: string;
+  grossCents: number;
+  grossByChannel: {
+    channel: OrderChannel;
+    grossCents: number;
+    commissionBps: number;
+    commissionCents: number;
+  }[];
+  commissionCents: number;
+  cmvCents: number;
+  expensesByCategory: { category: ExpenseCategory; amountCents: number }[];
+  expensesCents: number;
+  netCents: number;
+}
+
+export interface CashflowRow {
+  date: string;
+  inCents: number;
+  outCents: number;
+  netCents: number;
+  balanceCents: number;
+}
+
+export interface ChannelConfigRow {
+  channel: OrderChannel;
+  commissionBps: number;
+}
+
+export type ExpenseCategory =
+  | 'RENT'
+  | 'PAYROLL'
+  | 'PACKAGING'
+  | 'DELIVERY'
+  | 'SUPPLIES'
+  | 'TAXES'
+  | 'OTHER';
+
+export interface Expense {
+  id: string;
+  description: string;
+  category: ExpenseCategory;
+  amountCents: number;
+  dueDate: string;
+  paidAt: string | null;
+  recurring: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateExpensePayload {
+  description: string;
+  category: ExpenseCategory;
+  amountCents: number;
+  dueDate: string;
+  paidAt?: string;
+  recurring?: boolean;
+  notes?: string;
+}
+
 export interface DailySummary {
   date: string;
   count: number;
@@ -247,6 +359,8 @@ export interface StockItem {
   unit: StockUnit;
   qty: number;
   alertQty: number;
+  // Custo por unidade em centavos (base do CMV/margem).
+  costCents: number;
   active: boolean;
   linkedCount: number;
   source?: { id: string; name: string; unit: StockUnit } | null;
@@ -273,6 +387,8 @@ export interface UpdateStockPayload {
   deltaQty?: number;
   substituteId?: string | null;
   substituteFactor?: number;
+  // Custo por unidade em reais (o backend converte para centavos).
+  cost?: number;
 }
 
 export type Role = 'ADMIN' | 'MANAGER' | 'KITCHEN' | 'DELIVERY';
@@ -499,6 +615,66 @@ export const api = {
     const q = qs.toString();
     return request<TopItem[]>(`/reports/top-items${q ? `?${q}` : ''}`);
   },
+  salesSummary: (from?: string, to?: string) =>
+    request<SalesSummary>(`/reports/summary${periodQuery(from, to)}`),
+  peakHours: (from?: string, to?: string) =>
+    request<PeakHour[]>(`/reports/peak-hours${periodQuery(from, to)}`),
+  cancellations: (from?: string, to?: string) =>
+    request<CancellationReport>(`/reports/cancellations${periodQuery(from, to)}`),
+  products: (from?: string, to?: string) =>
+    request<ProductRow[]>(`/reports/products${periodQuery(from, to)}`),
+  basket: (from?: string, to?: string, limit?: number) => {
+    const qs = new URLSearchParams();
+    if (from) qs.set('from', from);
+    if (to) qs.set('to', to);
+    if (limit) qs.set('limit', String(limit));
+    const q = qs.toString();
+    return request<BasketPair[]>(`/reports/basket${q ? `?${q}` : ''}`);
+  },
+  margins: (from?: string, to?: string) =>
+    request<MarginRow[]>(`/reports/margins${periodQuery(from, to)}`),
+  dre: (from?: string, to?: string) =>
+    request<DreReport>(`/reports/dre${periodQuery(from, to)}`),
+  cashflow: (from?: string, to?: string) =>
+    request<CashflowRow[]>(`/reports/cashflow${periodQuery(from, to)}`),
+  channelConfig: () =>
+    request<ChannelConfigRow[]>('/reports/channel-config'),
+  setChannelCommission: (channel: OrderChannel, commissionBps: number) =>
+    request<ChannelConfigRow>(`/reports/channel-config/${channel}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ commissionBps }),
+    }),
+
+  // ---- Despesas ----
+  listExpenses: (params?: {
+    from?: string;
+    to?: string;
+    category?: ExpenseCategory;
+    status?: 'paid' | 'unpaid';
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.from) qs.set('from', params.from);
+    if (params?.to) qs.set('to', params.to);
+    if (params?.category) qs.set('category', params.category);
+    if (params?.status) qs.set('status', params.status);
+    const q = qs.toString();
+    return request<Expense[]>(`/expenses${q ? `?${q}` : ''}`);
+  },
+  createExpense: (payload: CreateExpensePayload) =>
+    request<Expense>('/expenses', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateExpense: (id: string, payload: Partial<CreateExpensePayload> & { paidAt?: string | null }) =>
+    request<Expense>(`/expenses/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  payExpense: (id: string) =>
+    request<Expense>(`/expenses/${id}/pay`, { method: 'PATCH' }),
+  deleteExpense: (id: string) =>
+    request<{ id: string }>(`/expenses/${id}`, { method: 'DELETE' }),
+
   // Baixa o CSV autenticado e dispara o download no navegador.
   downloadTransactionsCsv: async (from?: string, to?: string) => {
     const res = await fetch(

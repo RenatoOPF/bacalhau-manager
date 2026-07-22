@@ -33,6 +33,12 @@ export class CreateStockItemDto {
   @IsNumber()
   @Min(0)
   alertQty?: number;
+
+  // Custo por unidade em REAIS (o service converte para centavos).
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  cost?: number;
 }
 
 export class UpdateStockItemDto {
@@ -53,6 +59,12 @@ export class UpdateStockItemDto {
   @IsNumber()
   @Min(0)
   alertQty?: number;
+
+  // Custo por unidade em REAIS (o service converte para centavos).
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  cost?: number;
 
   // Define o saldo absoluto (contagem/inventário).
   @IsOptional()

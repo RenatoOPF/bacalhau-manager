@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, type StockItem, type StockUnit } from '@/lib/api';
+import { api, formatBRL, type StockItem, type StockUnit } from '@/lib/api';
 
 /** "12,5" no lugar de "12.5" (sem casa decimal quando inteiro). */
 function fmtQty(n: number): string {
@@ -248,6 +248,9 @@ function StockRow({
   const [subFactor, setSubFactor] = useState<string>(
     String(item.substituteFactor ?? 1),
   );
+  const [cost, setCost] = useState<string>(
+    item.costCents ? String(item.costCents / 100) : '',
+  );
   const [error, setError] = useState<string | null>(null);
 
   const update = useMutation({
@@ -316,6 +319,9 @@ function StockRow({
           <p className="text-xs text-brand-ink/60">
             {item.linkedCount} vínculo(s) · alerta em {fmtQty(item.alertQty)}{' '}
             {unitLabel(item.unit, item.alertQty)}
+            {item.costCents > 0 && (
+              <> · custo {formatBRL(item.costCents)}/{item.unit}</>
+            )}
           </p>
         </div>
         <span
@@ -389,6 +395,28 @@ function StockRow({
 
       {showConfig && (
         <div className="mt-2 border-t border-brand-cream-dark pt-2">
+          <p className="mb-1 text-xs font-semibold text-brand-ink/60">
+            Custo por {item.unit} (base do CMV/margem)
+          </p>
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-brand-ink/40">R$</span>
+            <input
+              className="input w-24 p-1 text-sm"
+              placeholder="0,00"
+              value={cost}
+              onChange={(e) => setCost(e.target.value)}
+            />
+            <button
+              className="btn-primary px-2 py-1 text-xs"
+              disabled={update.isPending || parseQty(cost) === null}
+              onClick={() => {
+                const c = parseQty(cost);
+                if (c !== null) update.mutate({ cost: c });
+              }}
+            >
+              Salvar custo
+            </button>
+          </div>
           <p className="mb-1 text-xs font-semibold text-brand-ink/60">
             Substituto quando zerado
           </p>

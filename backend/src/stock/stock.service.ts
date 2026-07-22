@@ -52,6 +52,9 @@ function sizeFactor(normalized: string): number | null {
 const toMilli = (qty: number) => Math.round(qty * 1000);
 const fromMilli = (milli: number) => milli / 1000;
 
+// Custo do insumo é guardado em CENTAVOS por unidade; entra/sai da API em reais.
+const toCents = (reais: number) => Math.round(reais * 100);
+
 @Injectable()
 export class StockService {
   private readonly logger = new Logger(StockService.name);
@@ -75,6 +78,7 @@ export class StockService {
       unit: s.unit,
       qty: fromMilli(s.qtyMilli),
       alertQty: fromMilli(s.alertMilli),
+      costCents: s.costCents,
       active: s.active,
       linkedCount: s._count.links,
       source: s.source,
@@ -92,6 +96,7 @@ export class StockService {
         unit: dto.unit ?? 'porção',
         qtyMilli,
         alertMilli: toMilli(dto.alertQty ?? 1),
+        costCents: toCents(dto.cost ?? 0),
       },
     });
     if (qtyMilli !== 0) {
@@ -133,6 +138,7 @@ export class StockService {
           ...(dto.alertQty !== undefined
             ? { alertMilli: toMilli(dto.alertQty) }
             : {}),
+          ...(dto.cost !== undefined ? { costCents: toCents(dto.cost) } : {}),
           ...(delta !== 0 ? { qtyMilli: { increment: delta } } : {}),
           ...(dto.substituteId !== undefined
             ? { substituteId: dto.substituteId }
@@ -474,11 +480,15 @@ export class StockService {
     return resolved;
   }
 
-  /** Casa um nome vindo do iFood com um item do cardápio (texto normalizado). */
-  private matchByText(
+  /**
+   * Casa um nome vindo do iFood com um item do cardápio (texto normalizado).
+   * Genérico no valor do mapa para servir tanto à baixa de estoque quanto ao
+   * estimador de custo (que carrega o cardápio com um include diferente).
+   */
+  private matchByText<T>(
     nameSnapshot: string,
-    byName: Map<string, MenuItemFull>,
-  ): MenuItemFull | undefined {
+    byName: Map<string, T>,
+  ): T | undefined {
     const name = normalize(nameSnapshot);
     if (byName.has(name)) return byName.get(name);
 
@@ -496,25 +506,33 @@ export class StockService {
     return undefined;
   }
 
-  /**
-   * Escolhe a opção do item que melhor casa com o pedido: pelo nome exato
-   * (pedidos próprios) ou pela opção com mais palavras presentes no contexto
-   * (ex.: "tilapia porcao inteira" prefere "Tilápia Porção Inteira" a
-   * "Tilápia Meia Porção").
-   */
   private matchOption(
     options: OptionWithLinks[],
     item: OrderItem,
     context: string,
   ): OptionWithLinks | undefined {
-    if (item.optionNameSnapshot) {
+    return this.matchOptionByContext(options, item.optionNameSnapshot, context);
+  }
+
+  /**
+   * Escolhe a opção do item que melhor casa com o pedido: pelo nome exato
+   * (pedidos próprios) ou pela opção com mais palavras presentes no contexto
+   * (ex.: "tilapia porcao inteira" prefere "Tilápia Porção Inteira" a
+   * "Tilápia Meia Porção"). Genérico no tipo da opção (só usa `name`).
+   */
+  private matchOptionByContext<T extends { name: string }>(
+    options: T[],
+    optionNameSnapshot: string | null,
+    context: string,
+  ): T | undefined {
+    if (optionNameSnapshot) {
       const exact = options.find(
-        (o) => normalize(o.name) === normalize(item.optionNameSnapshot!),
+        (o) => normalize(o.name) === normalize(optionNameSnapshot),
       );
       if (exact) return exact;
     }
 
-    let best: OptionWithLinks | undefined;
+    let best: T | undefined;
     let bestScore = 0;
     for (const o of options) {
       const words = normalize(o.name).split(' ').filter(Boolean);
@@ -526,5 +544,66 @@ export class StockService {
       }
     }
     return best;
+  }
+
+  /**
+   * Estimador de CUSTO de ingredientes por unidade de prato (em centavos), para
+   * os relatórios de margem/CMV. Carrega o cardápio uma vez e devolve uma função
+   * pura que casa nome/opção/notes com o MESMO critério da baixa de estoque
+   * (matchByText/matchOptionByContext/sizeFactor). Usa o custo ATUAL do insumo
+   * (não há snapshot de custo histórico). Retorna 0 quando não há vínculo/custo.
+   */
+  async buildCostEstimator(): Promise<
+    (
+      nameSnapshot: string,
+      optionNameSnapshot: string | null,
+      notes: string | null,
+    ) => number
+  > {
+    type LinkCost = { qtyMilli: number; stockItem: { costCents: number } };
+    type ItemCost = {
+      options: { name: string; stockLinks: LinkCost[] }[];
+      stockLinks: LinkCost[];
+    };
+
+    const menuItems = (await this.prisma.menuItem.findMany({
+      include: {
+        options: {
+          include: { stockLinks: { include: { stockItem: { select: { costCents: true } } } } },
+        },
+        stockLinks: { include: { stockItem: { select: { costCents: true } } } },
+      },
+    })) as unknown as (ItemCost & { name: string })[];
+
+    const byName = new Map(menuItems.map((m) => [normalize(m.name), m]));
+
+    const linkCost = (links: LinkCost[], factor: number) =>
+      links.reduce(
+        (sum, l) =>
+          sum + Math.round((l.qtyMilli * factor * l.stockItem.costCents) / 1000),
+        0,
+      );
+
+    return (nameSnapshot, optionNameSnapshot, notes) => {
+      const menuItem = this.matchByText(nameSnapshot, byName);
+      if (!menuItem) return 0;
+
+      const context = normalize(
+        [nameSnapshot, optionNameSnapshot, notes].filter(Boolean).join(' '),
+      );
+      const option = this.matchOptionByContext(
+        menuItem.options,
+        optionNameSnapshot,
+        context,
+      );
+      // Vínculo da opção já embute o tamanho (fator 1); vínculo do item vale por
+      // Porção Inteira e a Meia desconta metade (fator do texto).
+      if (option && option.stockLinks.length > 0) {
+        return linkCost(option.stockLinks, 1);
+      }
+      if (menuItem.stockLinks.length === 0) return 0;
+      const factor = sizeFactor(context) ?? 1;
+      return linkCost(menuItem.stockLinks, factor);
+    };
   }
 }

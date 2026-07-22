@@ -33,3 +33,20 @@ export function localDay(d: Date): string {
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
+
+/**
+ * Período imediatamente anterior de mesma duração. Ex.: [08-08, 08-14] (7 dias)
+ * → [08-01, 08-07]. Usado nos relatórios para comparar com o período anterior.
+ */
+export function previousPeriod(
+  from: string,
+  to: string,
+): { prevFrom: string; prevTo: string } {
+  const start = dayRange(from).start;
+  const end = dayRange(to).start;
+  const dayMs = 24 * 60 * 60 * 1000;
+  const days = Math.round((end.getTime() - start.getTime()) / dayMs) + 1;
+  const prevEnd = new Date(start.getTime() - dayMs);
+  const prevStart = new Date(prevEnd.getTime() - (days - 1) * dayMs);
+  return { prevFrom: localDay(prevStart), prevTo: localDay(prevEnd) };
+}
