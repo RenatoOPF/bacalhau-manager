@@ -281,6 +281,16 @@ export type ExpenseCategory =
   | 'TAXES'
   | 'OTHER';
 
+export type AccountType = 'CASH' | 'BANK';
+
+export interface PaymentAccount {
+  id: string;
+  name: string;
+  type: AccountType;
+  active: boolean;
+  sortOrder: number;
+}
+
 export interface Expense {
   id: string;
   description: string;
@@ -288,6 +298,8 @@ export interface Expense {
   amountCents: number;
   dueDate: string;
   paidAt: string | null;
+  accountId: string | null;
+  account?: { id: string; name: string; type: AccountType } | null;
   recurring: boolean;
   notes: string | null;
   createdAt: string;
@@ -300,8 +312,17 @@ export interface CreateExpensePayload {
   amountCents: number;
   dueDate: string;
   paidAt?: string;
+  accountId?: string | null;
   recurring?: boolean;
   notes?: string;
+}
+
+export interface ExpenseByAccount {
+  accountId: string | null;
+  accountName: string;
+  accountType: AccountType | null;
+  totalCents: number;
+  paidCents: number;
 }
 
 export interface DailySummary {
@@ -677,6 +698,26 @@ export const api = {
     request<Expense>(`/expenses/${id}/pay`, { method: 'PATCH' }),
   deleteExpense: (id: string) =>
     request<{ id: string }>(`/expenses/${id}`, { method: 'DELETE' }),
+  expensesByAccount: (from?: string, to?: string) =>
+    request<ExpenseByAccount[]>(`/expenses/by-account${periodQuery(from, to)}`),
+
+  // ---- Contas de pagamento ----
+  listAccounts: () => request<PaymentAccount[]>('/accounts'),
+  createAccount: (payload: { name: string; type: AccountType }) =>
+    request<PaymentAccount>('/accounts', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateAccount: (
+    id: string,
+    payload: { name?: string; type?: AccountType; active?: boolean },
+  ) =>
+    request<PaymentAccount>(`/accounts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteAccount: (id: string) =>
+    request<{ id: string }>(`/accounts/${id}`, { method: 'DELETE' }),
 
   // Baixa o CSV autenticado e dispara o download no navegador.
   downloadTransactionsCsv: async (from?: string, to?: string) => {

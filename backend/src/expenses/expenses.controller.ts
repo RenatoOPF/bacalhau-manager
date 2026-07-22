@@ -32,6 +32,11 @@ export class ExpensesController {
     return this.expenses.list(from, to, category, status);
   }
 
+  @Get('by-account')
+  byAccount(@Query('from') from?: string, @Query('to') to?: string) {
+    return this.expenses.byAccount(from, to);
+  }
+
   @Post()
   create(@Body() dto: CreateExpenseDto) {
     return this.expenses.create(dto);

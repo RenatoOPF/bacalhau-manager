@@ -33,6 +33,10 @@ export class CreateExpenseDto {
   paidAt?: string;
 
   @IsOptional()
+  @IsString()
+  accountId?: string;
+
+  @IsOptional()
   @IsBoolean()
   recurring?: boolean;
 
@@ -64,6 +68,11 @@ export class UpdateExpenseDto {
   @IsOptional()
   @IsISO8601()
   paidAt?: string | null;
+
+  // null explícito desvincula a conta.
+  @IsOptional()
+  @IsString()
+  accountId?: string | null;
 
   @IsOptional()
   @IsBoolean()

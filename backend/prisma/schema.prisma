@@ -319,6 +319,24 @@ enum ExpenseCategory {
   OTHER // outros
 }
 
+enum AccountType {
+  CASH // dinheiro em espécie / caixa
+  BANK // conta bancária / carteira digital
+}
+
+/// Conta/carteira de onde uma despesa é paga (Dinheiro, Nubank PJ, Itaú...).
+/// Cadastrada uma vez e reutilizada; permite ver os gastos por conta.
+model PaymentAccount {
+  id        String      @id @default(cuid())
+  name      String      @unique
+  type      AccountType @default(BANK)
+  active    Boolean     @default(true)
+  sortOrder Int         @default(0)
+  expenses  Expense[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
 /// Despesa/saída financeira. `dueDate` é a competência (entra no DRE do
 /// período); `paidAt` é o pagamento efetivo (entra no fluxo de caixa). Com
 /// `paidAt` nulo, a despesa é uma conta a pagar em aberto.
@@ -329,6 +347,9 @@ model Expense {
   amountCents Int
   dueDate     DateTime
   paidAt      DateTime?
+  // Conta/carteira de onde saiu (ou sairá) o pagamento. Nula = não informada.
+  account     PaymentAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  accountId   String?
   // Marca despesas fixas recorrentes (aluguel etc.) — informativo por ora.
   recurring   Boolean         @default(false)
   notes       String?
@@ -338,6 +359,7 @@ model Expense {
   @@index([dueDate])
   @@index([paidAt])
   @@index([category])
+  @@index([accountId])
 }
 
 /// Configuração por canal de venda. Hoje só a comissão do marketplace usada
