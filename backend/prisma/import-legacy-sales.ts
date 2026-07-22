@@ -174,9 +174,11 @@ async function main() {
   const iQtd = ii('Qtd.');
   const iVunit = ii('Valor Un. Item');
   const iNome = ii('Nome Prod');
+  const iCat = ii('Cat. Prod.');
 
   const itemsByOrder = new Map<string, LegacyItem[]>();
   let excluded = 0;
+  let fees = 0;
   let itemsNoOrder = 0;
   for (let i = 1; i < I.length; i++) {
     const r = I[i];
@@ -184,6 +186,12 @@ async function main() {
     const name = (r[iNome] || '').trim();
     if (name.includes('* Excluído *')) {
       excluded++;
+      continue;
+    }
+    // Taxas de entrega eram lançadas como "itens" no sistema antigo; não são
+    // produtos. Já estão no total do pedido, então só não viram OrderItem.
+    if ((r[iCat] || '').trim() === 'TAXA DE ENTREGA') {
+      fees++;
       continue;
     }
     const code = (r[iCod] || '').trim();
@@ -212,7 +220,15 @@ async function main() {
   console.log('Pedidos a importar:', validOrders.length);
   console.log('  por canal:', byChannel);
   console.log('  faturamento total: R$', (totalRevenue / 100).toFixed(2));
-  console.log('Itens válidos:', totalItems, '(excluídos ignorados:', excluded, ')');
+  console.log(
+    'Itens válidos:',
+    totalItems,
+    '(excluídos ignorados:',
+    excluded,
+    '| taxas ignoradas:',
+    fees,
+    ')',
+  );
   console.log('Pedidos pulados por status (não finalizado):', skippedStatus);
   console.log('Pedidos pulados por canal desconhecido:', skippedNoChannel);
   console.log('Itens sem pedido correspondente:', itemsNoOrder);
