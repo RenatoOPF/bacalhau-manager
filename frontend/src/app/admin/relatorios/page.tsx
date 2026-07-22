@@ -244,6 +244,7 @@ function ProdutosTab({ from, to }: { from: string; to: string }) {
   });
 
   const rows = products.data ?? [];
+  const grandTotal = rows.reduce((s, r) => s + r.totalCents, 0);
   const leastSold = [...rows].sort((a, b) => a.quantity - b.quantity).slice(0, 8);
 
   const classColor = (cls: 'A' | 'B' | 'C') =>
@@ -264,7 +265,7 @@ function ProdutosTab({ from, to }: { from: string; to: string }) {
                 <th className="py-2">Item</th>
                 <th className="text-right">Qtd</th>
                 <th className="text-right">Faturamento</th>
-                <th className="text-right">% acum.</th>
+                <th className="text-right">% do total</th>
                 <th className="text-center">Classe</th>
               </tr>
             </thead>
@@ -275,7 +276,10 @@ function ProdutosTab({ from, to }: { from: string; to: string }) {
                   <td className="text-right">{r.quantity}</td>
                   <td className="text-right">{formatBRL(r.totalCents)}</td>
                   <td className="text-right tabular-nums text-brand-ink/60">
-                    {r.cumulativePct.toFixed(1)}%
+                    {grandTotal > 0
+                      ? ((r.totalCents / grandTotal) * 100).toFixed(1)
+                      : '0.0'}
+                    %
                   </td>
                   <td className="text-center">
                     <span
