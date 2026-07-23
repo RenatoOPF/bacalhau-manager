@@ -11,18 +11,6 @@ import {
   type PaymentAccount,
 } from '@/lib/api';
 
-const CATEGORY_LABEL: Record<ExpenseCategory, string> = {
-  RENT: 'Aluguel',
-  PAYROLL: 'Funcionários',
-  PACKAGING: 'Embalagem',
-  DELIVERY: 'Entrega/Motoboy',
-  SUPPLIES: 'Fornecedores',
-  TAXES: 'Impostos',
-  OTHER: 'Outros',
-};
-
-const CATEGORIES = Object.keys(CATEGORY_LABEL) as ExpenseCategory[];
-
 const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = {
   CASH: 'Dinheiro',
   BANK: 'Banco/Conta',
@@ -57,16 +45,21 @@ export default function DespesasPage() {
     queryKey: ['accounts'],
     queryFn: () => api.listAccounts(),
   });
+  const categories = useQuery({
+    queryKey: ['expense-categories'],
+    queryFn: () => api.listExpenseCategories(),
+  });
   const byAccount = useQuery({
     queryKey: ['expenses-by-account'],
     queryFn: () => api.expensesByAccount(),
   });
 
   const activeAccounts = (accounts.data ?? []).filter((a) => a.active);
+  const activeCategories = (categories.data ?? []).filter((c) => c.active);
 
   // Formulário de nova despesa.
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<ExpenseCategory>('OTHER');
+  const [categoryId, setCategoryId] = useState('');
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState(isoToday());
   const [accountId, setAccountId] = useState('');
@@ -82,7 +75,7 @@ export default function DespesasPage() {
       }
       return api.createExpense({
         description: description.trim(),
-        category,
+        categoryId: categoryId || undefined,
         amountCents,
         dueDate: new Date(`${dueDate}T12:00:00`).toISOString(),
         paidAt: paid ? new Date().toISOString() : undefined,
@@ -121,12 +114,13 @@ export default function DespesasPage() {
           />
           <select
             className="input p-2"
-            value={category}
-            onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
           >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {CATEGORY_LABEL[c]}
+            <option value="">Categoria (opcional)…</option>
+            {activeCategories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
               </option>
             ))}
           </select>
@@ -188,6 +182,15 @@ export default function DespesasPage() {
           {error && <span className="text-sm text-brand-red">{error}</span>}
         </div>
       </section>
+
+      {/* Categorias (tipos de despesa) */}
+      <CategoriesManager
+        categories={categories.data ?? []}
+        onChange={() => {
+          qc.invalidateQueries({ queryKey: ['expense-categories'] });
+          invalidate();
+        }}
+      />
 
       {/* Contas de pagamento */}
       <AccountsManager
@@ -267,6 +270,7 @@ export default function DespesasPage() {
             key={e.id}
             expense={e}
             accounts={activeAccounts}
+            categories={activeCategories}
             onChange={invalidate}
           />
         ))}
@@ -283,10 +287,12 @@ export default function DespesasPage() {
 function ExpenseRow({
   expense,
   accounts,
+  categories,
   onChange,
 }: {
   expense: Expense;
   accounts: PaymentAccount[];
+  categories: ExpenseCategory[];
   onChange: () => void;
 }) {
   const pay = useMutation({
@@ -302,6 +308,11 @@ function ExpenseRow({
       api.updateExpense(expense.id, { accountId: id }),
     onSuccess: onChange,
   });
+  const setCategory = useMutation({
+    mutationFn: (id: string | null) =>
+      api.updateExpense(expense.id, { categoryId: id }),
+    onSuccess: onChange,
+  });
 
   const due = expense.dueDate.slice(0, 10);
 
@@ -314,10 +325,27 @@ function ExpenseRow({
             <span className="ml-1 text-xs text-brand-ink/40">(fixa)</span>
           )}
         </p>
-        <p className="text-xs text-brand-ink/50">
-          {CATEGORY_LABEL[expense.category]} · venc. {due}
-        </p>
+        <p className="text-xs text-brand-ink/50">venc. {due}</p>
       </div>
+      <select
+        className="input p-1 text-xs"
+        title="Tipo de despesa"
+        value={expense.categoryId ?? ''}
+        onChange={(e) => setCategory.mutate(e.target.value || null)}
+        disabled={setCategory.isPending}
+      >
+        <option value="">Sem categoria</option>
+        {/* Mantém a categoria atual mesmo se estiver inativa. */}
+        {expense.category &&
+          !categories.some((c) => c.id === expense.category?.id) && (
+            <option value={expense.category.id}>{expense.category.name}</option>
+          )}
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
       <select
         className="input p-1 text-xs"
         title="Conta de onde saiu o pagamento"
@@ -363,6 +391,155 @@ function ExpenseRow({
         Excluir
       </button>
     </li>
+  );
+}
+
+/** Cadastro/gestão dos tipos de despesa (categorias). */
+function CategoriesManager({
+  categories,
+  onChange,
+}: {
+  categories: ExpenseCategory[];
+  onChange: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+
+  const add = useMutation({
+    mutationFn: () => api.createExpenseCategory(name.trim()),
+    onSuccess: () => {
+      setName('');
+      onChange();
+    },
+  });
+  const rename = useMutation({
+    mutationFn: ({ id, newName }: { id: string; newName: string }) =>
+      api.updateExpenseCategory(id, { name: newName.trim() }),
+    onSuccess: () => {
+      setEditingId(null);
+      onChange();
+    },
+  });
+  const toggle = useMutation({
+    mutationFn: (c: ExpenseCategory) =>
+      api.updateExpenseCategory(c.id, { active: !c.active }),
+    onSuccess: onChange,
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => api.deleteExpenseCategory(id),
+    onSuccess: onChange,
+  });
+
+  return (
+    <section className="mt-6">
+      <button
+        className="section-title flex items-center gap-2"
+        onClick={() => setOpen((v) => !v)}
+      >
+        {open ? '▾' : '▸'} Tipos de despesa (
+        {categories.filter((c) => c.active).length})
+      </button>
+      {open && (
+        <div className="card mt-2 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              className="input flex-1 p-1 text-sm"
+              placeholder="Novo tipo (ex: Manutenção)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <button
+              className="btn-success px-2 py-1 text-xs"
+              disabled={!name.trim() || add.isPending}
+              onClick={() => add.mutate()}
+            >
+              + tipo
+            </button>
+          </div>
+          <ul className="mt-2 divide-y divide-brand-cream-dark">
+            {categories.map((c) => (
+              <li
+                key={c.id}
+                className="flex items-center justify-between gap-2 py-1.5 text-sm"
+              >
+                {editingId === c.id ? (
+                  <>
+                    <input
+                      className="input flex-1 p-1 text-sm"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      autoFocus
+                    />
+                    <span className="flex gap-1">
+                      <button
+                        className="btn-primary px-2 py-0.5 text-xs"
+                        disabled={!editName.trim() || rename.isPending}
+                        onClick={() =>
+                          rename.mutate({ id: c.id, newName: editName })
+                        }
+                      >
+                        Salvar
+                      </button>
+                      <button
+                        className="btn-outline px-2 py-0.5 text-xs"
+                        onClick={() => setEditingId(null)}
+                      >
+                        Cancelar
+                      </button>
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span
+                      className={c.active ? '' : 'text-brand-ink/40 line-through'}
+                    >
+                      {c.name}
+                    </span>
+                    <span className="flex gap-1">
+                      <button
+                        className="btn-outline px-2 py-0.5 text-xs"
+                        onClick={() => {
+                          setEditingId(c.id);
+                          setEditName(c.name);
+                        }}
+                      >
+                        Renomear
+                      </button>
+                      <button
+                        className="btn-outline px-2 py-0.5 text-xs"
+                        onClick={() => toggle.mutate(c)}
+                      >
+                        {c.active ? 'Desativar' : 'Ativar'}
+                      </button>
+                      <button
+                        className="btn-danger px-2 py-0.5 text-xs"
+                        onClick={() => {
+                          if (
+                            confirm(
+                              `Excluir o tipo "${c.name}"? As despesas vinculadas ficam sem categoria.`,
+                            )
+                          )
+                            remove.mutate(c.id);
+                        }}
+                      >
+                        Excluir
+                      </button>
+                    </span>
+                  </>
+                )}
+              </li>
+            ))}
+            {categories.length === 0 && (
+              <li className="py-2 text-xs text-brand-ink/40">
+                Nenhum tipo cadastrado ainda.
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
+    </section>
   );
 }
 

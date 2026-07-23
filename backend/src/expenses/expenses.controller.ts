@@ -9,9 +9,14 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ExpenseCategory, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 import { ExpensesService } from './expenses.service';
-import { CreateExpenseDto, UpdateExpenseDto } from './dto/expense.dto';
+import {
+  CreateExpenseCategoryDto,
+  CreateExpenseDto,
+  UpdateExpenseCategoryDto,
+  UpdateExpenseDto,
+} from './dto/expense.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -26,16 +31,43 @@ export class ExpensesController {
   list(
     @Query('from') from?: string,
     @Query('to') to?: string,
-    @Query('category') category?: ExpenseCategory,
+    @Query('categoryId') categoryId?: string,
     @Query('status') status?: 'paid' | 'unpaid',
   ) {
-    return this.expenses.list(from, to, category, status);
+    return this.expenses.list(from, to, categoryId, status);
   }
 
   @Get('by-account')
   byAccount(@Query('from') from?: string, @Query('to') to?: string) {
     return this.expenses.byAccount(from, to);
   }
+
+  // ---- Categorias (declaradas antes das rotas :id) ----
+
+  @Get('categories')
+  listCategories() {
+    return this.expenses.listCategories();
+  }
+
+  @Post('categories')
+  createCategory(@Body() dto: CreateExpenseCategoryDto) {
+    return this.expenses.createCategory(dto);
+  }
+
+  @Patch('categories/:id')
+  updateCategory(
+    @Param('id') id: string,
+    @Body() dto: UpdateExpenseCategoryDto,
+  ) {
+    return this.expenses.updateCategory(id, dto);
+  }
+
+  @Delete('categories/:id')
+  removeCategory(@Param('id') id: string) {
+    return this.expenses.removeCategory(id);
+  }
+
+  // ---- Despesas ----
 
   @Post()
   create(@Body() dto: CreateExpenseDto) {

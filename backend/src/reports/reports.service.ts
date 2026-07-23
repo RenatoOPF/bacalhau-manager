@@ -361,11 +361,23 @@ export class ReportsService {
       this.channelConfig(),
       this.cmvCents(from, to),
       this.prisma.expense.groupBy({
-        by: ['category'],
+        by: ['categoryId'],
         where: dueDate ? { dueDate } : {},
         _sum: { amountCents: true },
       }),
     ]);
+
+    // Nomes das categorias para rotular o DRE (evita N+1: uma busca só).
+    const catIds = expenseGroups
+      .map((e) => e.categoryId)
+      .filter((id): id is string => !!id);
+    const cats = catIds.length
+      ? await this.prisma.expenseCategory.findMany({
+          where: { id: { in: catIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const catName = new Map(cats.map((c) => [c.id, c.name]));
 
     const bpsOf = new Map(config.map((c) => [c.channel, c.commissionBps]));
     const grossByChannel = byChannel.map((c) => {
@@ -384,7 +396,10 @@ export class ReportsService {
     );
 
     const expensesByCategory = expenseGroups.map((e) => ({
-      category: e.category,
+      categoryId: e.categoryId,
+      name: e.categoryId
+        ? (catName.get(e.categoryId) ?? 'Categoria removida')
+        : 'Sem categoria',
       amountCents: e._sum.amountCents ?? 0,
     }));
     const expensesCents = expensesByCategory.reduce(

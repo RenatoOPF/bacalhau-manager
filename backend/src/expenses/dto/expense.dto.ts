@@ -1,6 +1,5 @@
 import {
   IsBoolean,
-  IsEnum,
   IsInt,
   IsISO8601,
   IsOptional,
@@ -8,15 +7,16 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { ExpenseCategory } from '@prisma/client';
 
 export class CreateExpenseDto {
   @IsString()
   @MinLength(1)
   description: string;
 
-  @IsEnum(ExpenseCategory)
-  category: ExpenseCategory;
+  // Categoria (id da tabela ExpenseCategory). Opcional = sem categoria.
+  @IsOptional()
+  @IsString()
+  categoryId?: string;
 
   // Valor em centavos.
   @IsInt()
@@ -51,9 +51,10 @@ export class UpdateExpenseDto {
   @MinLength(1)
   description?: string;
 
+  // null explícito desvincula a categoria.
   @IsOptional()
-  @IsEnum(ExpenseCategory)
-  category?: ExpenseCategory;
+  @IsString()
+  categoryId?: string | null;
 
   @IsOptional()
   @IsInt()
@@ -81,4 +82,25 @@ export class UpdateExpenseDto {
   @IsOptional()
   @IsString()
   notes?: string;
+}
+
+export class CreateExpenseCategoryDto {
+  @IsString()
+  @MinLength(1)
+  name: string;
+}
+
+export class UpdateExpenseCategoryDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  name?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  sortOrder?: number;
 }

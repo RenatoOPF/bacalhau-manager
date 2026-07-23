@@ -309,14 +309,17 @@ model DailyCounter {
 
 // ---------- Financeiro ----------
 
-enum ExpenseCategory {
-  RENT // aluguel
-  PAYROLL // funcionários
-  PACKAGING // embalagem
-  DELIVERY // motoboy / combustível
-  SUPPLIES // insumos / fornecedores (compras)
-  TAXES // impostos
-  OTHER // outros
+/// Tipo/categoria de despesa (Aluguel, Funcionários, Embalagem...). Editável
+/// pelo admin; parte é semeada na migration. Excluir uma categoria só desvincula
+/// as despesas (SetNull) — o histórico é preservado.
+model ExpenseCategory {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  sortOrder Int       @default(0)
+  active    Boolean   @default(true)
+  expenses  Expense[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 enum AccountType {
@@ -341,24 +344,26 @@ model PaymentAccount {
 /// período); `paidAt` é o pagamento efetivo (entra no fluxo de caixa). Com
 /// `paidAt` nulo, a despesa é uma conta a pagar em aberto.
 model Expense {
-  id          String          @id @default(cuid())
+  id          String           @id @default(cuid())
   description String
-  category    ExpenseCategory @default(OTHER)
+  // Categoria/tipo da despesa. Nula = não informada (categoria excluída).
+  category    ExpenseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId  String?
   amountCents Int
   dueDate     DateTime
   paidAt      DateTime?
   // Conta/carteira de onde saiu (ou sairá) o pagamento. Nula = não informada.
-  account     PaymentAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  account     PaymentAccount?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
   accountId   String?
   // Marca despesas fixas recorrentes (aluguel etc.) — informativo por ora.
-  recurring   Boolean         @default(false)
+  recurring   Boolean          @default(false)
   notes       String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   @@index([dueDate])
   @@index([paidAt])
-  @@index([category])
+  @@index([categoryId])
   @@index([accountId])
 }
 

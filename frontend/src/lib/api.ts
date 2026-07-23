@@ -254,7 +254,11 @@ export interface DreReport {
   }[];
   commissionCents: number;
   cmvCents: number;
-  expensesByCategory: { category: ExpenseCategory; amountCents: number }[];
+  expensesByCategory: {
+    categoryId: string | null;
+    name: string;
+    amountCents: number;
+  }[];
   expensesCents: number;
   netCents: number;
 }
@@ -272,14 +276,12 @@ export interface ChannelConfigRow {
   commissionBps: number;
 }
 
-export type ExpenseCategory =
-  | 'RENT'
-  | 'PAYROLL'
-  | 'PACKAGING'
-  | 'DELIVERY'
-  | 'SUPPLIES'
-  | 'TAXES'
-  | 'OTHER';
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  sortOrder: number;
+  active: boolean;
+}
 
 export type AccountType = 'CASH' | 'BANK';
 
@@ -294,7 +296,8 @@ export interface PaymentAccount {
 export interface Expense {
   id: string;
   description: string;
-  category: ExpenseCategory;
+  categoryId: string | null;
+  category?: { id: string; name: string } | null;
   amountCents: number;
   dueDate: string;
   paidAt: string | null;
@@ -308,7 +311,7 @@ export interface Expense {
 
 export interface CreateExpensePayload {
   description: string;
-  category: ExpenseCategory;
+  categoryId?: string | null;
   amountCents: number;
   dueDate: string;
   paidAt?: string;
@@ -673,13 +676,13 @@ export const api = {
   listExpenses: (params?: {
     from?: string;
     to?: string;
-    category?: ExpenseCategory;
+    categoryId?: string;
     status?: 'paid' | 'unpaid';
   }) => {
     const qs = new URLSearchParams();
     if (params?.from) qs.set('from', params.from);
     if (params?.to) qs.set('to', params.to);
-    if (params?.category) qs.set('category', params.category);
+    if (params?.categoryId) qs.set('categoryId', params.categoryId);
     if (params?.status) qs.set('status', params.status);
     const q = qs.toString();
     return request<Expense[]>(`/expenses${q ? `?${q}` : ''}`);
@@ -689,11 +692,35 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  updateExpense: (id: string, payload: Partial<CreateExpensePayload> & { paidAt?: string | null }) =>
+  updateExpense: (
+    id: string,
+    payload: Partial<CreateExpensePayload> & {
+      paidAt?: string | null;
+      categoryId?: string | null;
+    },
+  ) =>
     request<Expense>(`/expenses/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
+  // ---- Categorias (tipos de despesa) ----
+  listExpenseCategories: () =>
+    request<ExpenseCategory[]>('/expenses/categories'),
+  createExpenseCategory: (name: string) =>
+    request<ExpenseCategory>('/expenses/categories', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+  updateExpenseCategory: (
+    id: string,
+    payload: { name?: string; active?: boolean; sortOrder?: number },
+  ) =>
+    request<ExpenseCategory>(`/expenses/categories/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteExpenseCategory: (id: string) =>
+    request<{ id: string }>(`/expenses/categories/${id}`, { method: 'DELETE' }),
   payExpense: (id: string) =>
     request<Expense>(`/expenses/${id}/pay`, { method: 'PATCH' }),
   deleteExpense: (id: string) =>

@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   api,
   formatBRL,
-  type ExpenseCategory,
   type MarginRow,
   type OrderChannel,
 } from '@/lib/api';
@@ -16,16 +15,6 @@ const CHANNEL_LABEL: Record<string, string> = {
   IFOOD: 'iFood',
   NOVENTA_NOVE: '99Food',
   GAMI: 'Gami',
-};
-
-const CATEGORY_LABEL: Record<ExpenseCategory, string> = {
-  RENT: 'Aluguel',
-  PAYROLL: 'Funcionários',
-  PACKAGING: 'Embalagem',
-  DELIVERY: 'Entrega/Motoboy',
-  SUPPLIES: 'Fornecedores',
-  TAXES: 'Impostos',
-  OTHER: 'Outros',
 };
 
 function isoDaysAgo(days: number): string {
@@ -468,9 +457,9 @@ function FinanceiroTab({ from, to }: { from: string; to: string }) {
           />
           {(d?.expensesByCategory ?? []).map((e) => (
             <Line
-              key={e.category}
+              key={e.categoryId ?? 'none'}
               indent
-              label={CATEGORY_LABEL[e.category] ?? e.category}
+              label={e.name}
               value={`- ${formatBRL(e.amountCents)}`}
             />
           ))}

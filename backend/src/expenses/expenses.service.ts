@@ -1,8 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ExpenseCategory, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { periodFilter } from '../common/date-range';
-import { CreateExpenseDto, UpdateExpenseDto } from './dto/expense.dto';
+import {
+  CreateExpenseCategoryDto,
+  CreateExpenseDto,
+  UpdateExpenseCategoryDto,
+  UpdateExpenseDto,
+} from './dto/expense.dto';
 
 @Injectable()
 export class ExpensesService {
@@ -15,20 +20,23 @@ export class ExpensesService {
   list(
     from?: string,
     to?: string,
-    category?: ExpenseCategory,
+    categoryId?: string,
     status?: 'paid' | 'unpaid',
   ) {
     const where: Prisma.ExpenseWhereInput = {};
     const dueDate = periodFilter(from, to);
     if (dueDate) where.dueDate = dueDate;
-    if (category) where.category = category;
+    if (categoryId) where.categoryId = categoryId;
     if (status === 'paid') where.paidAt = { not: null };
     if (status === 'unpaid') where.paidAt = null;
 
     return this.prisma.expense.findMany({
       where,
       orderBy: [{ dueDate: 'desc' }, { createdAt: 'desc' }],
-      include: { account: { select: { id: true, name: true, type: true } } },
+      include: {
+        account: { select: { id: true, name: true, type: true } },
+        category: { select: { id: true, name: true } },
+      },
     });
   }
 
@@ -36,7 +44,7 @@ export class ExpensesService {
     return this.prisma.expense.create({
       data: {
         description: dto.description.trim(),
-        category: dto.category,
+        categoryId: dto.categoryId || null,
         amountCents: dto.amountCents,
         dueDate: new Date(dto.dueDate),
         paidAt: dto.paidAt ? new Date(dto.paidAt) : null,
@@ -100,7 +108,9 @@ export class ExpensesService {
         ...(dto.description !== undefined
           ? { description: dto.description.trim() }
           : {}),
-        ...(dto.category !== undefined ? { category: dto.category } : {}),
+        ...(dto.categoryId !== undefined
+          ? { categoryId: dto.categoryId || null }
+          : {}),
         ...(dto.amountCents !== undefined
           ? { amountCents: dto.amountCents }
           : {}),
@@ -135,5 +145,50 @@ export class ExpensesService {
   private async ensureExists(id: string) {
     const found = await this.prisma.expense.findUnique({ where: { id } });
     if (!found) throw new NotFoundException('Despesa não encontrada');
+  }
+
+  // ---- Categorias (tipos de despesa) ----
+
+  listCategories() {
+    return this.prisma.expenseCategory.findMany({
+      orderBy: [{ active: 'desc' }, { sortOrder: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  async createCategory(dto: CreateExpenseCategoryDto) {
+    // Próximo sortOrder no fim da lista.
+    const last = await this.prisma.expenseCategory.findFirst({
+      orderBy: { sortOrder: 'desc' },
+      select: { sortOrder: true },
+    });
+    return this.prisma.expenseCategory.create({
+      data: { name: dto.name.trim(), sortOrder: (last?.sortOrder ?? -1) + 1 },
+    });
+  }
+
+  async updateCategory(id: string, dto: UpdateExpenseCategoryDto) {
+    await this.ensureCategoryExists(id);
+    return this.prisma.expenseCategory.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+        ...(dto.active !== undefined ? { active: dto.active } : {}),
+        ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
+      },
+    });
+  }
+
+  /** Exclui a categoria. As despesas vinculadas ficam sem categoria (SetNull). */
+  async removeCategory(id: string) {
+    await this.ensureCategoryExists(id);
+    await this.prisma.expenseCategory.delete({ where: { id } });
+    return { id };
+  }
+
+  private async ensureCategoryExists(id: string) {
+    const found = await this.prisma.expenseCategory.findUnique({
+      where: { id },
+    });
+    if (!found) throw new NotFoundException('Categoria não encontrada');
   }
 }
