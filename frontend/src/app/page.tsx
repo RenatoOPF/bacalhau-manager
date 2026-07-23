@@ -32,7 +32,13 @@ export default function CardapioPage() {
     customerPhone: '',
     addressStreet: '',
     addressNumber: '',
+    neighborhoodId: '',
     paymentMethod: 'PIX' as 'CASH' | 'PIX',
+  });
+
+  const { data: neighborhoods } = useQuery({
+    queryKey: ['neighborhoods'],
+    queryFn: api.listNeighborhoods,
   });
 
   // Duas telas: cardápio e fechamento do pedido.
@@ -50,6 +56,12 @@ export default function CardapioPage() {
       ),
     [cart],
   );
+
+  // Taxa de entrega do bairro escolhido; total = itens + entrega.
+  const deliveryFeeCents =
+    (neighborhoods ?? []).find((n) => n.id === form.neighborhoodId)
+      ?.customerFeeCents ?? 0;
+  const grandTotalCents = totalCents + deliveryFeeCents;
 
   const createOrder = useMutation({
     mutationFn: (payload: CreateOrderPayload) => api.createOrder(payload),
@@ -113,7 +125,11 @@ export default function CardapioPage() {
       quantity: line.quantity,
     }));
     if (items.length === 0) return;
-    createOrder.mutate({ ...form, items });
+    createOrder.mutate({
+      ...form,
+      neighborhoodId: form.neighborhoodId || undefined,
+      items,
+    });
   };
 
   if (createOrder.data) {
@@ -229,6 +245,25 @@ export default function CardapioPage() {
                   setForm({ ...form, addressNumber: e.target.value })
                 }
               />
+              {(neighborhoods ?? []).length > 0 && (
+                <select
+                  className="input w-full p-2"
+                  value={form.neighborhoodId}
+                  onChange={(e) =>
+                    setForm({ ...form, neighborhoodId: e.target.value })
+                  }
+                >
+                  <option value="">Bairro (taxa de entrega)…</option>
+                  {(neighborhoods ?? []).map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.name}
+                      {n.customerFeeCents > 0
+                        ? ` — ${formatBRL(n.customerFeeCents)}`
+                        : ' — grátis'}
+                    </option>
+                  ))}
+                </select>
+              )}
               <select
                 className="input w-full p-2"
                 value={form.paymentMethod}
@@ -249,11 +284,31 @@ export default function CardapioPage() {
               )}
             </section>
 
+            {/* Resumo de valores. */}
+            <section className="card mt-4 space-y-1 p-4 text-sm">
+              <div className="flex justify-between text-brand-ink/70">
+                <span>Itens</span>
+                <span>{formatBRL(totalCents)}</span>
+              </div>
+              <div className="flex justify-between text-brand-ink/70">
+                <span>Entrega</span>
+                <span>
+                  {deliveryFeeCents > 0 ? formatBRL(deliveryFeeCents) : 'grátis'}
+                </span>
+              </div>
+              <div className="flex justify-between font-bold">
+                <span>Total</span>
+                <span className="text-brand-red">
+                  {formatBRL(grandTotalCents)}
+                </span>
+              </div>
+            </section>
+
             {/* Confirmação fixa no rodapé. */}
             <div className="fixed inset-x-0 bottom-0 z-20 border-t-2 border-brand-gold bg-brand-red p-3 shadow-lg">
               <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
                 <span className="font-display text-lg font-bold text-white">
-                  {formatBRL(totalCents)}
+                  {formatBRL(grandTotalCents)}
                 </span>
                 <button
                   className="btn-gold px-5 py-2"

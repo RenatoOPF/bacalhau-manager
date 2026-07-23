@@ -450,6 +450,12 @@ function FinanceiroTab({ from, to }: { from: string; to: string }) {
             danger
           />
           <Line
+            label="(−) Entregadores"
+            value={`- ${formatBRL(d?.courierCents ?? 0)}`}
+            bold
+            danger
+          />
+          <Line
             label="(−) Despesas"
             value={`- ${formatBRL(d?.expensesCents ?? 0)}`}
             bold

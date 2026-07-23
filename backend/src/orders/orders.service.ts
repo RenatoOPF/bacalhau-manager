@@ -14,6 +14,7 @@ import {
   PrintOrderJobData,
 } from '../queue/queue.constants';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { AssignDeliveryDto } from './dto/assign-delivery.dto';
 import { nextDailyNumber } from '../common/daily-number';
 import { dayRange, localDay } from '../common/date-range';
 import { StockService } from '../stock/stock.service';
@@ -77,6 +78,19 @@ export class OrdersService {
       };
     });
 
+    // Bairro escolhido define a taxa cobrada do cliente (some ao total).
+    let deliveryFeeCents = 0;
+    let neighborhoodName: string | undefined;
+    if (dto.neighborhoodId) {
+      const n = await this.prisma.neighborhood.findUnique({
+        where: { id: dto.neighborhoodId },
+      });
+      if (n) {
+        deliveryFeeCents = n.customerFeeCents;
+        neighborhoodName = n.name;
+      }
+    }
+
     const dailyNumber = await nextDailyNumber(this.prisma);
 
     const order = await this.prisma.order.create({
@@ -87,11 +101,14 @@ export class OrdersService {
         addressStreet: dto.addressStreet,
         addressNumber: dto.addressNumber,
         addressComplement: dto.addressComplement,
-        addressNeighborhood: dto.addressNeighborhood,
+        // Preserva o nome do bairro no texto do endereço (comanda/relatório).
+        addressNeighborhood: dto.addressNeighborhood ?? neighborhoodName,
         addressReference: dto.addressReference,
+        neighborhoodId: dto.neighborhoodId || null,
         paymentMethod: dto.paymentMethod,
         notes: dto.notes,
-        totalCents,
+        totalCents: totalCents + deliveryFeeCents,
+        deliveryFeeCents,
         items: { create: itemsData },
       },
       include: { items: true },
@@ -116,7 +133,10 @@ export class OrdersService {
         ...(status ? { status } : {}),
       },
       orderBy: { createdAt: 'desc' },
-      include: { items: true },
+      include: {
+        items: true,
+        courier: { select: { id: true, name: true } },
+      },
     });
   }
 
@@ -164,6 +184,43 @@ export class OrdersService {
         `Estorno — pedido #${order.protocol} cancelado`,
       );
     }
+    this.realtime.emitOrderStatusChanged(order);
+    return order;
+  }
+
+  /**
+   * Designa o entregador do pedido e registra os snapshots das taxas. Quando um
+   * bairro é informado sem os valores, puxa a taxa do cliente e o repasse do
+   * cadastro do bairro. Chamado pelo caixa ao mandar "Saiu para entrega".
+   */
+  async assignDelivery(id: string, dto: AssignDeliveryDto) {
+    const existing = await this.prisma.order.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Pedido não encontrado');
+
+    let { courierFeeCents, deliveryFeeCents } = dto;
+    if (dto.neighborhoodId) {
+      const n = await this.prisma.neighborhood.findUnique({
+        where: { id: dto.neighborhoodId },
+      });
+      if (n) {
+        if (courierFeeCents === undefined) courierFeeCents = n.courierFeeCents;
+        if (deliveryFeeCents === undefined)
+          deliveryFeeCents = n.customerFeeCents;
+      }
+    }
+
+    const order = await this.prisma.order.update({
+      where: { id },
+      data: {
+        ...(dto.courierId !== undefined ? { courierId: dto.courierId } : {}),
+        ...(dto.neighborhoodId !== undefined
+          ? { neighborhoodId: dto.neighborhoodId }
+          : {}),
+        ...(courierFeeCents !== undefined ? { courierFeeCents } : {}),
+        ...(deliveryFeeCents !== undefined ? { deliveryFeeCents } : {}),
+      },
+      include: { items: true },
+    });
     this.realtime.emitOrderStatusChanged(order);
     return order;
   }

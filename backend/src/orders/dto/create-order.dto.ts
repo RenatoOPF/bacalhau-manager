@@ -59,6 +59,11 @@ export class CreateOrderDto {
   @IsString()
   addressReference?: string;
 
+  // Bairro de entrega escolhido (define a taxa cobrada do cliente).
+  @IsOptional()
+  @IsString()
+  neighborhoodId?: string;
+
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod;
 

@@ -80,6 +80,11 @@ export class ReportsController {
     return this.reports.cashflow(from, to);
   }
 
+  @Get('couriers')
+  couriers(@Query('from') from?: string, @Query('to') to?: string) {
+    return this.reports.couriers(from, to);
+  }
+
   @Get('channel-config')
   channelConfig() {
     return this.reports.channelConfig();

@@ -27,6 +27,8 @@ model Employee {
   passwordHash String
   role         Role     @default(MANAGER)
   active       Boolean  @default(true)
+  // Entregas atribuídas a este funcionário (quando role = DELIVERY).
+  deliveries   Order[]  @relation("OrderCourier")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -244,9 +246,17 @@ model Order {
 
   // Total em centavos. Para pedidos externos inclui a taxa de entrega abaixo.
   totalCents Int    @default(0)
-  // Taxa de entrega (iFood/99), já inclusa no totalCents. 0 nos pedidos próprios.
+  // Taxa de entrega COBRADA DO CLIENTE, já inclusa no totalCents (iFood/99 vêm
+  // da captura; pedidos próprios vêm do bairro escolhido). 0 se não houver.
   deliveryFeeCents Int @default(0)
   notes      String?
+
+  // Entrega: entregador designado e o REPASSE a ele por esta entrega (snapshot).
+  courier         Employee?     @relation("OrderCourier", fields: [courierId], references: [id], onDelete: SetNull)
+  courierId       String?
+  courierFeeCents Int           @default(0)
+  neighborhood    Neighborhood? @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
+  neighborhoodId  String?
 
   items OrderItem[]
 
@@ -257,6 +267,7 @@ model Order {
   @@index([status])
   @@index([createdAt])
   @@index([paidAt])
+  @@index([courierId])
 }
 
 model OrderItem {
@@ -374,4 +385,18 @@ model ChannelConfig {
   channel       OrderChannel @id
   commissionBps Int          @default(0)
   updatedAt     DateTime     @updatedAt
+}
+
+/// Bairro de entrega com dois valores: `customerFeeCents` (taxa cobrada do
+/// cliente) e `courierFeeCents` (repasse ao entregador). Cadastrável no admin.
+model Neighborhood {
+  id               String   @id @default(cuid())
+  name             String   @unique
+  customerFeeCents Int      @default(0)
+  courierFeeCents  Int      @default(0)
+  active           Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  orders           Order[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }

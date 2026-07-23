@@ -138,12 +138,19 @@ export interface Order {
   customerName: string;
   addressStreet: string;
   addressNumber?: string | null;
+  addressNeighborhood?: string | null;
   totalCents: number;
+  deliveryFeeCents?: number;
   paymentMethod: PaymentMethod;
   paymentStatus: 'PENDING' | 'PAID';
   paidAt?: string | null;
   createdAt: string;
   items: OrderItem[];
+  // Entrega (preenchidos quando o pedido é designado a um entregador).
+  courierId?: string | null;
+  courier?: { id: string; name: string } | null;
+  courierFeeCents?: number;
+  neighborhoodId?: string | null;
 }
 
 export type PaymentMethod = 'CASH' | 'PIX' | 'ONLINE';
@@ -254,6 +261,7 @@ export interface DreReport {
   }[];
   commissionCents: number;
   cmvCents: number;
+  courierCents: number;
   expensesByCategory: {
     categoryId: string | null;
     name: string;
@@ -353,6 +361,7 @@ export interface CreateOrderPayload {
   customerPhone?: string;
   addressStreet: string;
   addressNumber?: string;
+  neighborhoodId?: string;
   paymentMethod: 'CASH' | 'PIX';
   notes?: string;
   items: {
@@ -361,6 +370,34 @@ export interface CreateOrderPayload {
     quantity: number;
     notes?: string;
   }[];
+}
+
+export interface Neighborhood {
+  id: string;
+  name: string;
+  customerFeeCents: number;
+  courierFeeCents: number;
+  active: boolean;
+  sortOrder: number;
+}
+
+export interface Courier {
+  id: string;
+  name: string;
+}
+
+export interface CourierReportRow {
+  courierId: string;
+  courierName: string;
+  deliveries: number;
+  totalCents: number;
+}
+
+export interface AssignDeliveryPayload {
+  courierId?: string | null;
+  neighborhoodId?: string | null;
+  courierFeeCents?: number;
+  deliveryFeeCents?: number;
 }
 
 export interface CreateOptionPayload {
@@ -603,12 +640,48 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
+  assignDelivery: (id: string, payload: AssignDeliveryPayload) =>
+    request<Order>(`/orders/${id}/delivery`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
   reprint: (id: string) =>
     request<{ enqueued: boolean }>(`/orders/${id}/reprint`, {
       method: 'POST',
     }),
   deleteOrder: (id: string) =>
     request<{ deleted: boolean }>(`/orders/${id}`, { method: 'DELETE' }),
+
+  // ---- Entrega (bairros / entregadores) ----
+  listNeighborhoods: () => request<Neighborhood[]>('/neighborhoods'),
+  listNeighborhoodsAll: () => request<Neighborhood[]>('/neighborhoods/all'),
+  createNeighborhood: (payload: {
+    name: string;
+    customerFeeCents?: number;
+    courierFeeCents?: number;
+  }) =>
+    request<Neighborhood>('/neighborhoods', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateNeighborhood: (
+    id: string,
+    payload: {
+      name?: string;
+      customerFeeCents?: number;
+      courierFeeCents?: number;
+      active?: boolean;
+    },
+  ) =>
+    request<Neighborhood>(`/neighborhoods/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteNeighborhood: (id: string) =>
+    request<{ id: string }>(`/neighborhoods/${id}`, { method: 'DELETE' }),
+  listCouriers: () => request<Courier[]>('/couriers'),
+  couriersReport: (from?: string, to?: string) =>
+    request<CourierReportRow[]>(`/reports/couriers${periodQuery(from, to)}`),
 
   // ---- Caixa / fechamento ----
   payOrder: (id: string, paymentMethod?: PaymentMethod) =>

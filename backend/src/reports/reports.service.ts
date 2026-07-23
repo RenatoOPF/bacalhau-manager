@@ -282,6 +282,54 @@ export class ReportsService {
     );
   }
 
+  /**
+   * Repasse a pagar por entregador no período: nº de entregas e soma do
+   * `courierFeeCents`. Considera pedidos com entregador designado, por data de
+   * criação (operacional). Inclui entregas sem entregador designado à parte.
+   */
+  async couriers(from?: string, to?: string) {
+    const where: Prisma.OrderWhereInput = { courierId: { not: null } };
+    const createdAt = periodFilter(from, to);
+    if (createdAt) where.createdAt = createdAt;
+
+    const orders = await this.prisma.order.findMany({
+      where,
+      select: {
+        courierId: true,
+        courierFeeCents: true,
+        courier: { select: { name: true } },
+      },
+    });
+
+    const map = new Map<
+      string,
+      { courierId: string; courierName: string; deliveries: number; totalCents: number }
+    >();
+    for (const o of orders) {
+      if (!o.courierId) continue;
+      const bucket = map.get(o.courierId) ?? {
+        courierId: o.courierId,
+        courierName: o.courier?.name ?? '—',
+        deliveries: 0,
+        totalCents: 0,
+      };
+      bucket.deliveries += 1;
+      bucket.totalCents += o.courierFeeCents;
+      map.set(o.courierId, bucket);
+    }
+
+    return [...map.values()].sort((a, b) => b.totalCents - a.totalCents);
+  }
+
+  /** Soma dos repasses a entregadores no período (pedidos pagos), p/ o DRE. */
+  async courierCostCents(from?: string, to?: string): Promise<number> {
+    const agg = await this.prisma.order.aggregate({
+      where: { ...this.paidWhere(from, to), courierId: { not: null } },
+      _sum: { courierFeeCents: true },
+    });
+    return agg._sum.courierFeeCents ?? 0;
+  }
+
   /** Pedidos e faturamento por canal (próprio/iFood/Gami). */
   async byChannel(from?: string, to?: string) {
     const grouped = await this.prisma.order.groupBy({
@@ -356,16 +404,18 @@ export class ReportsService {
    */
   async dre(from?: string, to?: string) {
     const dueDate = periodFilter(from, to);
-    const [byChannel, config, cmvCents, expenseGroups] = await Promise.all([
-      this.byChannel(from, to),
-      this.channelConfig(),
-      this.cmvCents(from, to),
-      this.prisma.expense.groupBy({
-        by: ['categoryId'],
-        where: dueDate ? { dueDate } : {},
-        _sum: { amountCents: true },
-      }),
-    ]);
+    const [byChannel, config, cmvCents, courierCents, expenseGroups] =
+      await Promise.all([
+        this.byChannel(from, to),
+        this.channelConfig(),
+        this.cmvCents(from, to),
+        this.courierCostCents(from, to),
+        this.prisma.expense.groupBy({
+          by: ['categoryId'],
+          where: dueDate ? { dueDate } : {},
+          _sum: { amountCents: true },
+        }),
+      ]);
 
     // Nomes das categorias para rotular o DRE (evita N+1: uma busca só).
     const catIds = expenseGroups
@@ -407,7 +457,8 @@ export class ReportsService {
       0,
     );
 
-    const netCents = grossCents - commissionCents - cmvCents - expensesCents;
+    const netCents =
+      grossCents - commissionCents - cmvCents - courierCents - expensesCents;
     return {
       from,
       to,
@@ -415,6 +466,7 @@ export class ReportsService {
       grossByChannel,
       commissionCents,
       cmvCents,
+      courierCents,
       expensesByCategory,
       expensesCents,
       netCents,
