@@ -3,15 +3,15 @@
 > Arquitetura atual: o **backend (API + WebSocket)** roda 24/7 numa VM grátis da
 > Oracle Cloud e apenas **enfileira** os pedidos. O **PC do caixa** roda só o
 > **agente de impressão** ([`deploy-windows.md`](deploy-windows.md)), que consome
-> a fila e imprime — fazendo apenas conexões de saída (sem túnel).
+> a fila e imprime — conectando ao Redis da VM via **túnel SSH**.
 >
 > ```
 > [Vercel] frontend ──HTTPS──► [Oracle VM] backend (PRINT_WORKER=off)
 >                                   ├──► [Supabase] Postgres
->                                   └──► [Upstash] Redis (fila) ◄── [caixa] agente
+>                                   └──► Redis :6379 (localhost) ◄──túnel SSH── [caixa] agente
 > ```
 
-Componentes gratuitos: **Supabase** (Postgres), **Upstash** (Redis),
+Componentes gratuitos: **Supabase** (Postgres), **Redis** (auto-hospedado na VM),
 **Oracle Cloud** (VM), **Caddy** (HTTPS automático via `sslip.io`), **Vercel**
 (frontend).
 
@@ -22,15 +22,38 @@ Componentes gratuitos: **Supabase** (Postgres), **Upstash** (Redis),
 Já configurado. Você precisa da connection string da **Session pooler (5432)** —
 ver seção 1 de [`deploy.md`](deploy.md).
 
-## 2. Redis — Upstash (fila BullMQ)
+## 2. Redis — auto-hospedado na VM (fila BullMQ)
 
-1. Crie conta em <https://upstash.com> → **Create Database** (Redis).
-2. Escolha a região mais próxima (ex.: `sa-east-1` / São Paulo).
-3. Na página do banco, copie a **Redis URL** no formato
-   `rediss://default:<senha>@<endpoint>.upstash.io:6379`.
+O Redis roda **na própria VM Oracle**, ouvindo apenas em `localhost` (não exposto
+à internet). O PC do caixa acessa via túnel SSH (ver [`deploy-windows.md`](deploy-windows.md)).
 
-Esse mesmo valor (`REDIS_URL`) vai no `.env` da VM **e** do PC do caixa — é a
-fila compartilhada. O `rediss://` já ativa TLS no código.
+```bash
+sudo apt install -y redis-server
+```
+
+Edite `/etc/redis/redis.conf` e adicione/ajuste:
+
+```
+bind 127.0.0.1
+protected-mode yes
+requirepass <senha-forte>
+maxmemory 256mb
+maxmemory-policy noeviction
+```
+
+```bash
+sudo systemctl enable --now redis-server
+redis-cli -a <senha> ping   # PONG
+```
+
+A `REDIS_URL` no `.env` da VM fica:
+
+```
+REDIS_URL=redis://default:<senha>@127.0.0.1:6379
+```
+
+> A senha fica guardada em `/home/ubuntu/redis-password.txt` (chmod 600).
+> Consulte com: `cat /home/ubuntu/redis-password.txt`
 
 ## 3. VM — Oracle Cloud Always Free
 
@@ -66,7 +89,7 @@ nano backend/.env
 ```
 
 Preencha `CORS_ORIGINS` (URL da Vercel), `DATABASE_URL` (Supabase), `REDIS_URL`
-(Upstash) e `JWT_SECRET`. Mantenha `PRINT_WORKER=off`.
+(Redis na VM — `redis://default:<senha>@127.0.0.1:6379`) e `JWT_SECRET`. Mantenha `PRINT_WORKER=off`.
 
 ```bash
 npm run prisma:generate --workspace backend
@@ -128,13 +151,13 @@ da VM. Se alterar o `.env`: `pm2 restart bacalhau-backend`.
 ## 8. PC do caixa — agente de impressão
 
 Siga [`deploy-windows.md`](deploy-windows.md): o caixa roda só o worker,
-apontando o `REDIS_URL`/`DATABASE_URL` para os mesmos Upstash/Supabase.
+usando túnel SSH para o Redis da VM + mesma `DATABASE_URL` do Supabase.
 
 ---
 
 ## Checklist final
 
-- [ ] Upstash criado; `REDIS_URL` idêntico na VM e no caixa
+- [ ] Redis instalado na VM; `redis-cli ping` retorna `PONG`; senha em `/home/ubuntu/redis-password.txt`
 - [ ] `pm2 status` → `bacalhau-backend` online
 - [ ] `https://<IP>.sslip.io/api/menu` responde JSON (HTTPS válido)
 - [ ] Vercel com `NEXT_PUBLIC_API_URL`/`NEXT_PUBLIC_WS_URL` corretos
