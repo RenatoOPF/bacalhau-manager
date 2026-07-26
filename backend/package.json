@@ -17,6 +17,7 @@
     "db:seed": "ts-node prisma/seed.ts",
     "menu:import": "ts-node prisma/import-menu.ts",
     "legacy:import": "ts-node prisma/import-legacy-orders.ts",
+    "sales:import": "ts-node prisma/import-legacy-sales.ts",
     "stock:seed": "ts-node prisma/seed-stock.ts"
   },
   "dependencies": {

@@ -9,6 +9,7 @@ import {
   type MenuItem,
 } from '@/lib/api';
 import { SiteFooter } from '@/components/site-footer';
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 
 // Uma linha do carrinho: um item (ou uma opção específica dele).
 interface CartLine {
@@ -229,13 +230,11 @@ export default function CardapioPage() {
                   setForm({ ...form, customerPhone: e.target.value })
                 }
               />
-              <input
-                className="input w-full p-2"
-                placeholder="Rua"
+              <AddressAutocomplete
                 value={form.addressStreet}
-                onChange={(e) =>
-                  setForm({ ...form, addressStreet: e.target.value })
-                }
+                onChange={(street) => setForm({ ...form, addressStreet: street })}
+                neighborhoods={neighborhoods}
+                onNeighborhoodMatch={(id) => setForm((f) => ({ ...f, neighborhoodId: id }))}
               />
               <input
                 className="input w-full p-2"
