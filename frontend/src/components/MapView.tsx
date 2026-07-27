@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { loadGoogleMaps } from '@/lib/gmaps';
 
 const RESTAURANT = { lat: -9.660454, lng: -35.7044501 };
+const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
 interface Props {
   customerCoords?: { lat: string; lon: string } | null;
@@ -11,74 +11,84 @@ interface Props {
 
 export function MapView({ customerCoords }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const customerMarkerRef = useRef<google.maps.Marker | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const customerMarkerRef = useRef<any>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    loadGoogleMaps().then((g) => {
-      if (!containerRef.current) return;
+    (async () => {
+      const mapboxgl = (await import('mapbox-gl')).default;
 
-      const map = new g.maps.Map(containerRef.current, {
-        center: RESTAURANT,
+      if (!document.getElementById('mapbox-css')) {
+        const link = document.createElement('link');
+        link.id = 'mapbox-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.css';
+        document.head.appendChild(link);
+      }
+
+      mapboxgl.accessToken = TOKEN;
+      const map = new mapboxgl.Map({
+        container: containerRef.current!,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [RESTAURANT.lng, RESTAURANT.lat],
         zoom: 15,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
+        language: 'pt-BR',
       });
 
-      const restaurantEl = document.createElement('div');
-      restaurantEl.textContent = '🍽️';
-      restaurantEl.style.cssText = 'font-size:22px;cursor:pointer';
+      const el = document.createElement('div');
+      el.textContent = '🍽️';
+      el.style.cssText = 'font-size:24px;cursor:pointer';
 
-      new g.maps.marker.AdvancedMarkerElement({
-        position: RESTAURANT,
-        map,
-        title: 'Bacalhau & Cia',
-        content: restaurantEl,
-      });
+      new mapboxgl.Marker({ element: el })
+        .setLngLat([RESTAURANT.lng, RESTAURANT.lat])
+        .setPopup(
+          new mapboxgl.Popup({ offset: 25 }).setHTML(
+            '<b>Bacalhau & Cia</b><br>Rua José Freire Moura, 647',
+          ),
+        )
+        .addTo(map);
 
       mapRef.current = map;
-    });
+    })();
 
     return () => {
+      mapRef.current?.remove();
       mapRef.current = null;
       customerMarkerRef.current = null;
     };
   }, []);
 
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
+    if (!mapRef.current) return;
 
     if (customerMarkerRef.current) {
-      customerMarkerRef.current.setMap(null);
+      customerMarkerRef.current.remove();
       customerMarkerRef.current = null;
     }
 
     if (!customerCoords) {
-      map.panTo(RESTAURANT);
-      map.setZoom(15);
+      mapRef.current.flyTo({ center: [RESTAURANT.lng, RESTAURANT.lat], zoom: 15 });
       return;
     }
 
-    loadGoogleMaps().then((g) => {
+    import('mapbox-gl').then(({ default: mapboxgl }) => {
       if (!mapRef.current) return;
-      const pos = {
-        lat: parseFloat(customerCoords.lat),
-        lng: parseFloat(customerCoords.lon),
-      };
-      customerMarkerRef.current = new g.maps.Marker({
-        position: pos,
-        map: mapRef.current,
-        title: 'Seu endereço',
-      });
+      const lng = parseFloat(customerCoords.lon);
+      const lat = parseFloat(customerCoords.lat);
 
-      const bounds = new g.maps.LatLngBounds();
-      bounds.extend(RESTAURANT);
-      bounds.extend(pos);
-      mapRef.current.fitBounds(bounds);
+      customerMarkerRef.current = new mapboxgl.Marker({ color: '#dc2626' })
+        .setLngLat([lng, lat])
+        .setPopup(new mapboxgl.Popup({ offset: 25 }).setText('Seu endereço'))
+        .addTo(mapRef.current);
+
+      const bounds = new mapboxgl.LngLatBounds()
+        .extend([RESTAURANT.lng, RESTAURANT.lat])
+        .extend([lng, lat]);
+      mapRef.current.fitBounds(bounds, { padding: 60 });
     });
   }, [customerCoords]);
 
