@@ -55,16 +55,12 @@ export default function CardapioPage() {
     const neighborhoodName = (neighborhoods ?? []).find(
       (n) => n.id === form.neighborhoodId,
     )?.name;
-    const streetQuery = [
-      `${form.addressNumber} ${form.addressStreet}`,
-      neighborhoodName,
-    ]
-      .filter(Boolean)
-      .join(', ');
     const timer = setTimeout(async () => {
       try {
         const params = new URLSearchParams({
-          street: streetQuery,
+          housenumber: form.addressNumber,
+          street: form.addressStreet,
+          ...(neighborhoodName ? { suburb: neighborhoodName } : {}),
           city: 'Maceió',
           state: 'Alagoas',
           countrycodes: 'br',
