@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import type { Map, Marker } from 'leaflet';
 
-const RESTAURANT = { lat: -9.660454, lon: -35.7044501 };
+const RESTAURANT = { lat: -9.660454, lng: -35.7044501 };
+const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
 interface Props {
   customerCoords?: { lat: string; lon: string } | null;
@@ -11,49 +11,46 @@ interface Props {
 
 export function MapView({ customerCoords }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<Map | null>(null);
-  const customerMarkerRef = useRef<Marker | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const customerMarkerRef = useRef<any>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
     (async () => {
-      const L = (await import('leaflet')).default;
-      if (!document.getElementById('leaflet-css')) {
+      const mapboxgl = (await import('mapbox-gl')).default;
+
+      if (!document.getElementById('mapbox-css')) {
         const link = document.createElement('link');
-        link.id = 'leaflet-css';
+        link.id = 'mapbox-css';
         link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.css';
         document.head.appendChild(link);
       }
 
-      // Fix default icon paths broken by webpack
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      mapboxgl.accessToken = TOKEN;
+      const map = new mapboxgl.Map({
+        container: containerRef.current!,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [RESTAURANT.lng, RESTAURANT.lat],
+        zoom: 15,
+        language: 'pt-BR',
       });
 
-      const map = L.map(containerRef.current!).setView(
-        [RESTAURANT.lat, RESTAURANT.lon],
-        15,
-      );
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
-      }).addTo(map);
+      const el = document.createElement('div');
+      el.textContent = '🍽️';
+      el.style.cssText = 'font-size:24px;cursor:pointer';
 
-      const restaurantIcon = L.divIcon({
-        html: '<div style="font-size:22px;line-height:1">🍽️</div>',
-        className: '',
-        iconSize: [28, 28],
-        iconAnchor: [14, 28],
-        popupAnchor: [0, -28],
-      });
-      L.marker([RESTAURANT.lat, RESTAURANT.lon], { icon: restaurantIcon })
-        .addTo(map)
-        .bindPopup('<b>Bacalhau & Cia</b><br>Rua José Freire Moura, 647');
+      new mapboxgl.Marker({ element: el })
+        .setLngLat([RESTAURANT.lng, RESTAURANT.lat])
+        .setPopup(
+          new mapboxgl.Popup({ offset: 25 }).setHTML(
+            '<b>Bacalhau & Cia</b><br>Rua José Freire Moura, 647',
+          ),
+        )
+        .addTo(map);
 
       mapRef.current = map;
     })();
@@ -66,36 +63,39 @@ export function MapView({ customerCoords }: Props) {
   }, []);
 
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
+    if (!mapRef.current) return;
 
     if (customerMarkerRef.current) {
-      map.removeLayer(customerMarkerRef.current);
+      customerMarkerRef.current.remove();
       customerMarkerRef.current = null;
     }
 
-    if (customerCoords) {
-      import('leaflet').then(({ default: L }) => {
-        if (!mapRef.current) return;
-        const lat = parseFloat(customerCoords.lat);
-        const lon = parseFloat(customerCoords.lon);
-        customerMarkerRef.current = L.marker([lat, lon])
-          .addTo(mapRef.current)
-          .bindPopup('Seu endereço');
-        mapRef.current.fitBounds(
-          L.latLngBounds([RESTAURANT.lat, RESTAURANT.lon], [lat, lon]),
-          { padding: [30, 30] },
-        );
-      });
-    } else {
-      map.setView([RESTAURANT.lat, RESTAURANT.lon], 15);
+    if (!customerCoords) {
+      mapRef.current.flyTo({ center: [RESTAURANT.lng, RESTAURANT.lat], zoom: 15 });
+      return;
     }
+
+    import('mapbox-gl').then(({ default: mapboxgl }) => {
+      if (!mapRef.current) return;
+      const lng = parseFloat(customerCoords.lon);
+      const lat = parseFloat(customerCoords.lat);
+
+      customerMarkerRef.current = new mapboxgl.Marker({ color: '#dc2626' })
+        .setLngLat([lng, lat])
+        .setPopup(new mapboxgl.Popup({ offset: 25 }).setText('Seu endereço'))
+        .addTo(mapRef.current);
+
+      const bounds = new mapboxgl.LngLatBounds()
+        .extend([RESTAURANT.lng, RESTAURANT.lat])
+        .extend([lng, lat]);
+      mapRef.current.fitBounds(bounds, { padding: 60 });
+    });
   }, [customerCoords]);
 
   return (
     <div
       ref={containerRef}
-      className="h-48 w-full rounded border border-gray-200"
+      className="h-48 w-full overflow-hidden rounded border border-gray-200"
     />
   );
 }

@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
+// Centro de Maceió — usado como bias de proximidade
+const PROXIMITY = '-35.7044501,-9.660454';
+
 interface Suggestion {
   road: string;
   suburb: string;
@@ -43,39 +47,34 @@ export function AddressAutocomplete({ value, onChange, neighborhoods, onNeighbor
     timer.current = setTimeout(async () => {
       setLoading(true);
       try {
+        const query = encodeURIComponent(`${value}, Maceió, Alagoas`);
         const params = new URLSearchParams({
-          street: value,
-          city: 'Maceió',
-          state: 'Alagoas',
-          countrycodes: 'br',
-          format: 'json',
+          country: 'br',
+          proximity: PROXIMITY,
+          language: 'pt-BR',
+          types: 'address',
           limit: '7',
-          addressdetails: '1',
+          access_token: TOKEN,
         });
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?${params}`,
-          { headers: { 'Accept-Language': 'pt-BR' } },
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?${params}`,
         );
         const data: {
-          address?: {
-            road?: string;
-            suburb?: string;
-            neighbourhood?: string;
-            quarter?: string;
-          };
-        }[] = await res.json();
+          features: {
+            text?: string;
+            context?: { id: string; text: string }[];
+          }[];
+        } = await res.json();
 
         const seen = new Set<string>();
         const items: Suggestion[] = [];
-        for (const r of data) {
-          const road = r.address?.road ?? '';
+        for (const f of data.features) {
+          const road = f.text ?? '';
           if (!road || seen.has(road)) continue;
           seen.add(road);
           const suburb =
-            r.address?.suburb ??
-            r.address?.neighbourhood ??
-            r.address?.quarter ??
-            '';
+            f.context?.find((c) => c.id.startsWith('neighborhood') || c.id.startsWith('district'))
+              ?.text ?? '';
           items.push({ road, suburb });
         }
         setSuggestions(items);
@@ -85,7 +84,7 @@ export function AddressAutocomplete({ value, onChange, neighborhoods, onNeighbor
       } finally {
         setLoading(false);
       }
-    }, 500);
+    }, 400);
   }, [value]);
 
   useEffect(() => {

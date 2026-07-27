@@ -62,25 +62,30 @@ export default function CardapioPage() {
     const neighborhoodName = (neighborhoods ?? []).find(
       (n) => n.id === form.neighborhoodId,
     )?.name;
+    const parts = [
+      `${form.addressNumber} ${form.addressStreet}`,
+      neighborhoodName,
+      'Maceió, Alagoas',
+    ]
+      .filter(Boolean)
+      .join(', ');
     const timer = setTimeout(async () => {
       try {
+        const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
         const params = new URLSearchParams({
-          housenumber: form.addressNumber,
-          street: form.addressStreet,
-          ...(neighborhoodName ? { suburb: neighborhoodName } : {}),
-          city: 'Maceió',
-          state: 'Alagoas',
-          countrycodes: 'br',
-          format: 'json',
+          country: 'br',
+          proximity: '-35.7044501,-9.660454',
+          language: 'pt-BR',
           limit: '1',
+          access_token: token,
         });
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?${params}`,
-          { headers: { 'Accept-Language': 'pt-BR' } },
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(parts)}.json?${params}`,
         );
-        const data: { lat?: string; lon?: string }[] = await res.json();
-        if (data[0]?.lat && data[0]?.lon) {
-          setMapCoords({ lat: data[0].lat, lon: data[0].lon });
+        const data: { features: { center: [number, number] }[] } = await res.json();
+        const [lng, lat] = data.features[0]?.center ?? [];
+        if (lat && lng) {
+          setMapCoords({ lat: String(lat), lon: String(lng) });
         } else {
           setMapCoords(null);
         }
