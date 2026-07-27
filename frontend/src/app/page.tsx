@@ -39,6 +39,7 @@ export default function CardapioPage() {
     customerPhone: '',
     addressStreet: '',
     addressNumber: '',
+    addressComplement: '',
     neighborhoodId: '',
     paymentMethod: 'PIX' as 'CASH' | 'PIX',
   });
@@ -173,6 +174,9 @@ export default function CardapioPage() {
     if (items.length === 0) return;
     createOrder.mutate({
       ...form,
+      addressNumber: form.addressComplement
+        ? `${form.addressNumber}, ${form.addressComplement}`
+        : form.addressNumber,
       neighborhoodId: form.neighborhoodId || undefined,
       items,
     });
@@ -275,40 +279,52 @@ export default function CardapioPage() {
                   setForm({ ...form, customerPhone: e.target.value })
                 }
               />
-              <AddressAutocomplete
-                value={form.addressStreet}
-                onChange={(street) => setForm({ ...form, addressStreet: street })}
-                neighborhoods={neighborhoods}
-                onNeighborhoodMatch={(id) => setForm((f) => ({ ...f, neighborhoodId: id }))}
-              />
+              <div className="flex gap-2">
+                <div className="min-w-0 flex-1">
+                  <AddressAutocomplete
+                    value={form.addressStreet}
+                    onChange={(street) => setForm({ ...form, addressStreet: street })}
+                    neighborhoods={neighborhoods}
+                    onNeighborhoodMatch={(id) => setForm((f) => ({ ...f, neighborhoodId: id }))}
+                  />
+                </div>
+                <input
+                  className="input w-20 shrink-0 p-2"
+                  placeholder="Nº"
+                  value={form.addressNumber}
+                  onChange={(e) =>
+                    setForm({ ...form, addressNumber: e.target.value })
+                  }
+                />
+                {(neighborhoods ?? []).length > 0 && (
+                  <select
+                    className="input w-28 shrink-0 p-2"
+                    value={form.neighborhoodId}
+                    onChange={(e) =>
+                      setForm({ ...form, neighborhoodId: e.target.value })
+                    }
+                  >
+                    <option value="">Bairro…</option>
+                    {(neighborhoods ?? []).map((n) => (
+                      <option key={n.id} value={n.id}>
+                        {n.name}
+                        {n.customerFeeCents > 0
+                          ? ` — ${formatBRL(n.customerFeeCents)}`
+                          : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
               <input
                 className="input w-full p-2"
-                placeholder="Número"
-                value={form.addressNumber}
+                placeholder="Complemento (apto, bloco, referência…)"
+                value={form.addressComplement}
                 onChange={(e) =>
-                  setForm({ ...form, addressNumber: e.target.value })
+                  setForm({ ...form, addressComplement: e.target.value })
                 }
               />
               <MapView customerCoords={mapCoords} />
-              {(neighborhoods ?? []).length > 0 && (
-                <select
-                  className="input w-full p-2"
-                  value={form.neighborhoodId}
-                  onChange={(e) =>
-                    setForm({ ...form, neighborhoodId: e.target.value })
-                  }
-                >
-                  <option value="">Bairro (taxa de entrega)…</option>
-                  {(neighborhoods ?? []).map((n) => (
-                    <option key={n.id} value={n.id}>
-                      {n.name}
-                      {n.customerFeeCents > 0
-                        ? ` — ${formatBRL(n.customerFeeCents)}`
-                        : ' — grátis'}
-                    </option>
-                  ))}
-                </select>
-              )}
               <select
                 className="input w-full p-2"
                 value={form.paymentMethod}
