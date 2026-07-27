@@ -45,6 +45,49 @@ export default function CardapioPage() {
   // Duas telas: cardápio e fechamento do pedido.
   const [view, setView] = useState<'menu' | 'checkout'>('menu');
 
+  const [mapCoords, setMapCoords] = useState<{ lat: string; lon: string } | null>(null);
+
+  useEffect(() => {
+    if (!form.addressStreet || !form.addressNumber) {
+      setMapCoords(null);
+      return;
+    }
+    const neighborhoodName = (neighborhoods ?? []).find(
+      (n) => n.id === form.neighborhoodId,
+    )?.name;
+    const streetQuery = [
+      `${form.addressNumber} ${form.addressStreet}`,
+      neighborhoodName,
+    ]
+      .filter(Boolean)
+      .join(', ');
+    const timer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          street: streetQuery,
+          city: 'Maceió',
+          state: 'Alagoas',
+          countrycodes: 'br',
+          format: 'json',
+          limit: '1',
+        });
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?${params}`,
+          { headers: { 'Accept-Language': 'pt-BR' } },
+        );
+        const data: { lat?: string; lon?: string }[] = await res.json();
+        if (data[0]?.lat && data[0]?.lon) {
+          setMapCoords({ lat: data[0].lat, lon: data[0].lon });
+        } else {
+          setMapCoords(null);
+        }
+      } catch {
+        setMapCoords(null);
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [form.addressStreet, form.addressNumber, form.neighborhoodId, neighborhoods]);
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [view]);
@@ -244,6 +287,14 @@ export default function CardapioPage() {
                   setForm({ ...form, addressNumber: e.target.value })
                 }
               />
+              {mapCoords && (
+                <iframe
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${+mapCoords.lon - 0.003},${+mapCoords.lat - 0.003},${+mapCoords.lon + 0.003},${+mapCoords.lat + 0.003}&layer=mapnik&marker=${mapCoords.lat},${mapCoords.lon}`}
+                  className="h-48 w-full rounded border border-gray-200"
+                  loading="lazy"
+                  title="Confirme sua localização"
+                />
+              )}
               {(neighborhoods ?? []).length > 0 && (
                 <select
                   className="input w-full p-2"
