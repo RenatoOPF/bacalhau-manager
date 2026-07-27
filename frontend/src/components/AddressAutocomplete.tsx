@@ -1,10 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-
-const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
-// Centro de Maceió — usado como bias de proximidade
-const PROXIMITY = '-35.7044501,-9.660454';
+import { loadGoogleMaps } from '@/lib/gmaps';
 
 interface Suggestion {
   road: string;
@@ -36,6 +33,14 @@ export function AddressAutocomplete({ value, onChange, neighborhoods, onNeighbor
   const [loading, setLoading] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const serviceRef = useRef<google.maps.places.AutocompleteService | null>(null);
+
+  // Carrega o serviço do Places ao montar o componente
+  useEffect(() => {
+    loadGoogleMaps().then((g) => {
+      serviceRef.current = new g.maps.places.AutocompleteService();
+    });
+  }, []);
 
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -45,36 +50,41 @@ export function AddressAutocomplete({ value, onChange, neighborhoods, onNeighbor
       return;
     }
     timer.current = setTimeout(async () => {
+      if (!serviceRef.current) return;
       setLoading(true);
       try {
-        const query = encodeURIComponent(`${value}, Maceió, Alagoas`);
-        const params = new URLSearchParams({
-          country: 'br',
-          proximity: PROXIMITY,
-          language: 'pt-BR',
-          types: 'address',
-          limit: '7',
-          access_token: TOKEN,
-        });
-        const res = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?${params}`,
+        const results = await new Promise<google.maps.places.AutocompletePrediction[]>(
+          (resolve, reject) => {
+            serviceRef.current!.getPlacePredictions(
+              {
+                input: `${value}, Maceió, AL`,
+                componentRestrictions: { country: 'br' },
+                location: new google.maps.LatLng(-9.660454, -35.7044501),
+                radius: 30000,
+                types: ['address'],
+              },
+              (predictions, status) => {
+                if (
+                  status === google.maps.places.PlacesServiceStatus.OK &&
+                  predictions
+                ) {
+                  resolve(predictions);
+                } else {
+                  resolve([]);
+                }
+              },
+            );
+          },
         );
-        const data: {
-          features: {
-            text?: string;
-            context?: { id: string; text: string }[];
-          }[];
-        } = await res.json();
 
         const seen = new Set<string>();
         const items: Suggestion[] = [];
-        for (const f of data.features) {
-          const road = f.text ?? '';
+        for (const p of results) {
+          const road = p.structured_formatting.main_text;
           if (!road || seen.has(road)) continue;
           seen.add(road);
-          const suburb =
-            f.context?.find((c) => c.id.startsWith('neighborhood') || c.id.startsWith('district'))
-              ?.text ?? '';
+          // terms: [rua, bairro, cidade, estado, país]
+          const suburb = p.terms[1]?.value ?? '';
           items.push({ road, suburb });
         }
         setSuggestions(items);
