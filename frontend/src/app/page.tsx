@@ -8,8 +8,14 @@ import {
   type CreateOrderPayload,
   type MenuItem,
 } from '@/lib/api';
+import dynamic from 'next/dynamic';
 import { SiteFooter } from '@/components/site-footer';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
+
+const MapView = dynamic(
+  () => import('@/components/MapView').then((m) => m.MapView),
+  { ssr: false },
+);
 
 // Uma linha do carrinho: um item (ou uma opção específica dele).
 interface CartLine {
@@ -283,14 +289,7 @@ export default function CardapioPage() {
                   setForm({ ...form, addressNumber: e.target.value })
                 }
               />
-              {mapCoords && (
-                <iframe
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${+mapCoords.lon - 0.003},${+mapCoords.lat - 0.003},${+mapCoords.lon + 0.003},${+mapCoords.lat + 0.003}&layer=mapnik&marker=${mapCoords.lat},${mapCoords.lon}`}
-                  className="h-48 w-full rounded border border-gray-200"
-                  loading="lazy"
-                  title="Confirme sua localização"
-                />
-              )}
+              <MapView customerCoords={mapCoords} />
               {(neighborhoods ?? []).length > 0 && (
                 <select
                   className="input w-full p-2"
