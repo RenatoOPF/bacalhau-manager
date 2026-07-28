@@ -295,11 +295,21 @@ export default function CardapioPage() {
               />
               <input
                 className="input w-full p-2"
-                placeholder="Telefone"
+                placeholder="Telefone (82) 99999-9999"
                 value={form.customerPhone}
-                onChange={(e) =>
-                  setForm({ ...form, customerPhone: e.target.value })
-                }
+                inputMode="numeric"
+                onChange={(e) => {
+                  const d = e.target.value.replace(/\D/g, '').slice(0, 11);
+                  let phone = d;
+                  if (d.length > 6) {
+                    phone = `(${d.slice(0, 2)}) ${d.slice(2, d.length > 10 ? 7 : 6)}-${d.slice(d.length > 10 ? 7 : 6)}`;
+                  } else if (d.length > 2) {
+                    phone = `(${d.slice(0, 2)}) ${d.slice(2)}`;
+                  } else if (d.length > 0) {
+                    phone = `(${d}`;
+                  }
+                  setForm({ ...form, customerPhone: phone });
+                }}
               />
               <UnifiedAddressInput
                 value={form.address}
