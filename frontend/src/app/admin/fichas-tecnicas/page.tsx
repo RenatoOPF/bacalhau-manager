@@ -274,21 +274,19 @@ export default function FichasTecnicasPage() {
                   </div>
                   <div className="flex shrink-0 gap-2">
                     {savedSheet && (
-                      <>
-                        <button
-                          onClick={handlePrint}
-                          className="btn-outline px-3 py-1.5 text-sm"
-                        >
-                          Imprimir
-                        </button>
-                        <button
-                          onClick={() => { if (confirm('Excluir ficha técnica?')) del.mutate(); }}
-                          className="px-3 py-1.5 text-sm text-red-500 hover:underline"
-                        >
-                          Excluir
-                        </button>
-                      </>
+                      <button
+                        onClick={() => { if (confirm('Excluir ficha técnica?')) del.mutate(); }}
+                        className="px-3 py-1.5 text-sm text-red-500 hover:underline"
+                      >
+                        Excluir
+                      </button>
                     )}
+                    <button
+                      onClick={handlePrint}
+                      className="btn-outline px-3 py-1.5 text-sm"
+                    >
+                      Imprimir
+                    </button>
                     <button
                       onClick={() => save.mutate()}
                       disabled={save.isPending}
