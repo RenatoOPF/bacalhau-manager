@@ -38,7 +38,14 @@ export function MapView({ customerCoords }: Props) {
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
       }).addTo(map);
-      L.marker(RESTAURANT).addTo(map).bindPopup('Bacalhau & Cia');
+      const restaurantIcon = L.divIcon({
+        html: '<img src="/logo.jpeg" style="width:40px;height:40px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);object-fit:cover;" />',
+        className: '',
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -22],
+      });
+      L.marker(RESTAURANT, { icon: restaurantIcon }).addTo(map).bindPopup('Bacalhau & Cia');
       mapRef.current = map;
     });
 
