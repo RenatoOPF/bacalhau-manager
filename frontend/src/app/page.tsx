@@ -10,7 +10,7 @@ import {
 } from '@/lib/api';
 import dynamic from 'next/dynamic';
 import { SiteFooter } from '@/components/site-footer';
-import { AddressAutocomplete } from '@/components/AddressAutocomplete';
+import { AddressAutocomplete, type PlaceResult } from '@/components/AddressAutocomplete';
 
 const MapView = dynamic(
   () => import('@/components/MapView').then((m) => m.MapView),
@@ -54,7 +54,24 @@ export default function CardapioPage() {
 
   const [mapCoords, setMapCoords] = useState<{ lat: string; lon: string } | null>(null);
 
+  const skipGeocodeRef = useRef(false);
+
+  function handlePlaceSelect(result: PlaceResult) {
+    skipGeocodeRef.current = true;
+    setForm((f) => ({
+      ...f,
+      addressStreet: result.street,
+      ...(result.number ? { addressNumber: result.number } : {}),
+    }));
+    if (result.lat && result.lng) {
+      setMapCoords({ lat: String(result.lat), lon: String(result.lng) });
+    }
+    // Allow geocoding fallback again after next manual edit
+    setTimeout(() => { skipGeocodeRef.current = false; }, 100);
+  }
+
   useEffect(() => {
+    if (skipGeocodeRef.current) return;
     if (!form.addressStreet || !form.addressNumber) {
       setMapCoords(null);
       return;
@@ -70,6 +87,7 @@ export default function CardapioPage() {
       .filter(Boolean)
       .join(', ');
     const timer = setTimeout(async () => {
+      if (skipGeocodeRef.current) return;
       try {
         const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY!;
         const params = new URLSearchParams({
@@ -289,9 +307,10 @@ export default function CardapioPage() {
                 <div className="min-w-0 flex-1">
                   <AddressAutocomplete
                     value={form.addressStreet}
-                    onChange={(street) => setForm({ ...form, addressStreet: street })}
+                    onChange={(street) => setForm((f) => ({ ...f, addressStreet: street }))}
                     neighborhoods={neighborhoods}
                     onNeighborhoodMatch={(id) => setForm((f) => ({ ...f, neighborhoodId: id }))}
+                    onPlaceSelect={handlePlaceSelect}
                   />
                 </div>
                 <input
