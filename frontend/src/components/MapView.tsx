@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { loadGoogleMaps } from '@/lib/gmaps';
+import type { Map, Marker } from 'leaflet';
 
-const RESTAURANT = { lat: -9.660454, lng: -35.7044501 };
+const RESTAURANT: [number, number] = [-9.660454, -35.7044501];
 
 interface Props {
   customerCoords?: { lat: string; lon: string } | null;
@@ -11,34 +11,39 @@ interface Props {
 
 export function MapView({ customerCoords }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const customerMarkerRef = useRef<google.maps.Marker | null>(null);
+  const mapRef = useRef<Map | null>(null);
+  const customerMarkerRef = useRef<Marker | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    loadGoogleMaps().then((g) => {
-      if (!containerRef.current) return;
+    if (!document.querySelector('link[href*="leaflet"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
 
-      const map = new g.maps.Map(containerRef.current, {
-        center: RESTAURANT,
-        zoom: 15,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
+    import('leaflet').then((L) => {
+      if (!containerRef.current || mapRef.current) return;
+
+      delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)['_getIconUrl'];
+      L.Icon.Default.mergeOptions({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       });
 
-      new g.maps.Marker({
-        position: RESTAURANT,
-        map,
-        title: 'Bacalhau & Cia',
-        label: { text: '🍽️', fontSize: '20px' },
-      });
-
+      const map = L.map(containerRef.current).setView(RESTAURANT, 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+      }).addTo(map);
+      L.marker(RESTAURANT).addTo(map).bindPopup('Bacalhau & Cia');
       mapRef.current = map;
     });
 
     return () => {
+      mapRef.current?.remove();
       mapRef.current = null;
       customerMarkerRef.current = null;
     };
@@ -49,32 +54,27 @@ export function MapView({ customerCoords }: Props) {
     if (!map) return;
 
     if (customerMarkerRef.current) {
-      customerMarkerRef.current.setMap(null);
+      customerMarkerRef.current.remove();
       customerMarkerRef.current = null;
     }
 
     if (!customerCoords) {
-      map.panTo(RESTAURANT);
-      map.setZoom(15);
+      map.setView(RESTAURANT, 15);
       return;
     }
 
-    loadGoogleMaps().then((g) => {
-      if (!mapRef.current) return;
-      const pos = {
-        lat: parseFloat(customerCoords.lat),
-        lng: parseFloat(customerCoords.lon),
-      };
-      customerMarkerRef.current = new g.maps.Marker({
-        position: pos,
-        map: mapRef.current,
-        title: 'Seu endereço',
-      });
+    import('leaflet').then((L) => {
+      const pos: [number, number] = [
+        parseFloat(customerCoords.lat),
+        parseFloat(customerCoords.lon),
+      ];
+      customerMarkerRef.current = L.marker(pos)
+        .addTo(mapRef.current!)
+        .bindPopup('Seu endereço');
 
-      const bounds = new g.maps.LatLngBounds();
-      bounds.extend(RESTAURANT);
-      bounds.extend(pos);
-      mapRef.current.fitBounds(bounds);
+      mapRef.current!.fitBounds(L.latLngBounds(RESTAURANT, pos), {
+        padding: [30, 30],
+      });
     });
   }, [customerCoords]);
 

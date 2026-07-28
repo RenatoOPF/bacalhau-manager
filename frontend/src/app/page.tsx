@@ -10,7 +10,7 @@ import {
 } from '@/lib/api';
 import dynamic from 'next/dynamic';
 import { SiteFooter } from '@/components/site-footer';
-import { AddressAutocomplete, type PlaceResult } from '@/components/AddressAutocomplete';
+import { CepInput } from '@/components/CepInput';
 
 const MapView = dynamic(
   () => import('@/components/MapView').then((m) => m.MapView),
@@ -37,6 +37,7 @@ export default function CardapioPage() {
   const [form, setForm] = useState({
     customerName: '',
     customerPhone: '',
+    cep: '',
     addressStreet: '',
     addressNumber: '',
     addressComplement: '',
@@ -54,66 +55,54 @@ export default function CardapioPage() {
 
   const [mapCoords, setMapCoords] = useState<{ lat: string; lon: string } | null>(null);
 
-  const skipGeocodeRef = useRef(false);
-
-  function handlePlaceSelect(result: PlaceResult) {
-    skipGeocodeRef.current = true;
-    setForm((f) => ({
-      ...f,
-      addressStreet: result.street,
-      ...(result.number ? { addressNumber: result.number } : {}),
-    }));
-    if (result.lat && result.lng) {
-      setMapCoords({ lat: String(result.lat), lon: String(result.lng) });
-    }
-    // Allow geocoding fallback again after next manual edit
-    setTimeout(() => { skipGeocodeRef.current = false; }, 100);
+  function handleAddressFound(data: { street: string; neighborhood: string }) {
+    setForm((f) => {
+      const next = { ...f, addressStreet: data.street };
+      if (data.neighborhood && neighborhoods) {
+        const norm = (s: string) =>
+          s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+        const sub = norm(data.neighborhood);
+        const match = neighborhoods.find((n) => {
+          const name = norm(n.name);
+          return name.includes(sub) || sub.includes(name);
+        });
+        if (match) next.neighborhoodId = match.id;
+      }
+      return next;
+    });
   }
 
   useEffect(() => {
-    if (skipGeocodeRef.current) return;
     if (!form.addressStreet || !form.addressNumber) {
       setMapCoords(null);
       return;
     }
-    const neighborhoodName = (neighborhoods ?? []).find(
-      (n) => n.id === form.neighborhoodId,
-    )?.name;
-    const parts = [
-      `${form.addressNumber} ${form.addressStreet}`,
-      neighborhoodName,
-      'Maceió, Alagoas',
-    ]
-      .filter(Boolean)
-      .join(', ');
     const timer = setTimeout(async () => {
-      if (skipGeocodeRef.current) return;
       try {
-        const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY!;
         const params = new URLSearchParams({
-          address: parts,
-          region: 'br',
-          language: 'pt-BR',
-          key,
+          format: 'json',
+          limit: '1',
+          street: `${form.addressNumber} ${form.addressStreet}`,
+          city: 'Maceió',
+          state: 'Alagoas',
+          country: 'Brasil',
         });
         const res = await fetch(
-          `https://maps.googleapis.com/maps/api/geocode/json?${params}`,
+          `https://nominatim.openstreetmap.org/search?${params}`,
+          { headers: { 'Accept-Language': 'pt-BR,pt' } },
         );
-        const data: {
-          results: { geometry: { location: { lat: number; lng: number } } }[];
-        } = await res.json();
-        const loc = data.results[0]?.geometry?.location;
-        if (loc) {
-          setMapCoords({ lat: String(loc.lat), lon: String(loc.lng) });
+        const data: { lat: string; lon: string }[] = await res.json();
+        if (data[0]) {
+          setMapCoords({ lat: data[0].lat, lon: data[0].lon });
         } else {
           setMapCoords(null);
         }
       } catch {
         setMapCoords(null);
       }
-    }, 800);
+    }, 1000);
     return () => clearTimeout(timer);
-  }, [form.addressStreet, form.addressNumber, form.neighborhoodId, neighborhoods]);
+  }, [form.addressStreet, form.addressNumber]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -303,22 +292,26 @@ export default function CardapioPage() {
                   setForm({ ...form, customerPhone: e.target.value })
                 }
               />
+              <CepInput
+                value={form.cep}
+                onChange={(cep) => setForm((f) => ({ ...f, cep }))}
+                onAddressFound={handleAddressFound}
+              />
               <div className="flex gap-2">
-                <div className="min-w-0 flex-1">
-                  <AddressAutocomplete
-                    value={form.addressStreet}
-                    onChange={(street) => setForm((f) => ({ ...f, addressStreet: street }))}
-                    neighborhoods={neighborhoods}
-                    onNeighborhoodMatch={(id) => setForm((f) => ({ ...f, neighborhoodId: id }))}
-                    onPlaceSelect={handlePlaceSelect}
-                  />
-                </div>
+                <input
+                  className="input min-w-0 flex-1 p-2"
+                  placeholder="Rua"
+                  value={form.addressStreet}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, addressStreet: e.target.value }))
+                  }
+                />
                 <input
                   className="input w-20 shrink-0 p-2"
                   placeholder="Nº"
                   value={form.addressNumber}
                   onChange={(e) =>
-                    setForm({ ...form, addressNumber: e.target.value })
+                    setForm((f) => ({ ...f, addressNumber: e.target.value }))
                   }
                 />
                 {(neighborhoods ?? []).length > 0 && (
@@ -326,7 +319,7 @@ export default function CardapioPage() {
                     className="input w-28 shrink-0 p-2"
                     value={form.neighborhoodId}
                     onChange={(e) =>
-                      setForm({ ...form, neighborhoodId: e.target.value })
+                      setForm((f) => ({ ...f, neighborhoodId: e.target.value }))
                     }
                   >
                     <option value="">Bairro…</option>
