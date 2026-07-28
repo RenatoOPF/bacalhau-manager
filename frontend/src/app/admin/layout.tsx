@@ -65,7 +65,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <AdminUserProvider user={user}>
-      <header className="print:hidden sticky top-0 z-20 border-b-4 border-brand-gold bg-brand-red">
+      <header className="sticky top-0 z-20 border-b-4 border-brand-gold bg-brand-red">
         <div className="mx-auto max-w-5xl px-3 pt-3">
           <div className="flex items-center gap-3">
             <a href="/admin" className="flex min-w-0 items-center gap-2">
