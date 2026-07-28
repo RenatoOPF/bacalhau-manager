@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import type { Map, Marker } from 'leaflet';
+import type { Map, Marker, DivIcon } from 'leaflet';
 
 const RESTAURANT: [number, number] = [-9.660454, -35.7044501];
 
@@ -13,6 +13,7 @@ export function MapView({ customerCoords }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Map | null>(null);
   const customerMarkerRef = useRef<Marker | null>(null);
+  const restaurantMarkerRef = useRef<Marker | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -38,14 +39,26 @@ export function MapView({ customerCoords }: Props) {
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
       }).addTo(map);
-      const restaurantIcon = L.divIcon({
-        html: '<img src="/logo.jpeg" style="width:40px;height:40px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);object-fit:cover;" />',
-        className: '',
-        iconSize: [40, 40],
-        iconAnchor: [20, 20],
-        popupAnchor: [0, -22],
+
+      function makeLogoIcon(zoom: number): DivIcon {
+        const size = Math.round(Math.min(40, 40 * Math.pow(1.5, zoom - 15)));
+        return L.divIcon({
+          html: `<img src="/logo.jpeg" style="width:${size}px;height:${size}px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);object-fit:cover;" />`,
+          className: '',
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+          popupAnchor: [0, -(size / 2 + 2)],
+        });
+      }
+
+      restaurantMarkerRef.current = L.marker(RESTAURANT, { icon: makeLogoIcon(15) })
+        .addTo(map)
+        .bindPopup('Bacalhau & Cia');
+
+      map.on('zoomend', () => {
+        restaurantMarkerRef.current?.setIcon(makeLogoIcon(map.getZoom()));
       });
-      L.marker(RESTAURANT, { icon: restaurantIcon }).addTo(map).bindPopup('Bacalhau & Cia');
+
       mapRef.current = map;
     });
 
@@ -53,6 +66,7 @@ export function MapView({ customerCoords }: Props) {
       mapRef.current?.remove();
       mapRef.current = null;
       customerMarkerRef.current = null;
+      restaurantMarkerRef.current = null;
     };
   }, []);
 
