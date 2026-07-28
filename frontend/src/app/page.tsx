@@ -177,24 +177,31 @@ export default function CardapioPage() {
 
   const qtyOf = (key: string) => cart[key]?.quantity ?? 0;
 
+  const submittingRef = useRef(false);
+
   const submit = () => {
+    if (submittingRef.current) return;
     const items = Object.values(cart).map((line) => ({
       menuItemId: line.menuItemId,
       optionId: line.optionId,
       quantity: line.quantity,
     }));
     if (items.length === 0) return;
-    createOrder.mutate({
-      customerName: form.customerName,
-      customerPhone: form.customerPhone,
-      addressStreet: form.address.street,
-      addressNumber: form.addressComplement
-        ? `${form.address.number}, ${form.addressComplement}`
-        : form.address.number,
-      neighborhoodId: form.neighborhoodId || undefined,
-      paymentMethod: form.paymentMethod,
-      items,
-    });
+    submittingRef.current = true;
+    createOrder.mutate(
+      {
+        customerName: form.customerName,
+        customerPhone: form.customerPhone,
+        addressStreet: form.address.street,
+        addressNumber: form.addressComplement
+          ? `${form.address.number}, ${form.addressComplement}`
+          : form.address.number,
+        neighborhoodId: form.neighborhoodId || undefined,
+        paymentMethod: form.paymentMethod,
+        items,
+      },
+      { onError: () => { submittingRef.current = false; } },
+    );
   };
 
   if (createOrder.data) {
