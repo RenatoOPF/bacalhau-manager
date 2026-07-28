@@ -67,7 +67,7 @@ export function StreetAutocomplete({ value, onChange, onSelect }: Props) {
     <div ref={containerRef} className="relative w-full">
       <input
         className="input w-full p-2"
-        placeholder="Rua"
+        placeholder="Endereço"
         value={value}
         autoComplete="off"
         onChange={(e) => onChange(e.target.value)}
