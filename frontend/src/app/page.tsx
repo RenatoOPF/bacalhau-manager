@@ -40,7 +40,7 @@ export default function CardapioPage() {
     address: { street: '', number: '', cep: '', neighborhood: '' } as AddressValue,
     addressComplement: '',
     neighborhoodId: '',
-    paymentMethod: 'PIX' as 'CASH' | 'PIX',
+    paymentMethod: '' as 'CASH' | 'PIX' | '',
   });
 
   const { data: neighborhoods } = useQuery({
@@ -197,7 +197,7 @@ export default function CardapioPage() {
           ? `${form.address.number}, ${form.addressComplement}`
           : form.address.number,
         neighborhoodId: form.neighborhoodId || undefined,
-        paymentMethod: form.paymentMethod,
+        paymentMethod: (form.paymentMethod || 'PIX') as 'CASH' | 'PIX',
         items,
       },
       { onError: () => { submittingRef.current = false; } },
@@ -353,6 +353,7 @@ export default function CardapioPage() {
                   })
                 }
               >
+                <option value="" disabled>Selecione a forma de pagamento</option>
                 <option value="PIX">PIX</option>
                 <option value="CASH">Dinheiro</option>
               </select>
