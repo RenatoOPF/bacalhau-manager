@@ -70,9 +70,16 @@ export function AddressAutocomplete({
       return;
     }
     timer.current = setTimeout(async () => {
-      if (!autocompleteRef.current) return;
       setLoading(true);
       try {
+        const g = await loadGoogleMaps();
+        if (!autocompleteRef.current) {
+          autocompleteRef.current = new g.maps.places.AutocompleteService();
+        }
+        if (!placesRef.current && dummyRef.current) {
+          placesRef.current = new g.maps.places.PlacesService(dummyRef.current);
+        }
+
         const results = await new Promise<google.maps.places.AutocompletePrediction[]>(
           (resolve) => {
             autocompleteRef.current!.getPlacePredictions(
@@ -130,10 +137,14 @@ export function AddressAutocomplete({
     if (match) onNeighborhoodMatch(match.id);
   }
 
-  function select(s: Suggestion) {
+  async function select(s: Suggestion) {
     setOpen(false);
     setSuggestions([]);
 
+    const g = await loadGoogleMaps();
+    if (!placesRef.current && dummyRef.current) {
+      placesRef.current = new g.maps.places.PlacesService(dummyRef.current);
+    }
     if (!placesRef.current) {
       const road = s.mainText.split(',')[0].trim();
       onChange(road);
