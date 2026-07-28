@@ -10,8 +10,7 @@ import {
 } from '@/lib/api';
 import dynamic from 'next/dynamic';
 import { SiteFooter } from '@/components/site-footer';
-import { CepInput } from '@/components/CepInput';
-import { StreetAutocomplete } from '@/components/StreetAutocomplete';
+import { UnifiedAddressInput, type AddressValue } from '@/components/UnifiedAddressInput';
 
 const MapView = dynamic(
   () => import('@/components/MapView').then((m) => m.MapView),
@@ -38,9 +37,7 @@ export default function CardapioPage() {
   const [form, setForm] = useState({
     customerName: '',
     customerPhone: '',
-    cep: '',
-    addressStreet: '',
-    addressNumber: '',
+    address: { street: '', number: '', cep: '', neighborhood: '' } as AddressValue,
     addressComplement: '',
     neighborhoodId: '',
     paymentMethod: 'PIX' as 'CASH' | 'PIX',
@@ -56,30 +53,13 @@ export default function CardapioPage() {
 
   const [mapCoords, setMapCoords] = useState<{ lat: string; lon: string } | null>(null);
 
-  function handleAddressFound(data: { street: string; neighborhood: string }) {
+  function handleAddressChange(addr: AddressValue) {
     setForm((f) => {
-      const next = { ...f, addressStreet: data.street };
-      if (data.neighborhood && neighborhoods) {
+      const next = { ...f, address: addr };
+      if (addr.neighborhood && neighborhoods) {
         const norm = (s: string) =>
           s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-        const sub = norm(data.neighborhood);
-        const match = neighborhoods.find((n) => {
-          const name = norm(n.name);
-          return name.includes(sub) || sub.includes(name);
-        });
-        if (match) next.neighborhoodId = match.id;
-      }
-      return next;
-    });
-  }
-
-  function handleStreetSelect(data: { cep: string; street: string; neighborhood: string }) {
-    setForm((f) => {
-      const next = { ...f, addressStreet: data.street, cep: data.cep };
-      if (data.neighborhood && neighborhoods) {
-        const norm = (s: string) =>
-          s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-        const sub = norm(data.neighborhood);
+        const sub = norm(addr.neighborhood);
         const match = neighborhoods.find((n) => {
           const name = norm(n.name);
           return name.includes(sub) || sub.includes(name);
@@ -91,7 +71,8 @@ export default function CardapioPage() {
   }
 
   useEffect(() => {
-    if (!form.addressStreet || !form.addressNumber) {
+    const { street, number } = form.address;
+    if (!street || !number) {
       setMapCoords(null);
       return;
     }
@@ -100,7 +81,7 @@ export default function CardapioPage() {
         const params = new URLSearchParams({
           format: 'json',
           limit: '1',
-          street: `${form.addressNumber} ${form.addressStreet}`,
+          street: `${number} ${street}`,
           city: 'Maceió',
           state: 'Alagoas',
           country: 'Brasil',
@@ -120,7 +101,7 @@ export default function CardapioPage() {
       }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [form.addressStreet, form.addressNumber]);
+  }, [form.address.street, form.address.number]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -204,11 +185,14 @@ export default function CardapioPage() {
     }));
     if (items.length === 0) return;
     createOrder.mutate({
-      ...form,
+      customerName: form.customerName,
+      customerPhone: form.customerPhone,
+      addressStreet: form.address.street,
       addressNumber: form.addressComplement
-        ? `${form.addressNumber}, ${form.addressComplement}`
-        : form.addressNumber,
+        ? `${form.address.number}, ${form.addressComplement}`
+        : form.address.number,
       neighborhoodId: form.neighborhoodId || undefined,
+      paymentMethod: form.paymentMethod,
       items,
     });
   };
@@ -310,45 +294,29 @@ export default function CardapioPage() {
                   setForm({ ...form, customerPhone: e.target.value })
                 }
               />
-              <CepInput
-                value={form.cep}
-                onChange={(cep) => setForm((f) => ({ ...f, cep }))}
-                onAddressFound={handleAddressFound}
+              <UnifiedAddressInput
+                value={form.address}
+                onChange={handleAddressChange}
               />
-              <div className="flex gap-2">
-                <StreetAutocomplete
-                  value={form.addressStreet}
-                  onChange={(street) => setForm((f) => ({ ...f, addressStreet: street }))}
-                  onSelect={handleStreetSelect}
-                />
-                <input
-                  className="input w-20 shrink-0 p-2"
-                  placeholder="Nº"
-                  value={form.addressNumber}
+              {(neighborhoods ?? []).length > 0 && (
+                <select
+                  className="input w-full p-2"
+                  value={form.neighborhoodId}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, addressNumber: e.target.value }))
+                    setForm((f) => ({ ...f, neighborhoodId: e.target.value }))
                   }
-                />
-                {(neighborhoods ?? []).length > 0 && (
-                  <select
-                    className="input w-28 shrink-0 p-2"
-                    value={form.neighborhoodId}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, neighborhoodId: e.target.value }))
-                    }
-                  >
-                    <option value="">Bairro…</option>
-                    {(neighborhoods ?? []).map((n) => (
-                      <option key={n.id} value={n.id}>
-                        {n.name}
-                        {n.customerFeeCents > 0
-                          ? ` — ${formatBRL(n.customerFeeCents)}`
-                          : ''}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
+                >
+                  <option value="">Bairro…</option>
+                  {(neighborhoods ?? []).map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.name}
+                      {n.customerFeeCents > 0
+                        ? ` — ${formatBRL(n.customerFeeCents)}`
+                        : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
               <input
                 className="input w-full p-2"
                 placeholder="Complemento (apto, bloco, referência…)"
