@@ -73,6 +73,25 @@ export default function CardapioPage() {
   }
 
   useEffect(() => {
+    const street = form.addressStreet.trim();
+    if (street.length < 5 || form.cep.replace(/\D/g, '').length === 8) return;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://viacep.com.br/ws/AL/Maceio/${encodeURIComponent(street)}/json/`,
+        );
+        const data = await res.json();
+        if (Array.isArray(data) && data[0]?.cep) {
+          setForm((f) => ({ ...f, cep: data[0].cep }));
+        }
+      } catch {
+        // ignore
+      }
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [form.addressStreet, form.cep]);
+
+  useEffect(() => {
     if (!form.addressStreet || !form.addressNumber) {
       setMapCoords(null);
       return;
