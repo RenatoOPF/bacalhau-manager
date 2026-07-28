@@ -102,7 +102,7 @@ export function MapView({ customerCoords }: Props) {
   return (
     <div
       ref={containerRef}
-      className="h-48 w-full overflow-hidden rounded border border-gray-200"
+      className="isolate h-48 w-full overflow-hidden rounded border border-gray-200"
     />
   );
 }
