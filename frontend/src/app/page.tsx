@@ -71,21 +71,22 @@ export default function CardapioPage() {
       .join(', ');
     const timer = setTimeout(async () => {
       try {
-        const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
+        const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY!;
         const params = new URLSearchParams({
-          country: 'br',
-          proximity: '-35.7044501,-9.660454',
+          address: parts,
+          region: 'br',
           language: 'pt-BR',
-          limit: '1',
-          access_token: token,
+          key,
         });
         const res = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(parts)}.json?${params}`,
+          `https://maps.googleapis.com/maps/api/geocode/json?${params}`,
         );
-        const data: { features: { center: [number, number] }[] } = await res.json();
-        const [lng, lat] = data.features[0]?.center ?? [];
-        if (lat && lng) {
-          setMapCoords({ lat: String(lat), lon: String(lng) });
+        const data: {
+          results: { geometry: { location: { lat: number; lng: number } } }[];
+        } = await res.json();
+        const loc = data.results[0]?.geometry?.location;
+        if (loc) {
+          setMapCoords({ lat: String(loc.lat), lon: String(loc.lng) });
         } else {
           setMapCoords(null);
         }
