@@ -68,6 +68,7 @@ model MenuItem {
   // ex.: Moqueca de Polvo com Camarão). Nos itens COM opções, os vínculos
   // da opção (se houver) têm prioridade sobre os do item.
   stockLinks StockLink[]
+  recipeSheet RecipeSheet?
 
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
@@ -385,6 +386,38 @@ model ChannelConfig {
   channel       OrderChannel @id
   commissionBps Int          @default(0)
   updatedAt     DateTime     @updatedAt
+}
+
+// ---------- Fichas Técnicas ----------
+
+/// Ficha técnica de um prato: ingredientes, rendimento, modo de preparo.
+/// Vinculada 1-1 ao MenuItem; criada sob demanda pelo admin.
+model RecipeSheet {
+  id          String             @id @default(cuid())
+  menuItem    MenuItem           @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  menuItemId  String             @unique
+  yield       Int                @default(1)
+  prepTimeMin Int                @default(0)
+  method      String?
+  notes       String?
+  ingredients RecipeIngredient[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model RecipeIngredient {
+  id        String      @id @default(cuid())
+  recipe    RecipeSheet @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipeId  String
+  name      String
+  quantity  Float       @default(0)
+  unit      String      @default("g")
+  notes     String?
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([recipeId])
 }
 
 /// Bairro de entrega com dois valores: `customerFeeCents` (taxa cobrada do

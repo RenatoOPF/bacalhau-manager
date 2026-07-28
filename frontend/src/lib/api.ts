@@ -237,6 +237,40 @@ export interface BasketPair {
   count: number;
 }
 
+export interface RecipeIngredient {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  notes?: string | null;
+  sortOrder: number;
+}
+
+export interface RecipeSheet {
+  id: string;
+  menuItemId: string;
+  yield: number;
+  prepTimeMin: number;
+  method?: string | null;
+  notes?: string | null;
+  ingredients: RecipeIngredient[];
+  menuItem: {
+    id: string;
+    name: string;
+    priceCents: number;
+    category: { name: string };
+    options: { id: string; name: string; priceCents: number }[];
+  };
+}
+
+export interface UpsertRecipeSheetPayload {
+  yield?: number;
+  prepTimeMin?: number;
+  method?: string;
+  notes?: string;
+  ingredients: { name: string; quantity: number; unit: string; notes?: string; sortOrder?: number }[];
+}
+
 export interface MarginRow {
   name: string;
   optionName: string | null;
@@ -818,6 +852,18 @@ export const api = {
     }),
   deleteAccount: (id: string) =>
     request<{ id: string }>(`/accounts/${id}`, { method: 'DELETE' }),
+
+  // Fichas Técnicas
+  listRecipeSheets: () => request<RecipeSheet[]>('/recipe-sheets'),
+  getRecipeSheet: (menuItemId: string) =>
+    request<RecipeSheet | null>(`/recipe-sheets/${menuItemId}`),
+  upsertRecipeSheet: (menuItemId: string, payload: UpsertRecipeSheetPayload) =>
+    request<RecipeSheet>(`/recipe-sheets/${menuItemId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteRecipeSheet: (menuItemId: string) =>
+    request<void>(`/recipe-sheets/${menuItemId}`, { method: 'DELETE' }),
 
   // Baixa o CSV autenticado e dispara o download no navegador.
   downloadTransactionsCsv: async (from?: string, to?: string) => {
