@@ -11,6 +11,7 @@ import {
 import dynamic from 'next/dynamic';
 import { SiteFooter } from '@/components/site-footer';
 import { CepInput } from '@/components/CepInput';
+import { StreetAutocomplete } from '@/components/StreetAutocomplete';
 
 const MapView = dynamic(
   () => import('@/components/MapView').then((m) => m.MapView),
@@ -72,24 +73,22 @@ export default function CardapioPage() {
     });
   }
 
-  useEffect(() => {
-    const street = form.addressStreet.trim();
-    if (street.length < 5 || form.cep.replace(/\D/g, '').length === 8) return;
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `https://viacep.com.br/ws/AL/Maceio/${encodeURIComponent(street)}/json/`,
-        );
-        const data = await res.json();
-        if (Array.isArray(data) && data[0]?.cep) {
-          setForm((f) => ({ ...f, cep: data[0].cep }));
-        }
-      } catch {
-        // ignore
+  function handleStreetSelect(data: { cep: string; street: string; neighborhood: string }) {
+    setForm((f) => {
+      const next = { ...f, addressStreet: data.street, cep: data.cep };
+      if (data.neighborhood && neighborhoods) {
+        const norm = (s: string) =>
+          s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+        const sub = norm(data.neighborhood);
+        const match = neighborhoods.find((n) => {
+          const name = norm(n.name);
+          return name.includes(sub) || sub.includes(name);
+        });
+        if (match) next.neighborhoodId = match.id;
       }
-    }, 900);
-    return () => clearTimeout(timer);
-  }, [form.addressStreet, form.cep]);
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (!form.addressStreet || !form.addressNumber) {
@@ -317,13 +316,10 @@ export default function CardapioPage() {
                 onAddressFound={handleAddressFound}
               />
               <div className="flex gap-2">
-                <input
-                  className="input min-w-0 flex-1 p-2"
-                  placeholder="Rua"
+                <StreetAutocomplete
                   value={form.addressStreet}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, addressStreet: e.target.value }))
-                  }
+                  onChange={(street) => setForm((f) => ({ ...f, addressStreet: street }))}
+                  onSelect={handleStreetSelect}
                 />
                 <input
                   className="input w-20 shrink-0 p-2"
