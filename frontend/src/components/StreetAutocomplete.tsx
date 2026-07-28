@@ -58,7 +58,8 @@ export function StreetAutocomplete({ value, onChange, onSelect }: Props) {
   function select(s: ViaCepResult) {
     setOpen(false);
     setSuggestions([]);
-    onChange(s.logradouro);
+    const display = s.bairro ? `${s.logradouro} — ${s.bairro}` : s.logradouro;
+    onChange(display);
     onSelect({ cep: s.cep, street: s.logradouro, neighborhood: s.bairro });
   }
 
