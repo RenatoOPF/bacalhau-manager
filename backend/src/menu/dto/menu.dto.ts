@@ -84,6 +84,10 @@ export class UpdateMenuItemDto {
   @IsOptional()
   @IsBoolean()
   available?: boolean;
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string | null;
 }
 
 export class CreateOptionDto {

@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import * as path from 'path';
+import * as fs from 'fs';
 import {
   CreateCategoryDto,
   UpdateCategoryDto,
@@ -129,6 +131,22 @@ export class MenuService {
    */
   deleteItem(id: string) {
     return this.prisma.menuItem.delete({ where: { id } });
+  }
+
+  async deleteItemImage(id: string) {
+    const item = await this.prisma.menuItem.findUnique({
+      where: { id },
+      select: { imageUrl: true },
+    });
+    if (item?.imageUrl) {
+      const uploadDir = process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'uploads');
+      const filePath = path.join(uploadDir, item.imageUrl.replace('/uploads/', ''));
+      fs.rmSync(filePath, { force: true });
+    }
+    return this.prisma.menuItem.update({
+      where: { id },
+      data: { imageUrl: null },
+    });
   }
 
   /** Exclui uma categoria vazia. Bloqueia se ainda tiver itens. */

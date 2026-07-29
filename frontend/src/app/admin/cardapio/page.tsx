@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   api,
   formatBRL,
+  mediaUrl,
   toPrintOption,
   type MenuCategory,
   type MenuItem,
@@ -578,6 +579,17 @@ function ItemRow({
 
   const hasOptions = (item.options ?? []).length > 0;
 
+  const uploadImage = useMutation({
+    mutationFn: (file: File) => api.uploadItemImage(item.id, file),
+    onSuccess: onChange,
+    onError: (e: Error) => setError(e.message),
+  });
+  const removeImage = useMutation({
+    mutationFn: () => api.deleteItemImage(item.id),
+    onSuccess: onChange,
+    onError: (e: Error) => setError(e.message),
+  });
+
   return (
     <li className="py-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -599,6 +611,46 @@ function ItemRow({
             ▼
           </button>
         </div>
+
+        {/* Thumbnail / upload de imagem */}
+        <label
+          className="relative h-12 w-12 shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 border-dashed border-brand-ink/20 hover:border-brand-red/50"
+          title="Clique para adicionar/trocar imagem"
+        >
+          {item.imageUrl ? (
+            <img
+              src={mediaUrl(item.imageUrl)}
+              alt={item.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-lg text-brand-ink/20">
+              🖼
+            </span>
+          )}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="sr-only"
+            disabled={uploadImage.isPending}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadImage.mutate(file);
+              e.target.value = '';
+            }}
+          />
+        </label>
+        {item.imageUrl && (
+          <button
+            className="text-xs text-brand-ink/30 hover:text-brand-red"
+            title="Remover imagem"
+            disabled={removeImage.isPending}
+            onClick={() => removeImage.mutate()}
+          >
+            ✕ foto
+          </button>
+        )}
+
         <div className="min-w-40 flex-1">
           <p className={item.available ? 'font-semibold' : 'font-semibold text-brand-ink/40 line-through'}>
             {item.name.toUpperCase()}

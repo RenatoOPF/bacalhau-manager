@@ -5,6 +5,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   api,
   formatBRL,
+  mediaUrl,
   type CreateOrderPayload,
   type MenuItem,
 } from '@/lib/api';
@@ -536,14 +537,27 @@ function ItemRow({
 }) {
   const options = item.options ?? [];
 
+  const thumb = item.imageUrl ? (
+    <img
+      src={mediaUrl(item.imageUrl)}
+      alt={item.name}
+      className="h-20 w-20 shrink-0 rounded-lg object-cover"
+    />
+  ) : null;
+
   // Item com opções: uma linha por opção (cada uma com seu preço).
   if (options.length > 0) {
     return (
       <li className="py-3">
-        <p className="font-semibold">{item.name}</p>
-        {item.description && (
-          <p className="text-sm text-brand-ink/60">{item.description}</p>
-        )}
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <p className="font-semibold">{item.name}</p>
+            {item.description && (
+              <p className="text-sm text-brand-ink/60">{item.description}</p>
+            )}
+          </div>
+          {thumb}
+        </div>
         <ul className="mt-2 space-y-2">
           {options.map((opt) => {
             const line = {
@@ -593,6 +607,7 @@ function ItemRow({
           {formatBRL(item.priceCents)}
         </p>
       </div>
+      {thumb}
       <Stepper
         qty={qtyOf(item.id)}
         onDec={() => setQty(line, -1)}

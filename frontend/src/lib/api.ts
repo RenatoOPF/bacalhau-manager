@@ -79,6 +79,7 @@ export interface MenuItem {
   // Custo adicional por porção inteira (ingredientes fora do estoque). Soma ao CMV.
   extraCostCents?: number;
   available: boolean;
+  imageUrl?: string | null;
   // Presente quando o item tem variações (ex.: Individual/Inteira). Quando há
   // opções, o preço vem da opção escolhida.
   options?: MenuItemOption[];
@@ -108,6 +109,13 @@ export interface UpdateItemPayload {
   priceCents?: number;
   extraCostCents?: number;
   available?: boolean;
+  imageUrl?: string | null;
+}
+
+/** Constrói URL absoluta para recursos de mídia servidos pelo backend. */
+export function mediaUrl(relativePath: string): string {
+  const base = API_URL.replace(/\/api$/, '');
+  return `${base}${relativePath}`;
 }
 
 export type OrderStatus =
@@ -564,6 +572,20 @@ export const api = {
     }),
   deleteItem: (id: string) =>
     request<{ id: string }>(`/menu/items/${id}`, { method: 'DELETE' }),
+  uploadItemImage: (id: string, file: File): Promise<MenuItem> => {
+    const form = new FormData();
+    form.append('image', file);
+    return fetch(`${API_URL}/menu/items/${id}/image`, {
+      method: 'POST',
+      headers: { ...baseHeaders, ...authHeaders() },
+      body: form,
+    }).then(async (res) => {
+      if (!res.ok) throw new ApiError(res.status, await res.text());
+      return res.json() as Promise<MenuItem>;
+    });
+  },
+  deleteItemImage: (id: string) =>
+    request<MenuItem>(`/menu/items/${id}/image`, { method: 'DELETE' }),
   deleteCategory: (id: string) =>
     request<{ id: string }>(`/menu/categories/${id}`, { method: 'DELETE' }),
   updateCategory: (

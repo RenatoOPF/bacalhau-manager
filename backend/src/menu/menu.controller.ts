@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -6,8 +7,14 @@ import {
   Param,
   Patch,
   Post,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import * as path from 'path';
+import * as fs from 'fs';
 import { Role } from '@prisma/client';
 import { MenuService } from './menu.service';
 import {
@@ -68,6 +75,51 @@ export class MenuController {
   @Roles(Role.ADMIN, Role.MANAGER)
   deleteItem(@Param('id') id: string) {
     return this.menu.deleteItem(id);
+  }
+
+  @Post('items/:id/image')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          const dir = path.join(
+            process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'uploads'),
+            'menu',
+          );
+          fs.mkdirSync(dir, { recursive: true });
+          cb(null, dir);
+        },
+        filename: (req, file, cb) => {
+          const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+          cb(null, `${(req as { params: { id: string } }).params.id}${ext}`);
+        },
+      }),
+      fileFilter: (_req, file, cb) => {
+        if (/^image\/(jpeg|jpg|png|webp)$/.test(file.mimetype)) {
+          cb(null, true);
+        } else {
+          cb(new BadRequestException('Apenas JPEG, PNG ou WebP'), false);
+        }
+      },
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  async uploadImage(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('Nenhum arquivo enviado');
+    const imageUrl = `/uploads/menu/${file.filename}`;
+    return this.menu.updateItem(id, { imageUrl });
+  }
+
+  @Delete('items/:id/image')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
+  deleteImage(@Param('id') id: string) {
+    return this.menu.deleteItemImage(id);
   }
 
   @Patch('categories/:id')

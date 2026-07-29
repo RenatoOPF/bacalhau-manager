@@ -61,6 +61,7 @@ model MenuItem {
   available   Boolean          @default(true)
   // Ordem de exibição dentro da categoria (empate resolvido pelo nome).
   sortOrder   Int              @default(0)
+  imageUrl    String?
   options     MenuItemOption[]
   orderItems  OrderItem[]
 
