@@ -608,18 +608,58 @@ function ItemDetailPanel({
 }) {
   const options = item.options ?? [];
 
+  // Qty local para cada chave (optionId ou menuItemId), inicializada do carrinho.
+  const [localQtys, setLocalQtys] = useState<Record<string, number>>(() => {
+    if (options.length > 0) {
+      return Object.fromEntries(options.map((o) => [o.id, qtyOf(o.id)]));
+    }
+    return { [item.id]: Math.max(1, qtyOf(item.id)) };
+  });
+
+  const adj = (key: string, delta: number) =>
+    setLocalQtys((prev) => ({
+      ...prev,
+      [key]: Math.max(0, (prev[key] ?? 0) + delta),
+    }));
+
+  const confirm = () => {
+    if (options.length > 0) {
+      options.forEach((opt) => {
+        const line = {
+          menuItemId: item.id,
+          optionId: opt.id,
+          label: `${item.name} — ${opt.name}`,
+          priceCents: opt.priceCents,
+        };
+        const delta = (localQtys[opt.id] ?? 0) - qtyOf(opt.id);
+        if (delta !== 0) setQty(line, delta);
+      });
+    } else {
+      const line = { menuItemId: item.id, label: item.name, priceCents: item.priceCents };
+      const delta = (localQtys[item.id] ?? 0) - qtyOf(item.id);
+      if (delta !== 0) setQty(line, delta);
+    }
+    onClose();
+  };
+
+  // Total local (para exibir no botão)
+  const localTotal = options.length > 0
+    ? options.reduce((sum, o) => sum + (localQtys[o.id] ?? 0) * o.priceCents, 0)
+    : (localQtys[item.id] ?? 0) * item.priceCents;
+
+  const localCount = options.length > 0
+    ? options.reduce((sum, o) => sum + (localQtys[o.id] ?? 0), 0)
+    : (localQtys[item.id] ?? 0);
+
   return (
     <>
       {/* Overlay escuro */}
-      <div
-        className="fixed inset-0 z-30 bg-black/40"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 z-30 bg-black/40" onClick={onClose} />
 
       {/* Painel */}
       <div className="fixed inset-x-0 bottom-0 z-40 max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white shadow-2xl">
         {/* Botão fechar */}
-        <div className="sticky top-0 flex justify-end bg-white/80 px-4 pt-3 pb-1 backdrop-blur-sm">
+        <div className="sticky top-0 flex justify-end bg-white/80 px-4 pb-1 pt-3 backdrop-blur-sm">
           <button
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-ink/10 text-brand-ink/60 hover:bg-brand-ink/20"
@@ -646,76 +686,54 @@ function ItemDetailPanel({
             <p className="mt-1 text-brand-ink/60">{item.description}</p>
           )}
 
-          {/* Opções */}
+          {/* Opções com stepper próprio */}
           {options.length > 0 ? (
             <ul className="mt-5 space-y-3">
-              {options.map((opt) => {
-                const line = {
-                  menuItemId: item.id,
-                  optionId: opt.id,
-                  label: `${item.name} — ${opt.name}`,
-                  priceCents: opt.priceCents,
-                };
-                const qty = qtyOf(opt.id);
-                return (
-                  <li
-                    key={opt.id}
-                    className="flex items-center gap-3 rounded-xl border border-brand-cream-dark px-4 py-3"
-                  >
-                    <div className="flex-1">
+              {options.map((opt) => (
+                <li
+                  key={opt.id}
+                  className="rounded-xl border border-brand-cream-dark px-4 py-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
                       <p className="font-semibold">{opt.name}</p>
                       <p className="text-sm font-bold text-brand-red">
                         {formatBRL(opt.priceCents)}
                       </p>
                     </div>
-                    {qty === 0 ? (
-                      <button
-                        className="btn-primary px-4 py-2 text-sm"
-                        onClick={() => setQty(line, 1)}
-                      >
-                        Adicionar
-                      </button>
-                    ) : (
-                      <Stepper
-                        qty={qty}
-                        onDec={() => setQty(line, -1)}
-                        onInc={() => setQty(line, 1)}
-                      />
-                    )}
-                  </li>
-                );
-              })}
+                    <Stepper
+                      qty={localQtys[opt.id] ?? 0}
+                      onDec={() => adj(opt.id, -1)}
+                      onInc={() => adj(opt.id, 1)}
+                    />
+                  </div>
+                </li>
+              ))}
             </ul>
           ) : (
-            /* Item simples */
-            <div className="mt-5 flex items-center justify-between gap-4">
+            /* Item simples: preço + stepper centralizado */
+            <div className="mt-6 flex flex-col items-center gap-3">
               <p className="font-display text-2xl font-bold text-brand-red">
                 {formatBRL(item.priceCents)}
               </p>
-              {(() => {
-                const line = {
-                  menuItemId: item.id,
-                  label: item.name,
-                  priceCents: item.priceCents,
-                };
-                const qty = qtyOf(item.id);
-                return qty === 0 ? (
-                  <button
-                    className="btn-primary px-6 py-2.5"
-                    onClick={() => setQty(line, 1)}
-                  >
-                    Adicionar ao pedido
-                  </button>
-                ) : (
-                  <Stepper
-                    qty={qty}
-                    onDec={() => setQty(line, -1)}
-                    onInc={() => setQty(line, 1)}
-                  />
-                );
-              })()}
+              <Stepper
+                qty={localQtys[item.id] ?? 1}
+                onDec={() => adj(item.id, -1)}
+                onInc={() => adj(item.id, 1)}
+              />
             </div>
           )}
+
+          {/* Botão confirmar */}
+          <button
+            className="btn-primary mt-6 w-full py-3 text-base disabled:opacity-40"
+            disabled={localCount === 0}
+            onClick={confirm}
+          >
+            {localCount === 0
+              ? 'Adicionar ao pedido'
+              : `Adicionar ao pedido · ${formatBRL(localTotal)}`}
+          </button>
         </div>
       </div>
     </>
