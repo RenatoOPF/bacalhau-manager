@@ -35,6 +35,8 @@ export default function CardapioPage() {
 
   // Carrinho: chave (optionId ou menuItemId) -> linha.
   const [cart, setCart] = useState<Record<string, CartLine>>({});
+  // Item aberto no painel de detalhes.
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [form, setForm] = useState({
     customerName: '',
     customerPhone: '',
@@ -466,8 +468,10 @@ export default function CardapioPage() {
                   <ItemRow
                     key={item.id}
                     item={item}
-                    qtyOf={qtyOf}
-                    setQty={setQty}
+                    cartQty={Object.values(cart)
+                      .filter((l) => l.menuItemId === item.id)
+                      .reduce((s, l) => s + l.quantity, 0)}
+                    onSelect={() => setSelectedItem(item)}
                   />
                 ))}
               </ul>
@@ -477,6 +481,16 @@ export default function CardapioPage() {
       </main>
 
       <SiteFooter className={totalCents > 0 ? 'pb-24' : ''} />
+
+      {/* Painel de detalhes do item */}
+      {selectedItem && (
+        <ItemDetailPanel
+          item={selectedItem}
+          qtyOf={qtyOf}
+          setQty={setQty}
+          onClose={() => setSelectedItem(null)}
+        />
+      )}
 
       {/* Atalho fixo no rodapé: total do carrinho → tela de fechamento. */}
       {totalCents > 0 && (
@@ -508,16 +522,16 @@ function Stepper({
   onInc: () => void;
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       <button
-        className="h-8 w-8 rounded-full border border-brand-ink/20 bg-white font-bold text-brand-ink transition-colors hover:bg-brand-cream"
+        className="h-9 w-9 rounded-full border border-brand-ink/20 bg-white text-lg font-bold text-brand-ink transition-colors hover:bg-brand-cream"
         onClick={onDec}
       >
         −
       </button>
       <span className="w-6 text-center font-semibold">{qty}</span>
       <button
-        className="h-8 w-8 rounded-full bg-brand-gold font-bold text-brand-ink transition-colors hover:bg-brand-gold-dark"
+        className="h-9 w-9 rounded-full bg-brand-gold text-lg font-bold text-brand-ink transition-colors hover:brightness-95"
         onClick={onInc}
       >
         +
@@ -526,93 +540,184 @@ function Stepper({
   );
 }
 
+/** Card clicável na listagem — sem stepper, apenas info + badge de qtd. */
 function ItemRow({
+  item,
+  cartQty,
+  onSelect,
+}: {
+  item: MenuItem;
+  cartQty: number;
+  onSelect: () => void;
+}) {
+  const options = item.options ?? [];
+  const minPrice = options.length > 0
+    ? Math.min(...options.map((o) => o.priceCents))
+    : item.priceCents;
+  const priceLabel = options.length > 0
+    ? `a partir de ${formatBRL(minPrice)}`
+    : formatBRL(item.priceCents);
+
+  return (
+    <li>
+      <button
+        className="flex w-full items-center gap-3 py-3 text-left"
+        onClick={onSelect}
+      >
+        <div className="flex-1">
+          <p className="font-semibold">{item.name}</p>
+          {item.description && (
+            <p className="line-clamp-2 text-sm text-brand-ink/60">
+              {item.description}
+            </p>
+          )}
+          <p className="mt-0.5 text-sm font-bold text-brand-red">{priceLabel}</p>
+        </div>
+        <div className="relative shrink-0">
+          {item.imageUrl ? (
+            <img
+              src={mediaUrl(item.imageUrl)}
+              alt={item.name}
+              className="h-20 w-20 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="h-20 w-20 rounded-lg bg-brand-cream-dark" />
+          )}
+          {cartQty > 0 && (
+            <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand-red text-[11px] font-bold text-white shadow">
+              {cartQty}
+            </span>
+          )}
+        </div>
+      </button>
+    </li>
+  );
+}
+
+/** Painel deslizante que aparece ao clicar em um item do cardápio. */
+function ItemDetailPanel({
   item,
   qtyOf,
   setQty,
+  onClose,
 }: {
   item: MenuItem;
   qtyOf: (key: string) => number;
   setQty: (line: Omit<CartLine, 'quantity'>, delta: number) => void;
+  onClose: () => void;
 }) {
   const options = item.options ?? [];
 
-  const thumb = item.imageUrl ? (
-    <img
-      src={mediaUrl(item.imageUrl)}
-      alt={item.name}
-      className="h-20 w-20 shrink-0 rounded-lg object-cover"
-    />
-  ) : null;
-
-  // Item com opções: uma linha por opção (cada uma com seu preço).
-  if (options.length > 0) {
-    return (
-      <li className="py-3">
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <p className="font-semibold">{item.name}</p>
-            {item.description && (
-              <p className="text-sm text-brand-ink/60">{item.description}</p>
-            )}
-          </div>
-          {thumb}
-        </div>
-        <ul className="mt-2 space-y-2">
-          {options.map((opt) => {
-            const line = {
-              menuItemId: item.id,
-              optionId: opt.id,
-              label: `${item.name} — ${opt.name}`,
-              priceCents: opt.priceCents,
-            };
-            return (
-              <li
-                key={opt.id}
-                className="flex items-center gap-3 rounded-lg bg-brand-cream px-3 py-2"
-              >
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">{opt.name}</p>
-                  <p className="text-sm font-bold text-brand-red">
-                    {formatBRL(opt.priceCents)}
-                  </p>
-                </div>
-                <Stepper
-                  qty={qtyOf(opt.id)}
-                  onDec={() => setQty(line, -1)}
-                  onInc={() => setQty(line, 1)}
-                />
-              </li>
-            );
-          })}
-        </ul>
-      </li>
-    );
-  }
-
-  // Item simples.
-  const line = {
-    menuItemId: item.id,
-    label: item.name,
-    priceCents: item.priceCents,
-  };
   return (
-    <li className="flex items-center gap-3 py-3">
-      <div className="flex-1">
-        <p className="font-semibold">{item.name}</p>
-        {item.description && (
-          <p className="text-sm text-brand-ink/60">{item.description}</p>
-        )}
-        <p className="text-sm font-bold text-brand-red">
-          {formatBRL(item.priceCents)}
-        </p>
-      </div>
-      {thumb}
-      <Stepper
-        qty={qtyOf(item.id)}
-        onDec={() => setQty(line, -1)}
-        onInc={() => setQty(line, 1)}
+    <>
+      {/* Overlay escuro */}
+      <div
+        className="fixed inset-0 z-30 bg-black/40"
+        onClick={onClose}
       />
-    </li>
+
+      {/* Painel */}
+      <div className="fixed inset-x-0 bottom-0 z-40 max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white shadow-2xl">
+        {/* Botão fechar */}
+        <div className="sticky top-0 flex justify-end bg-white/80 px-4 pt-3 pb-1 backdrop-blur-sm">
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-ink/10 text-brand-ink/60 hover:bg-brand-ink/20"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="px-5 pb-8">
+          {/* Imagem grande */}
+          {item.imageUrl && (
+            <img
+              src={mediaUrl(item.imageUrl)}
+              alt={item.name}
+              className="mx-auto mb-4 h-52 w-full max-w-sm rounded-xl object-cover"
+            />
+          )}
+
+          {/* Info */}
+          <h2 className="font-display text-2xl font-bold text-brand-ink">
+            {item.name}
+          </h2>
+          {item.description && (
+            <p className="mt-1 text-brand-ink/60">{item.description}</p>
+          )}
+
+          {/* Opções */}
+          {options.length > 0 ? (
+            <ul className="mt-5 space-y-3">
+              {options.map((opt) => {
+                const line = {
+                  menuItemId: item.id,
+                  optionId: opt.id,
+                  label: `${item.name} — ${opt.name}`,
+                  priceCents: opt.priceCents,
+                };
+                const qty = qtyOf(opt.id);
+                return (
+                  <li
+                    key={opt.id}
+                    className="flex items-center gap-3 rounded-xl border border-brand-cream-dark px-4 py-3"
+                  >
+                    <div className="flex-1">
+                      <p className="font-semibold">{opt.name}</p>
+                      <p className="text-sm font-bold text-brand-red">
+                        {formatBRL(opt.priceCents)}
+                      </p>
+                    </div>
+                    {qty === 0 ? (
+                      <button
+                        className="btn-primary px-4 py-2 text-sm"
+                        onClick={() => setQty(line, 1)}
+                      >
+                        Adicionar
+                      </button>
+                    ) : (
+                      <Stepper
+                        qty={qty}
+                        onDec={() => setQty(line, -1)}
+                        onInc={() => setQty(line, 1)}
+                      />
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            /* Item simples */
+            <div className="mt-5 flex items-center justify-between gap-4">
+              <p className="font-display text-2xl font-bold text-brand-red">
+                {formatBRL(item.priceCents)}
+              </p>
+              {(() => {
+                const line = {
+                  menuItemId: item.id,
+                  label: item.name,
+                  priceCents: item.priceCents,
+                };
+                const qty = qtyOf(item.id);
+                return qty === 0 ? (
+                  <button
+                    className="btn-primary px-6 py-2.5"
+                    onClick={() => setQty(line, 1)}
+                  >
+                    Adicionar ao pedido
+                  </button>
+                ) : (
+                  <Stepper
+                    qty={qty}
+                    onDec={() => setQty(line, -1)}
+                    onInc={() => setQty(line, 1)}
+                  />
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
