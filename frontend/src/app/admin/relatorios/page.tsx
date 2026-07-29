@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   api,
@@ -17,10 +17,49 @@ const CHANNEL_LABEL: Record<string, string> = {
   GAMI: 'Gami',
 };
 
+/* ----------------------------- Date helpers ----------------------------- */
+
+function isoToday(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function isoDaysAgo(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() - days);
   return d.toISOString().slice(0, 10);
+}
+
+function isoStartOfWeek(): string {
+  const d = new Date();
+  const day = d.getDay(); // 0=Sun,1=Mon...
+  const diff = day === 0 ? -6 : 1 - day; // Monday
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function monthRange(offset: number): { from: string; to: string } {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = d.getMonth() + offset; // may be negative or > 11, Date handles it
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+  return {
+    from: first.toISOString().slice(0, 10),
+    to: last.toISOString().slice(0, 10),
+  };
+}
+
+function shiftYear(iso: string, years: number): string {
+  const d = new Date(iso + 'T12:00:00');
+  d.setFullYear(d.getFullYear() + years);
+  return d.toISOString().slice(0, 10);
+}
+
+function monthLabel(offset: number): string {
+  const d = new Date();
+  const month = d.getMonth() + offset;
+  const target = new Date(d.getFullYear(), month, 1);
+  return target.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 }
 
 function fmtPct(n: number | null): string {
@@ -29,43 +68,127 @@ function fmtPct(n: number | null): string {
   return `${s}${n.toFixed(1)}%`;
 }
 
+/* --------------------------------- Types -------------------------------- */
+
 type Tab = 'vendas' | 'produtos' | 'financeiro';
+type Preset = 'today' | 'week' | 'month' | 'custom';
+
+/* ============================= Page ===================================== */
 
 export default function RelatoriosPage() {
-  const [from, setFrom] = useState(isoDaysAgo(7));
-  const [to, setTo] = useState(isoDaysAgo(0));
+  const [preset, setPreset] = useState<Preset>('week');
+  const [monthOffset, setMonthOffset] = useState(0);
+  const [customFrom, setCustomFrom] = useState(isoDaysAgo(7));
+  const [customTo, setCustomTo] = useState(isoToday());
+  const [compareYoY, setCompareYoY] = useState(false);
   const [tab, setTab] = useState<Tab>('vendas');
+
+  const { from, to } = useMemo<{ from: string; to: string }>(() => {
+    if (preset === 'today') return { from: isoToday(), to: isoToday() };
+    if (preset === 'week') return { from: isoStartOfWeek(), to: isoToday() };
+    if (preset === 'month') return monthRange(monthOffset);
+    return { from: customFrom, to: customTo };
+  }, [preset, monthOffset, customFrom, customTo]);
+
+  const fromPrev = compareYoY ? shiftYear(from, -1) : undefined;
+  const toPrev = compareYoY ? shiftYear(to, -1) : undefined;
+
+  const PRESETS: { key: Preset; label: string }[] = [
+    { key: 'today', label: 'Hoje' },
+    { key: 'week', label: 'Esta semana' },
+    { key: 'month', label: 'Este mês' },
+    { key: 'custom', label: 'Personalizado' },
+  ];
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
       <h1 className="page-title">Relatórios</h1>
 
-      {/* Período (compartilhado por todas as abas) */}
-      <div className="mt-4 flex flex-wrap items-end gap-3">
-        <label className="text-sm">
-          De
-          <input
-            type="date"
-            className="input ml-2 p-1"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-          />
-        </label>
-        <label className="text-sm">
-          Até
-          <input
-            type="date"
-            className="input ml-2 p-1"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-          />
-        </label>
-        <button
-          onClick={() => api.downloadTransactionsCsv(from, to)}
-          className="btn-outline px-3 py-1 text-sm text-brand-red"
-        >
-          Exportar CSV
-        </button>
+      {/* Presets rápidos */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {PRESETS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setPreset(key)}
+            className={
+              preset === key
+                ? 'rounded-full bg-brand-red px-4 py-1.5 text-sm font-bold text-white'
+                : 'rounded-full border border-brand-ink/20 px-4 py-1.5 text-sm font-medium text-brand-ink/70 hover:border-brand-red/40 hover:text-brand-red'
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Navegação de mês */}
+      {preset === 'month' && (
+        <div className="mt-3 flex items-center gap-3">
+          <button
+            onClick={() => setMonthOffset((o) => o - 1)}
+            className="flex h-7 w-7 items-center justify-center rounded-full border border-brand-ink/20 text-sm hover:bg-brand-cream-dark"
+          >
+            ‹
+          </button>
+          <span className="min-w-[140px] text-center text-sm font-semibold capitalize text-brand-ink">
+            {monthLabel(monthOffset)}
+          </span>
+          <button
+            onClick={() => setMonthOffset((o) => Math.min(o + 1, 0))}
+            className="flex h-7 w-7 items-center justify-center rounded-full border border-brand-ink/20 text-sm hover:bg-brand-cream-dark disabled:opacity-30"
+            disabled={monthOffset >= 0}
+          >
+            ›
+          </button>
+        </div>
+      )}
+
+      {/* Período personalizado */}
+      {preset === 'custom' && (
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <label className="text-sm">
+            De
+            <input
+              type="date"
+              className="input ml-2 p-1"
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+            />
+          </label>
+          <label className="text-sm">
+            Até
+            <input
+              type="date"
+              className="input ml-2 p-1"
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+            />
+          </label>
+        </div>
+      )}
+
+      {/* Período exibido + comparação */}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-brand-ink/50">
+          {from === to ? from : `${from} → ${to}`}
+        </p>
+        <div className="flex items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-brand-ink/70">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-brand-red"
+              checked={compareYoY}
+              onChange={(e) => setCompareYoY(e.target.checked)}
+            />
+            Comparar com {new Date().getFullYear() - 1}
+          </label>
+          <button
+            onClick={() => api.downloadTransactionsCsv(from, to)}
+            className="btn-outline px-3 py-1 text-sm text-brand-red"
+          >
+            Exportar CSV
+          </button>
+        </div>
       </div>
 
       {/* Abas */}
@@ -91,16 +214,30 @@ export default function RelatoriosPage() {
         ))}
       </nav>
 
-      {tab === 'vendas' && <VendasTab from={from} to={to} />}
+      {tab === 'vendas' && (
+        <VendasTab from={from} to={to} fromPrev={fromPrev} toPrev={toPrev} />
+      )}
       {tab === 'produtos' && <ProdutosTab from={from} to={to} />}
-      {tab === 'financeiro' && <FinanceiroTab from={from} to={to} />}
+      {tab === 'financeiro' && (
+        <FinanceiroTab from={from} to={to} fromPrev={fromPrev} toPrev={toPrev} />
+      )}
     </main>
   );
 }
 
 /* ------------------------------- Vendas -------------------------------- */
 
-function VendasTab({ from, to }: { from: string; to: string }) {
+function VendasTab({
+  from,
+  to,
+  fromPrev,
+  toPrev,
+}: {
+  from: string;
+  to: string;
+  fromPrev?: string;
+  toPrev?: string;
+}) {
   const summary = useQuery({
     queryKey: ['rep-summary', from, to],
     queryFn: () => api.salesSummary(from, to),
@@ -122,7 +259,21 @@ function VendasTab({ from, to }: { from: string; to: string }) {
     queryFn: () => api.cancellations(from, to),
   });
 
+  // Dados do ano anterior (opcionais)
+  const summaryPrev = useQuery({
+    queryKey: ['rep-summary', fromPrev, toPrev],
+    queryFn: () => api.salesSummary(fromPrev!, toPrev!),
+    enabled: !!fromPrev && !!toPrev,
+  });
+  const revenuePrev = useQuery({
+    queryKey: ['rep-revenue', fromPrev, toPrev],
+    queryFn: () => api.revenue(fromPrev!, toPrev!),
+    enabled: !!fromPrev && !!toPrev,
+  });
+
   const s = summary.data;
+  const sp = summaryPrev.data;
+  const comparing = !!fromPrev;
 
   return (
     <div className="mt-6 space-y-8">
@@ -131,17 +282,35 @@ function VendasTab({ from, to }: { from: string; to: string }) {
         <Kpi
           label="Faturamento"
           value={formatBRL(s?.totalCents ?? 0)}
+          prev={comparing ? formatBRL(sp?.totalCents ?? 0) : undefined}
           sub={
-            s?.deltaPct != null
+            !comparing && s?.deltaPct != null
               ? `${fmtPct(s.deltaPct)} vs. período anterior`
-              : `${s?.count ?? 0} pedido(s)`
+              : comparing
+                ? yoyPct(s?.totalCents, sp?.totalCents)
+                : `${s?.count ?? 0} pedido(s)`
           }
-          positive={s?.deltaPct != null ? s.deltaPct >= 0 : undefined}
+          positive={
+            comparing
+              ? yoyPositive(s?.totalCents, sp?.totalCents)
+              : s?.deltaPct != null
+                ? s.deltaPct >= 0
+                : undefined
+          }
         />
-        <Kpi label="Pedidos" value={String(s?.count ?? 0)} />
+        <Kpi
+          label="Pedidos"
+          value={String(s?.count ?? 0)}
+          prev={comparing ? String(sp?.count ?? 0) : undefined}
+          sub={comparing ? yoyPct(s?.count, sp?.count) : undefined}
+          positive={comparing ? yoyPositive(s?.count, sp?.count) : undefined}
+        />
         <Kpi
           label="Ticket médio"
           value={formatBRL(s?.avgTicketCents ?? 0)}
+          prev={comparing ? formatBRL(sp?.avgTicketCents ?? 0) : undefined}
+          sub={comparing ? yoyPct(s?.avgTicketCents, sp?.avgTicketCents) : undefined}
+          positive={comparing ? yoyPositive(s?.avgTicketCents, sp?.avgTicketCents) : undefined}
         />
       </div>
 
@@ -154,9 +323,28 @@ function VendasTab({ from, to }: { from: string; to: string }) {
               label: d.date.slice(5),
               value: d.totalCents,
             }))}
+            compare={
+              comparing
+                ? (revenuePrev.data?.byDay ?? []).map((d) => ({
+                    value: d.totalCents,
+                  }))
+                : undefined
+            }
             formatY={(v) => formatBRL(v)}
           />
         </div>
+        {comparing && (
+          <div className="mt-1 flex gap-4 text-xs text-brand-ink/50">
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-2 w-4 rounded bg-brand-red" />
+              Período atual
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-2 w-4 rounded bg-brand-gold" />
+              Ano anterior
+            </span>
+          </div>
+        )}
       </section>
 
       {/* Por canal */}
@@ -408,7 +596,17 @@ function MarginsSection({ margins }: { margins: MarginRow[] }) {
 
 /* ----------------------------- Financeiro ------------------------------ */
 
-function FinanceiroTab({ from, to }: { from: string; to: string }) {
+function FinanceiroTab({
+  from,
+  to,
+  fromPrev,
+  toPrev,
+}: {
+  from: string;
+  to: string;
+  fromPrev?: string;
+  toPrev?: string;
+}) {
   const dre = useQuery({
     queryKey: ['rep-dre', from, to],
     queryFn: () => api.dre(from, to),
@@ -417,18 +615,37 @@ function FinanceiroTab({ from, to }: { from: string; to: string }) {
     queryKey: ['rep-cashflow', from, to],
     queryFn: () => api.cashflow(from, to),
   });
+  const drePrev = useQuery({
+    queryKey: ['rep-dre', fromPrev, toPrev],
+    queryFn: () => api.dre(fromPrev!, toPrev!),
+    enabled: !!fromPrev && !!toPrev,
+  });
 
   const d = dre.data;
+  const dp = drePrev.data;
+  const comparing = !!fromPrev;
 
   return (
     <div className="mt-6 space-y-8">
       {/* DRE */}
       <section>
-        <h2 className="section-title">DRE</h2>
+        <h2 className="section-title">
+          DRE
+          {comparing && (
+            <span className="ml-2 text-sm font-normal text-brand-ink/50">
+              (atual × ano anterior)
+            </span>
+          )}
+        </h2>
         <div className="card mt-2 space-y-1 p-4">
-          <Line label="Receita Bruta" value={formatBRL(d?.grossCents ?? 0)} bold />
+          <DreLine
+            label="Receita Bruta"
+            value={formatBRL(d?.grossCents ?? 0)}
+            prev={comparing ? formatBRL(dp?.grossCents ?? 0) : undefined}
+            bold
+          />
           {(d?.grossByChannel ?? []).map((c) => (
-            <Line
+            <DreLine
               key={c.channel}
               indent
               label={CHANNEL_LABEL[c.channel] ?? c.channel}
@@ -437,32 +654,36 @@ function FinanceiroTab({ from, to }: { from: string; to: string }) {
           ))}
 
           <div className="pt-2" />
-          <Line
+          <DreLine
             label="(−) Comissões marketplace"
             value={`- ${formatBRL(d?.commissionCents ?? 0)}`}
+            prev={comparing ? `- ${formatBRL(dp?.commissionCents ?? 0)}` : undefined}
             bold
             danger
           />
-          <Line
+          <DreLine
             label="(−) CMV (ingredientes)"
             value={`- ${formatBRL(d?.cmvCents ?? 0)}`}
+            prev={comparing ? `- ${formatBRL(dp?.cmvCents ?? 0)}` : undefined}
             bold
             danger
           />
-          <Line
+          <DreLine
             label="(−) Entregadores"
             value={`- ${formatBRL(d?.courierCents ?? 0)}`}
+            prev={comparing ? `- ${formatBRL(dp?.courierCents ?? 0)}` : undefined}
             bold
             danger
           />
-          <Line
+          <DreLine
             label="(−) Despesas"
             value={`- ${formatBRL(d?.expensesCents ?? 0)}`}
+            prev={comparing ? `- ${formatBRL(dp?.expensesCents ?? 0)}` : undefined}
             bold
             danger
           />
           {(d?.expensesByCategory ?? []).map((e) => (
-            <Line
+            <DreLine
               key={e.categoryId ?? 'none'}
               indent
               label={e.name}
@@ -471,14 +692,28 @@ function FinanceiroTab({ from, to }: { from: string; to: string }) {
           ))}
 
           <div className="mt-2 border-t-2 border-brand-gold/60 pt-2">
-            <Line
+            <DreLine
               label="= Lucro Líquido"
               value={formatBRL(d?.netCents ?? 0)}
+              prev={comparing ? formatBRL(dp?.netCents ?? 0) : undefined}
               bold
               big
               danger={(d?.netCents ?? 0) < 0}
             />
           </div>
+
+          {comparing && (
+            <div className="mt-3 flex gap-4 border-t border-brand-cream-dark pt-2 text-xs text-brand-ink/50">
+              <span className="flex items-center gap-1">
+                <span className="inline-block h-2 w-3 rounded bg-brand-red" />
+                Atual
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block h-2 w-3 rounded bg-brand-ink/20" />
+                Ano anterior
+              </span>
+            </div>
+          )}
         </div>
       </section>
 
@@ -599,14 +834,27 @@ function CommissionConfig() {
 
 /* ------------------------------ Compartilhado -------------------------- */
 
+function yoyPct(curr?: number, prev?: number): string {
+  if (curr == null || prev == null || prev === 0) return '—';
+  const pct = ((curr - prev) / prev) * 100;
+  return `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% vs. ${new Date().getFullYear() - 1}`;
+}
+
+function yoyPositive(curr?: number, prev?: number): boolean | undefined {
+  if (curr == null || prev == null || prev === 0) return undefined;
+  return curr >= prev;
+}
+
 function Kpi({
   label,
   value,
+  prev,
   sub,
   positive,
 }: {
   label: string;
   value: string;
+  prev?: string;
   sub?: string;
   positive?: boolean;
 }) {
@@ -614,6 +862,9 @@ function Kpi({
     <div className="card border-l-4 border-l-brand-gold p-4">
       <p className="text-sm text-brand-ink/60">{label}</p>
       <p className="font-display text-2xl font-bold text-brand-red">{value}</p>
+      {prev !== undefined && (
+        <p className="text-sm text-brand-ink/40">{prev} (ano ant.)</p>
+      )}
       {sub && (
         <p
           className={
@@ -631,9 +882,10 @@ function Kpi({
   );
 }
 
-function Line({
+function DreLine({
   label,
   value,
+  prev,
   bold,
   danger,
   big,
@@ -641,6 +893,7 @@ function Line({
 }: {
   label: string;
   value: string;
+  prev?: string;
   bold?: boolean;
   danger?: boolean;
   big?: boolean;
@@ -652,12 +905,16 @@ function Line({
         'flex items-center justify-between',
         indent ? 'pl-4 text-sm text-brand-ink/70' : '',
         bold ? 'font-semibold' : '',
-        danger ? 'text-brand-red' : '',
         big ? 'text-lg font-bold' : '',
       ].join(' ')}
     >
-      <span>{label}</span>
-      <span>{value}</span>
+      <span className={danger ? 'text-brand-red' : ''}>{label}</span>
+      <span className="flex items-center gap-3">
+        {prev !== undefined && (
+          <span className="text-sm text-brand-ink/40">{prev}</span>
+        )}
+        <span className={danger ? 'text-brand-red' : ''}>{value}</span>
+      </span>
     </div>
   );
 }
