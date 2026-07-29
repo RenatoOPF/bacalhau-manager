@@ -93,7 +93,7 @@ export class MenuController {
         },
         filename: (req, file, cb) => {
           const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-          cb(null, `${(req as { params: { id: string } }).params.id}${ext}`);
+          cb(null, `${(req as unknown as { params: { id: string } }).params.id}${ext}`);
         },
       }),
       fileFilter: (_req, file, cb) => {
