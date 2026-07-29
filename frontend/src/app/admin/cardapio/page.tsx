@@ -506,6 +506,17 @@ function ItemRow({
     onError: (e: Error) => setError(e.message),
   });
 
+  const uploadImage = useMutation({
+    mutationFn: (file: File) => api.uploadItemImage(item.id, file),
+    onSuccess: onChange,
+    onError: (e: Error) => setError(e.message),
+  });
+  const removeImage = useMutation({
+    mutationFn: () => api.deleteItemImage(item.id),
+    onSuccess: onChange,
+    onError: (e: Error) => setError(e.message),
+  });
+
   const save = () => {
     const priceCents = reaisToCents(price);
     if (!name.trim() || priceCents === null) {
@@ -578,17 +589,6 @@ function ItemRow({
   }
 
   const hasOptions = (item.options ?? []).length > 0;
-
-  const uploadImage = useMutation({
-    mutationFn: (file: File) => api.uploadItemImage(item.id, file),
-    onSuccess: onChange,
-    onError: (e: Error) => setError(e.message),
-  });
-  const removeImage = useMutation({
-    mutationFn: () => api.deleteItemImage(item.id),
-    onSuccess: onChange,
-    onError: (e: Error) => setError(e.message),
-  });
 
   return (
     <li className="py-2">
