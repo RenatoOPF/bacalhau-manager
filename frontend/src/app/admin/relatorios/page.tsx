@@ -78,6 +78,15 @@ function monthLabel(offset: number): string {
   return target.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 }
 
+function yearRange(offset: number): { from: string; to: string } {
+  const year = new Date().getFullYear() + offset;
+  return { from: `${year}-01-01`, to: `${year}-12-31` };
+}
+
+function yearLabel(offset: number): string {
+  return String(new Date().getFullYear() + offset);
+}
+
 function fmtPct(n: number | null): string {
   if (n === null) return '—';
   const s = n >= 0 ? '+' : '';
@@ -87,7 +96,7 @@ function fmtPct(n: number | null): string {
 /* --------------------------------- Types -------------------------------- */
 
 type Tab = 'vendas' | 'produtos' | 'financeiro';
-type Preset = 'day' | 'week' | 'month' | 'period';
+type Preset = 'day' | 'week' | 'month' | 'year' | 'period';
 
 /* ============================= Page ===================================== */
 
@@ -96,6 +105,7 @@ export default function RelatoriosPage() {
   const [dayDate, setDayDate] = useState(isoToday());
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
+  const [yearOffset, setYearOffset] = useState(0);
   const [customFrom, setCustomFrom] = useState(isoDaysAgo(7));
   const [customTo, setCustomTo] = useState(isoToday());
   const [compareYoY, setCompareYoY] = useState(false);
@@ -105,8 +115,9 @@ export default function RelatoriosPage() {
     if (preset === 'day') return { from: dayDate, to: dayDate };
     if (preset === 'week') return weekRange(weekOffset);
     if (preset === 'month') return monthRange(monthOffset);
+    if (preset === 'year') return yearRange(yearOffset);
     return { from: customFrom, to: customTo };
-  }, [preset, dayDate, weekOffset, monthOffset, customFrom, customTo]);
+  }, [preset, dayDate, weekOffset, monthOffset, yearOffset, customFrom, customTo]);
 
   const fromPrev = compareYoY ? shiftYear(from, -1) : undefined;
   const toPrev = compareYoY ? shiftYear(to, -1) : undefined;
@@ -115,6 +126,7 @@ export default function RelatoriosPage() {
     { key: 'day', label: 'Por dia' },
     { key: 'week', label: 'Por semana' },
     { key: 'month', label: 'Por mês' },
+    { key: 'year', label: 'Por ano' },
     { key: 'period', label: 'Por período' },
   ];
 
@@ -224,6 +236,16 @@ export default function RelatoriosPage() {
           onNext={() => setMonthOffset((o) => Math.min(o + 1, 0))}
           disabledNext={monthOffset >= 0}
           label={monthLabel(monthOffset)}
+        />
+      )}
+
+      {/* Por ano: navegação */}
+      {preset === 'year' && (
+        <NavRow
+          onPrev={() => setYearOffset((o) => o - 1)}
+          onNext={() => setYearOffset((o) => Math.min(o + 1, 0))}
+          disabledNext={yearOffset >= 0}
+          label={yearLabel(yearOffset)}
         />
       )}
 
