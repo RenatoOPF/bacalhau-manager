@@ -13,6 +13,48 @@ import {
   type StockLink,
 } from '@/lib/api';
 
+/**
+ * Redimensiona e comprime uma imagem via Canvas se ela ultrapassar `maxPx`
+ * em qualquer dimensão ou `maxBytes` em tamanho. Retorna sempre JPEG.
+ */
+async function compressImage(
+  file: File,
+  maxPx = 1200,
+  maxBytes = 500 * 1024,
+  quality = 0.85,
+): Promise<File> {
+  // Se já está dentro do limite, não faz nada.
+  if (file.size <= maxBytes) return file;
+
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        const ratio = Math.min(maxPx / width, maxPx / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { reject(new Error('Falha ao comprimir imagem')); return; }
+          resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
+        },
+        'image/jpeg',
+        quality,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Imagem inválida')); };
+    img.src = url;
+  });
+}
+
 /** "0,5" no lugar de "0.5". */
 function fmtQty(n: number): string {
   return n.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
@@ -633,9 +675,9 @@ function ItemRow({
             accept="image/jpeg,image/png,image/webp"
             className="sr-only"
             disabled={uploadImage.isPending}
-            onChange={(e) => {
+            onChange={async (e) => {
               const file = e.target.files?.[0];
-              if (file) uploadImage.mutate(file);
+              if (file) uploadImage.mutate(await compressImage(file));
               e.target.value = '';
             }}
           />
