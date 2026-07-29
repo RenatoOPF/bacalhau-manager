@@ -286,7 +286,7 @@ export default function RelatoriosPage() {
               checked={compareYoY}
               onChange={(e) => setCompareYoY(e.target.checked)}
             />
-            Comparar com {new Date().getFullYear() - 1}
+            Comparar com o ano anterior
           </label>
           <button
             onClick={() => api.downloadTransactionsCsv(from, to)}
