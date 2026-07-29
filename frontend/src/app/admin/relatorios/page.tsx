@@ -29,18 +29,34 @@ function isoDaysAgo(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function isoStartOfWeek(): string {
+function weekRange(offset: number): { from: string; to: string } {
   const d = new Date();
-  const day = d.getDay(); // 0=Sun,1=Mon...
-  const diff = day === 0 ? -6 : 1 - day; // Monday
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
+  const day = d.getDay();
+  const diffToMon = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diffToMon + offset * 7);
+  const mon = new Date(d);
+  const sun = new Date(d);
+  sun.setDate(sun.getDate() + 6);
+  return {
+    from: mon.toISOString().slice(0, 10),
+    to: sun.toISOString().slice(0, 10),
+  };
+}
+
+function weekLabel(offset: number): string {
+  const { from, to } = weekRange(offset);
+  const fmt = (iso: string) => {
+    const d = new Date(iso + 'T12:00:00');
+    return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
+  };
+  const year = new Date(to + 'T12:00:00').getFullYear();
+  return `${fmt(from)} – ${fmt(to)} ${year}`;
 }
 
 function monthRange(offset: number): { from: string; to: string } {
   const d = new Date();
   const year = d.getFullYear();
-  const month = d.getMonth() + offset; // may be negative or > 11, Date handles it
+  const month = d.getMonth() + offset;
   const first = new Date(year, month, 1);
   const last = new Date(year, month + 1, 0);
   return {
@@ -71,12 +87,14 @@ function fmtPct(n: number | null): string {
 /* --------------------------------- Types -------------------------------- */
 
 type Tab = 'vendas' | 'produtos' | 'financeiro';
-type Preset = 'today' | 'week' | 'month' | 'custom';
+type Preset = 'day' | 'week' | 'month' | 'period';
 
 /* ============================= Page ===================================== */
 
 export default function RelatoriosPage() {
   const [preset, setPreset] = useState<Preset>('week');
+  const [dayDate, setDayDate] = useState(isoToday());
+  const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
   const [customFrom, setCustomFrom] = useState(isoDaysAgo(7));
   const [customTo, setCustomTo] = useState(isoToday());
@@ -84,27 +102,60 @@ export default function RelatoriosPage() {
   const [tab, setTab] = useState<Tab>('vendas');
 
   const { from, to } = useMemo<{ from: string; to: string }>(() => {
-    if (preset === 'today') return { from: isoToday(), to: isoToday() };
-    if (preset === 'week') return { from: isoStartOfWeek(), to: isoToday() };
+    if (preset === 'day') return { from: dayDate, to: dayDate };
+    if (preset === 'week') return weekRange(weekOffset);
     if (preset === 'month') return monthRange(monthOffset);
     return { from: customFrom, to: customTo };
-  }, [preset, monthOffset, customFrom, customTo]);
+  }, [preset, dayDate, weekOffset, monthOffset, customFrom, customTo]);
 
   const fromPrev = compareYoY ? shiftYear(from, -1) : undefined;
   const toPrev = compareYoY ? shiftYear(to, -1) : undefined;
 
   const PRESETS: { key: Preset; label: string }[] = [
-    { key: 'today', label: 'Hoje' },
-    { key: 'week', label: 'Esta semana' },
-    { key: 'month', label: 'Este mês' },
-    { key: 'custom', label: 'Personalizado' },
+    { key: 'day', label: 'Por dia' },
+    { key: 'week', label: 'Por semana' },
+    { key: 'month', label: 'Por mês' },
+    { key: 'period', label: 'Por período' },
   ];
+
+  function NavRow({
+    onPrev,
+    onNext,
+    disabledNext,
+    label,
+  }: {
+    onPrev: () => void;
+    onNext: () => void;
+    disabledNext?: boolean;
+    label: string;
+  }) {
+    return (
+      <div className="mt-3 flex items-center gap-3">
+        <button
+          onClick={onPrev}
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-brand-ink/20 text-sm hover:bg-brand-cream-dark"
+        >
+          ‹
+        </button>
+        <span className="min-w-[200px] text-center text-sm font-semibold capitalize text-brand-ink">
+          {label}
+        </span>
+        <button
+          onClick={onNext}
+          disabled={disabledNext}
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-brand-ink/20 text-sm hover:bg-brand-cream-dark disabled:opacity-30"
+        >
+          ›
+        </button>
+      </div>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
       <h1 className="page-title">Relatórios</h1>
 
-      {/* Presets rápidos */}
+      {/* Presets */}
       <div className="mt-4 flex flex-wrap gap-2">
         {PRESETS.map(({ key, label }) => (
           <button
@@ -121,30 +172,63 @@ export default function RelatoriosPage() {
         ))}
       </div>
 
-      {/* Navegação de mês */}
-      {preset === 'month' && (
+      {/* Por dia: seletor de data */}
+      {preset === 'day' && (
         <div className="mt-3 flex items-center gap-3">
           <button
-            onClick={() => setMonthOffset((o) => o - 1)}
+            onClick={() => {
+              const d = new Date(dayDate + 'T12:00:00');
+              d.setDate(d.getDate() - 1);
+              setDayDate(d.toISOString().slice(0, 10));
+            }}
             className="flex h-7 w-7 items-center justify-center rounded-full border border-brand-ink/20 text-sm hover:bg-brand-cream-dark"
           >
             ‹
           </button>
-          <span className="min-w-[140px] text-center text-sm font-semibold capitalize text-brand-ink">
-            {monthLabel(monthOffset)}
-          </span>
+          <input
+            type="date"
+            max={isoToday()}
+            value={dayDate}
+            onChange={(e) => setDayDate(e.target.value)}
+            className="input p-1 text-sm font-semibold"
+          />
           <button
-            onClick={() => setMonthOffset((o) => Math.min(o + 1, 0))}
+            onClick={() => {
+              const d = new Date(dayDate + 'T12:00:00');
+              d.setDate(d.getDate() + 1);
+              const next = d.toISOString().slice(0, 10);
+              if (next <= isoToday()) setDayDate(next);
+            }}
+            disabled={dayDate >= isoToday()}
             className="flex h-7 w-7 items-center justify-center rounded-full border border-brand-ink/20 text-sm hover:bg-brand-cream-dark disabled:opacity-30"
-            disabled={monthOffset >= 0}
           >
             ›
           </button>
         </div>
       )}
 
-      {/* Período personalizado */}
-      {preset === 'custom' && (
+      {/* Por semana: navegação */}
+      {preset === 'week' && (
+        <NavRow
+          onPrev={() => setWeekOffset((o) => o - 1)}
+          onNext={() => setWeekOffset((o) => Math.min(o + 1, 0))}
+          disabledNext={weekOffset >= 0}
+          label={weekLabel(weekOffset)}
+        />
+      )}
+
+      {/* Por mês: navegação */}
+      {preset === 'month' && (
+        <NavRow
+          onPrev={() => setMonthOffset((o) => o - 1)}
+          onNext={() => setMonthOffset((o) => Math.min(o + 1, 0))}
+          disabledNext={monthOffset >= 0}
+          label={monthLabel(monthOffset)}
+        />
+      )}
+
+      {/* Por período: date range */}
+      {preset === 'period' && (
         <div className="mt-3 flex flex-wrap items-end gap-3">
           <label className="text-sm">
             De
