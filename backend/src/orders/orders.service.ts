@@ -18,6 +18,7 @@ import { AssignDeliveryDto } from './dto/assign-delivery.dto';
 import { nextDailyNumber } from '../common/daily-number';
 import { dayRange, localDay } from '../common/date-range';
 import { StockService } from '../stock/stock.service';
+import { DeliveryService } from '../delivery/delivery.service';
 
 @Injectable()
 export class OrdersService {
@@ -25,6 +26,7 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
     private readonly stock: StockService,
+    private readonly delivery: DeliveryService,
     @InjectQueue(ORDERS_QUEUE)
     private readonly ordersQueue: Queue<PrintOrderJobData>,
   ) {}
@@ -78,10 +80,16 @@ export class OrdersService {
       };
     });
 
-    // Bairro escolhido define a taxa cobrada do cliente (some ao total).
+    // Taxa de entrega: coordenadas → faixa por km (pedido próprio) ou bairro (legado).
     let deliveryFeeCents = 0;
     let neighborhoodName: string | undefined;
-    if (dto.neighborhoodId) {
+    if (dto.addressLat != null && dto.addressLng != null) {
+      const { zone } = await this.delivery.feeByDistance(
+        dto.addressLat,
+        dto.addressLng,
+      );
+      if (zone) deliveryFeeCents = zone.feeCents;
+    } else if (dto.neighborhoodId) {
       const n = await this.prisma.neighborhood.findUnique({
         where: { id: dto.neighborhoodId },
       });
@@ -101,9 +109,10 @@ export class OrdersService {
         addressStreet: dto.addressStreet,
         addressNumber: dto.addressNumber,
         addressComplement: dto.addressComplement,
-        // Preserva o nome do bairro no texto do endereço (comanda/relatório).
         addressNeighborhood: dto.addressNeighborhood ?? neighborhoodName,
         addressReference: dto.addressReference,
+        addressLat: dto.addressLat ?? null,
+        addressLng: dto.addressLng ?? null,
         neighborhoodId: dto.neighborhoodId || null,
         paymentMethod: dto.paymentMethod,
         notes: dto.notes,

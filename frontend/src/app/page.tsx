@@ -7,6 +7,7 @@ import {
   formatBRL,
   mediaUrl,
   type CreateOrderPayload,
+  type FeeByDistanceResult,
   type MenuItem,
 } from '@/lib/api';
 import dynamic from 'next/dynamic';
@@ -42,13 +43,7 @@ export default function CardapioPage() {
     customerPhone: '',
     address: { street: '', number: '', cep: '', neighborhood: '' } as AddressValue,
     addressComplement: '',
-    neighborhoodId: '',
     paymentMethod: '' as 'CASH' | 'PIX' | '',
-  });
-
-  const { data: neighborhoods } = useQuery({
-    queryKey: ['neighborhoods'],
-    queryFn: api.listNeighborhoods,
   });
 
   // Duas telas: cardápio e fechamento do pedido.
@@ -57,20 +52,7 @@ export default function CardapioPage() {
   const [mapCoords, setMapCoords] = useState<{ lat: string; lon: string } | null>(null);
 
   function handleAddressChange(addr: AddressValue) {
-    setForm((f) => {
-      const next = { ...f, address: addr };
-      if (addr.neighborhood && neighborhoods) {
-        const norm = (s: string) =>
-          s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-        const sub = norm(addr.neighborhood);
-        const match = neighborhoods.find((n) => {
-          const name = norm(n.name);
-          return name.includes(sub) || sub.includes(name);
-        });
-        if (match) next.neighborhoodId = match.id;
-      }
-      return next;
-    });
+    setForm((f) => ({ ...f, address: addr }));
   }
 
   useEffect(() => {
@@ -110,6 +92,18 @@ export default function CardapioPage() {
     window.scrollTo(0, 0);
   }, [view]);
 
+  // Taxa de entrega calculada no backend via haversine (apenas pedidos próprios).
+  const feeQuery = useQuery<FeeByDistanceResult>({
+    queryKey: ['delivery-fee', mapCoords?.lat, mapCoords?.lon],
+    queryFn: () =>
+      api.feeByDistance(
+        parseFloat(mapCoords!.lat),
+        parseFloat(mapCoords!.lon),
+      ),
+    enabled: mapCoords != null,
+    staleTime: 60_000,
+  });
+
   const totalCents = useMemo(
     () =>
       Object.values(cart).reduce(
@@ -119,10 +113,7 @@ export default function CardapioPage() {
     [cart],
   );
 
-  // Taxa de entrega do bairro escolhido; total = itens + entrega.
-  const deliveryFeeCents =
-    (neighborhoods ?? []).find((n) => n.id === form.neighborhoodId)
-      ?.customerFeeCents ?? 0;
+  const deliveryFeeCents = feeQuery.data?.zone?.feeCents ?? 0;
   const grandTotalCents = totalCents + deliveryFeeCents;
 
   const createOrder = useMutation({
@@ -199,7 +190,8 @@ export default function CardapioPage() {
         addressNumber: form.addressComplement
           ? `${form.address.number}, ${form.addressComplement}`
           : form.address.number,
-        neighborhoodId: form.neighborhoodId || undefined,
+        addressLat: mapCoords ? parseFloat(mapCoords.lat) : undefined,
+        addressLng: mapCoords ? parseFloat(mapCoords.lon) : undefined,
         paymentMethod: (form.paymentMethod || 'PIX') as 'CASH' | 'PIX',
         items,
       },
@@ -318,24 +310,33 @@ export default function CardapioPage() {
                 value={form.address}
                 onChange={handleAddressChange}
               />
-              {(neighborhoods ?? []).length > 0 && (
-                <select
-                  className="input w-full p-2"
-                  value={form.neighborhoodId}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, neighborhoodId: e.target.value }))
-                  }
-                >
-                  <option value="">Bairro…</option>
-                  {(neighborhoods ?? []).map((n) => (
-                    <option key={n.id} value={n.id}>
-                      {n.name}
-                      {n.customerFeeCents > 0
-                        ? ` — ${formatBRL(n.customerFeeCents)}`
-                        : ''}
-                    </option>
-                  ))}
-                </select>
+              {/* Taxa de entrega calculada automaticamente pelo endereço */}
+              {mapCoords && (
+                <div className="rounded-lg border border-brand-cream-dark bg-brand-cream px-3 py-2 text-sm">
+                  {feeQuery.isPending && (
+                    <span className="text-brand-ink/50">Calculando taxa de entrega…</span>
+                  )}
+                  {feeQuery.data && feeQuery.data.zone && (
+                    <span>
+                      Entrega{' '}
+                      <strong>{feeQuery.data.zone.label}</strong>
+                      {' — '}
+                      <strong className="text-brand-red">
+                        {feeQuery.data.zone.feeCents > 0
+                          ? formatBRL(feeQuery.data.zone.feeCents)
+                          : 'grátis'}
+                      </strong>
+                      <span className="ml-2 text-brand-ink/50">
+                        ({feeQuery.data.distanceKm.toFixed(1)} km)
+                      </span>
+                    </span>
+                  )}
+                  {feeQuery.data && !feeQuery.data.zone && (
+                    <span className="text-brand-red">
+                      Endereço fora da área de entrega ({feeQuery.data.distanceKm.toFixed(1)} km do restaurante).
+                    </span>
+                  )}
+                </div>
               )}
               <input
                 className="input w-full p-2"

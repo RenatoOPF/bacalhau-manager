@@ -240,6 +240,9 @@ model Order {
   addressComplement   String?
   addressNeighborhood String?
   addressReference    String?
+  // Coordenadas geocodificadas (Nominatim) — usadas para calcular taxa por km.
+  addressLat          Float?
+  addressLng          Float?
 
   paymentMethod PaymentMethod
   paymentStatus PaymentStatus @default(PENDING)
@@ -419,6 +422,21 @@ model RecipeIngredient {
   updatedAt DateTime    @updatedAt
 
   @@index([recipeId])
+}
+
+/// Faixas de taxa de entrega por distância (km do restaurante).
+/// Aplicável apenas a pedidos OWN; iFood/99 têm taxas próprias.
+/// Exemplo: até 3 km → R$ 5,00 · até 6 km → R$ 10,00 · até 12 km → R$ 15,00.
+model DeliveryFeeZone {
+  id              String   @id @default(cuid())
+  label           String   // "Até 3 km", "3 a 6 km", etc.
+  maxKm           Float    // limite superior desta faixa (inclusivo)
+  feeCents        Int      // taxa cobrada do cliente (centavos)
+  courierFeeCents Int      @default(0)
+  active          Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 /// Bairro de entrega com dois valores: `customerFeeCents` (taxa cobrada do
