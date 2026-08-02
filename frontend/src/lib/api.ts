@@ -401,7 +401,7 @@ export interface TrackedOrder {
 export interface CreateOrderPayload {
   customerName: string;
   customerPhone?: string;
-  addressStreet: string;
+  addressStreet?: string;
   addressNumber?: string;
   addressLat?: number;
   addressLng?: number;

@@ -106,7 +106,7 @@ export class OrdersService {
         dailyNumber,
         customerName: dto.customerName,
         customerPhone: dto.customerPhone,
-        addressStreet: dto.addressStreet,
+        addressStreet: dto.addressStreet ?? 'Balcão',
         addressNumber: dto.addressNumber,
         addressComplement: dto.addressComplement,
         addressNeighborhood: dto.addressNeighborhood ?? neighborhoodName,

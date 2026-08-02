@@ -40,9 +40,10 @@ export class CreateOrderDto {
   @IsString()
   customerPhone?: string;
 
+  @IsOptional()
   @IsString()
   @MinLength(1)
-  addressStreet: string;
+  addressStreet?: string;
 
   @IsOptional()
   @IsString()
