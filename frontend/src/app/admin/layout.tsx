@@ -6,8 +6,7 @@ import { api, auth, type Employee } from '@/lib/api';
 import { AdminUserProvider } from './user-context';
 
 const NAV = [
-  { href: '/admin', label: 'Fila' },
-  { href: '/admin/balcao', label: 'Balcão' },
+  { href: '/admin', label: 'Operação' },
   { href: '/admin/caixa', label: 'Caixa' },
   { href: '/admin/cardapio', label: 'Cardápio' },
   { href: '/admin/estoque', label: 'Estoque' },

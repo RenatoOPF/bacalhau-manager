@@ -75,7 +75,12 @@ export default function CaixaPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
-      <h1 className="page-title">Fila de pedidos</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="page-title">Fila de pedidos</h1>
+        <a href="/admin/balcao" className="btn-primary px-4 py-2 text-sm">
+          + Novo pedido
+        </a>
+      </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {(orders ?? []).map((order: Order) => (
