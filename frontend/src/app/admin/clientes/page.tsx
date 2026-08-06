@@ -216,8 +216,11 @@ function CustomerPanel({
   });
 
   const [editing, setEditing] = useState(false);
-  const [addingAddress, setAddingAddress] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  // Abre o formulário automaticamente quando o cliente ainda não tem endereço.
+  const [addingAddress, setAddingAddress] = useState(false);
+  const hasAddresses = (customer?.addresses.length ?? 1) > 0;
+  const showAddressForm = addingAddress || (!hasAddresses && !isLoading);
 
   const updateCustomer = useMutation({
     mutationFn: (payload: Partial<CreateCustomerPayload>) =>
@@ -321,17 +324,13 @@ function CustomerPanel({
           </button>
         </div>
 
-        {addingAddress && (
+        {showAddressForm && (
           <div className="mt-2">
             <AddressForm
               onSave={(data) => addAddress.mutateAsync(data)}
               onCancel={() => setAddingAddress(false)}
             />
           </div>
-        )}
-
-        {customer.addresses.length === 0 && !addingAddress && (
-          <p className="mt-2 text-sm text-brand-ink/40">Nenhum endereço cadastrado.</p>
         )}
 
         <ul className="mt-2 space-y-2">
