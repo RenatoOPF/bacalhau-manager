@@ -111,11 +111,16 @@ function OrderCard({
   const next = NEXT_STATUS[order.status];
   const goingToDelivery = next === 'OUT_FOR_DELIVERY';
 
-  // Sugere o bairro pelo texto do endereço do pedido.
+  // Sugere o bairro pelo texto do endereço: match exato, depois parcial.
   const suggested = order.addressNeighborhood
-    ? neighborhoods.find(
+    ? (neighborhoods.find(
         (n) => normalize(n.name) === normalize(order.addressNeighborhood ?? ''),
-      )
+      ) ??
+      neighborhoods.find((n) => {
+        const a = normalize(n.name);
+        const b = normalize(order.addressNeighborhood ?? '');
+        return a.includes(b) || b.includes(a);
+      }))
     : undefined;
 
   const [picking, setPicking] = useState(false);

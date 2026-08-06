@@ -456,6 +456,7 @@ export interface CreateOrderPayload {
   customerPhone?: string;
   addressStreet?: string;
   addressNumber?: string;
+  addressNeighborhood?: string;
   addressLat?: number;
   addressLng?: number;
   neighborhoodId?: string;

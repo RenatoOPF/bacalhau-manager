@@ -190,6 +190,7 @@ export default function CardapioPage() {
         addressNumber: form.addressComplement
           ? `${form.address.number}, ${form.addressComplement}`
           : form.address.number,
+        addressNeighborhood: form.address.neighborhood || undefined,
         addressLat: mapCoords ? parseFloat(mapCoords.lat) : undefined,
         addressLng: mapCoords ? parseFloat(mapCoords.lon) : undefined,
         paymentMethod: (form.paymentMethod || 'PIX') as 'CASH' | 'PIX',
