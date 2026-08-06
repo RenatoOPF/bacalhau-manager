@@ -1,7 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import dynamic from 'next/dynamic';
+import { UnifiedAddressInput, type AddressValue } from '@/components/UnifiedAddressInput';
+
+const MapView = dynamic(
+  () => import('@/components/MapView').then((m) => m.MapView),
+  { ssr: false },
+);
 import {
   api,
   formatBRL,
@@ -93,6 +100,69 @@ function CustomerForm({
   );
 }
 
+// ---- Hook: geocodifica endereço via Nominatim ----
+
+function useGeocode(street: string, number: string) {
+  const [coords, setCoords] = useState<{ lat: string; lon: string } | null>(null);
+  useEffect(() => {
+    if (!street || !number) { setCoords(null); return; }
+    const t = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          format: 'json', limit: '1',
+          street: `${number} ${street}`,
+          city: 'Maceió', state: 'Alagoas', country: 'Brasil',
+        });
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+          headers: { 'Accept-Language': 'pt-BR,pt' },
+        });
+        const data: { lat: string; lon: string }[] = await res.json();
+        setCoords(data[0] ?? null);
+      } catch { setCoords(null); }
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [street, number]);
+  return coords;
+}
+
+// ---- Bloco de endereço reutilizável (autocomplete + mapa) ----
+
+function AddressBlock({
+  addr,
+  complement,
+  reference,
+  onChange,
+  onComplementChange,
+  onReferenceChange,
+}: {
+  addr: AddressValue;
+  complement: string;
+  reference: string;
+  onChange: (v: AddressValue) => void;
+  onComplementChange: (v: string) => void;
+  onReferenceChange: (v: string) => void;
+}) {
+  const coords = useGeocode(addr.street, addr.number);
+  return (
+    <div className="space-y-2">
+      <UnifiedAddressInput value={addr} onChange={onChange} />
+      <input
+        className="input w-full p-2 text-sm"
+        placeholder="Complemento (apto, bloco…)"
+        value={complement}
+        onChange={(e) => onComplementChange(e.target.value)}
+      />
+      <input
+        className="input w-full p-2 text-sm"
+        placeholder="Referência (perto de…)"
+        value={reference}
+        onChange={(e) => onReferenceChange(e.target.value)}
+      />
+      <MapView customerCoords={coords} />
+    </div>
+  );
+}
+
 // ---- Formulário completo de criação (cliente + endereço numa etapa) ----
 
 function NewCustomerForm({
@@ -105,13 +175,13 @@ function NewCustomerForm({
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
-  const [street, setStreet] = useState('');
-  const [number, setNumber] = useState('');
+  const [addr, setAddr] = useState<AddressValue>({ street: '', number: '', cep: '', neighborhood: '' });
   const [complement, setComplement] = useState('');
-  const [neighborhood, setNeighborhood] = useState('');
   const [reference, setReference] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const coords = useGeocode(addr.street, addr.number);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -119,13 +189,15 @@ function NewCustomerForm({
     setSaving(true);
     setError('');
     try {
-      const address: CreateAddressPayload | undefined = street.trim()
+      const address: CreateAddressPayload | undefined = addr.street.trim()
         ? {
-            street: street.trim(),
-            number: number.trim() || undefined,
+            street: addr.street.trim(),
+            number: addr.number.trim() || undefined,
             complement: complement.trim() || undefined,
-            neighborhood: neighborhood.trim() || undefined,
+            neighborhood: addr.neighborhood.trim() || undefined,
             reference: reference.trim() || undefined,
+            lat: coords ? parseFloat(coords.lat) : undefined,
+            lng: coords ? parseFloat(coords.lon) : undefined,
             isDefault: true,
           }
         : undefined;
@@ -163,41 +235,15 @@ function NewCustomerForm({
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
       />
-
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-ink/40">Endereço</p>
-      <input
-        className="input w-full p-2 text-sm"
-        placeholder="Rua / Logradouro"
-        value={street}
-        onChange={(e) => setStreet(e.target.value)}
+      <AddressBlock
+        addr={addr}
+        complement={complement}
+        reference={reference}
+        onChange={setAddr}
+        onComplementChange={setComplement}
+        onReferenceChange={setReference}
       />
-      <div className="grid grid-cols-2 gap-2">
-        <input
-          className="input p-2 text-sm"
-          placeholder="Número"
-          value={number}
-          onChange={(e) => setNumber(e.target.value)}
-        />
-        <input
-          className="input p-2 text-sm"
-          placeholder="Complemento"
-          value={complement}
-          onChange={(e) => setComplement(e.target.value)}
-        />
-      </div>
-      <input
-        className="input w-full p-2 text-sm"
-        placeholder="Bairro"
-        value={neighborhood}
-        onChange={(e) => setNeighborhood(e.target.value)}
-      />
-      <input
-        className="input w-full p-2 text-sm"
-        placeholder="Referência"
-        value={reference}
-        onChange={(e) => setReference(e.target.value)}
-      />
-
       {error && <p className="text-sm text-brand-red">{error}</p>}
       <div className="flex gap-2">
         <button className="btn-primary px-4 py-1.5 text-sm" disabled={saving}>
@@ -211,7 +257,7 @@ function NewCustomerForm({
   );
 }
 
-// ---- Formulário de endereço ----
+// ---- Formulário de endereço (adicionar / editar no painel de detalhe) ----
 
 function AddressForm({
   initial,
@@ -223,28 +269,35 @@ function AddressForm({
   onCancel: () => void;
 }) {
   const [label, setLabel] = useState(initial?.label ?? '');
-  const [street, setStreet] = useState(initial?.street ?? '');
-  const [number, setNumber] = useState(initial?.number ?? '');
+  const [addr, setAddr] = useState<AddressValue>({
+    street: initial?.street ?? '',
+    number: initial?.number ?? '',
+    cep: '',
+    neighborhood: initial?.neighborhood ?? '',
+  });
   const [complement, setComplement] = useState(initial?.complement ?? '');
-  const [neighborhood, setNeighborhood] = useState(initial?.neighborhood ?? '');
   const [reference, setReference] = useState(initial?.reference ?? '');
   const [isDefault, setIsDefault] = useState(initial?.isDefault ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const coords = useGeocode(addr.street, addr.number);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!street.trim()) return;
+    if (!addr.street.trim()) return;
     setSaving(true);
     setError('');
     try {
       await onSave({
         label: label.trim() || undefined,
-        street: street.trim(),
-        number: number.trim() || undefined,
+        street: addr.street.trim(),
+        number: addr.number.trim() || undefined,
         complement: complement.trim() || undefined,
-        neighborhood: neighborhood.trim() || undefined,
+        neighborhood: addr.neighborhood.trim() || undefined,
         reference: reference.trim() || undefined,
+        lat: coords ? parseFloat(coords.lat) : undefined,
+        lng: coords ? parseFloat(coords.lon) : undefined,
         isDefault,
       });
     } catch (err: unknown) {
@@ -256,53 +309,22 @@ function AddressForm({
 
   return (
     <form onSubmit={submit} className="space-y-2 rounded-lg border border-brand-cream-dark bg-brand-cream p-3">
-      <div className="grid grid-cols-2 gap-2">
-        <input
-          className="input p-2 text-sm"
-          placeholder="Rótulo (ex.: Casa)"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-        />
-        <input
-          className="input p-2 text-sm"
-          placeholder="Bairro"
-          value={neighborhood}
-          onChange={(e) => setNeighborhood(e.target.value)}
-        />
-      </div>
       <input
         className="input w-full p-2 text-sm"
-        placeholder="Rua / Logradouro *"
-        value={street}
-        onChange={(e) => setStreet(e.target.value)}
-        required
+        placeholder="Rótulo (ex.: Casa, Trabalho)"
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
       />
-      <div className="grid grid-cols-2 gap-2">
-        <input
-          className="input p-2 text-sm"
-          placeholder="Número"
-          value={number}
-          onChange={(e) => setNumber(e.target.value)}
-        />
-        <input
-          className="input p-2 text-sm"
-          placeholder="Complemento"
-          value={complement}
-          onChange={(e) => setComplement(e.target.value)}
-        />
-      </div>
-      <input
-        className="input w-full p-2 text-sm"
-        placeholder="Referência"
-        value={reference}
-        onChange={(e) => setReference(e.target.value)}
+      <AddressBlock
+        addr={addr}
+        complement={complement}
+        reference={reference}
+        onChange={setAddr}
+        onComplementChange={setComplement}
+        onReferenceChange={setReference}
       />
       <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={isDefault}
-          onChange={(e) => setIsDefault(e.target.checked)}
-        />
+        <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />
         Endereço padrão
       </label>
       {error && <p className="text-sm text-brand-red">{error}</p>}
