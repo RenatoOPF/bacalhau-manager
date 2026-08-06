@@ -398,7 +398,60 @@ export interface TrackedOrder {
   }[];
 }
 
+export interface CustomerAddress {
+  id: string;
+  label?: string | null;
+  street: string;
+  number?: string | null;
+  complement?: string | null;
+  neighborhood?: string | null;
+  reference?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  isDefault: boolean;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  addresses: CustomerAddress[];
+}
+
+export interface CustomerDetail extends Customer {
+  orders: {
+    id: string;
+    protocol: number;
+    dailyNumber: number;
+    channel: OrderChannel;
+    status: OrderStatus;
+    totalCents: number;
+    createdAt: string;
+  }[];
+}
+
+export interface CreateCustomerPayload {
+  name: string;
+  phone?: string;
+  notes?: string;
+}
+
+export interface CreateAddressPayload {
+  label?: string;
+  street: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  reference?: string;
+  lat?: number;
+  lng?: number;
+  isDefault?: boolean;
+}
+
 export interface CreateOrderPayload {
+  customerId?: string;
   customerName: string;
   customerPhone?: string;
   addressStreet?: string;
@@ -949,6 +1002,42 @@ export const api = {
     a.click();
     URL.revokeObjectURL(url);
   },
+
+  // ---- Clientes ----
+  listCustomers: (search?: string) =>
+    request<Customer[]>(`/customers${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+  getCustomer: (id: string) => request<CustomerDetail>(`/customers/${id}`),
+  createCustomer: (payload: CreateCustomerPayload) =>
+    request<Customer>('/customers', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateCustomer: (id: string, payload: Partial<CreateCustomerPayload>) =>
+    request<Customer>(`/customers/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteCustomer: (id: string) =>
+    request<{ deleted: boolean }>(`/customers/${id}`, { method: 'DELETE' }),
+  addCustomerAddress: (customerId: string, payload: CreateAddressPayload) =>
+    request<CustomerAddress>(`/customers/${customerId}/addresses`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateCustomerAddress: (
+    customerId: string,
+    addressId: string,
+    payload: Partial<CreateAddressPayload>,
+  ) =>
+    request<CustomerAddress>(`/customers/${customerId}/addresses/${addressId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteCustomerAddress: (customerId: string, addressId: string) =>
+    request<{ deleted: boolean }>(
+      `/customers/${customerId}/addresses/${addressId}`,
+      { method: 'DELETE' },
+    ),
 };
 
 function periodQuery(from?: string, to?: string): string {

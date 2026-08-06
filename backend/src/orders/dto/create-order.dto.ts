@@ -32,6 +32,10 @@ export class OrderItemInputDto {
 }
 
 export class CreateOrderDto {
+  @IsOptional()
+  @IsString()
+  customerId?: string;
+
   @IsString()
   @MinLength(1)
   customerName: string;

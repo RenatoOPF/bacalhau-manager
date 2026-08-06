@@ -104,6 +104,7 @@ export class OrdersService {
     const order = await this.prisma.order.create({
       data: {
         dailyNumber,
+        customerId: dto.customerId ?? null,
         customerName: dto.customerName,
         customerPhone: dto.customerPhone,
         addressStreet: dto.addressStreet ?? 'Balcão',

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useRef, useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, formatBRL, type MenuItem, type MenuCategory } from '@/lib/api';
+import { api, formatBRL, type MenuItem, type MenuCategory, type Customer } from '@/lib/api';
 
 interface CartLine {
   menuItemId: string;
@@ -12,6 +12,125 @@ interface CartLine {
   quantity: number;
 }
 
+// ---- Busca de cliente com autocomplete ----
+
+function CustomerSearch({
+  onSelect,
+}: {
+  onSelect: (customer: Customer | null) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<Customer | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const { data: results = [] } = useQuery<Customer[]>({
+    queryKey: ['customers-search', query],
+    queryFn: () => api.listCustomers(query),
+    enabled: query.trim().length >= 1,
+  });
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  function pick(c: Customer) {
+    setSelected(c);
+    setQuery(c.name);
+    setOpen(false);
+    onSelect(c);
+  }
+
+  function clear() {
+    setSelected(null);
+    setQuery('');
+    setOpen(false);
+    onSelect(null);
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="flex gap-2">
+        <input
+          className="input flex-1 p-2 text-sm"
+          placeholder="Buscar cliente (nome ou telefone)…"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSelected(null);
+            onSelect(null);
+            setOpen(true);
+          }}
+          onFocus={() => { if (query.trim()) setOpen(true); }}
+        />
+        {selected && (
+          <button
+            type="button"
+            className="shrink-0 rounded-lg border border-brand-cream-dark px-2 text-xs text-brand-ink/50 hover:text-brand-red"
+            onClick={clear}
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {open && results.length > 0 && !selected && (
+        <ul className="absolute z-10 mt-1 w-full rounded-lg border border-brand-cream-dark bg-white shadow-md">
+          {results.map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-brand-cream"
+                onMouseDown={() => pick(c)}
+              >
+                <span className="font-semibold">{c.name}</span>
+                {c.phone && <span className="ml-2 text-brand-ink/50">{c.phone}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ---- Seleção de endereço do cliente ----
+
+function AddressSelect({
+  customer,
+  selectedAddressId,
+  onChange,
+}: {
+  customer: Customer;
+  selectedAddressId: string | null;
+  onChange: (id: string) => void;
+}) {
+  if (customer.addresses.length === 0) return null;
+
+  return (
+    <select
+      className="input w-full p-2 text-sm"
+      value={selectedAddressId ?? ''}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="">— Sem endereço —</option>
+      {customer.addresses.map((a) => (
+        <option key={a.id} value={a.id}>
+          {a.label ? `${a.label}: ` : ''}
+          {[a.street, a.number, a.neighborhood].filter(Boolean).join(', ')}
+          {a.isDefault ? ' (padrão)' : ''}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+// ---- Página ----
+
 export default function BalcaoPage() {
   const qc = useQueryClient();
   const { data: menu, isLoading } = useQuery({
@@ -20,6 +139,8 @@ export default function BalcaoPage() {
   });
 
   const [cart, setCart] = useState<Record<string, CartLine>>({});
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
@@ -31,6 +152,19 @@ export default function BalcaoPage() {
     () => Object.values(cart).reduce((s, l) => s + l.priceCents * l.quantity, 0),
     [cart],
   );
+
+  // Quando seleciona cliente, preenche nome e telefone e pré-seleciona endereço padrão.
+  function handleCustomerSelect(c: Customer | null) {
+    setSelectedCustomer(c);
+    if (c) {
+      setCustomerName(c.name);
+      setCustomerPhone(c.phone ?? '');
+      const def = c.addresses.find((a) => a.isDefault) ?? c.addresses[0];
+      setSelectedAddressId(def?.id ?? null);
+    } else {
+      setSelectedAddressId(null);
+    }
+  }
 
   const addToCart = (item: MenuItem, optionId?: string) => {
     const option = (item.options ?? []).find((o) => o.id === optionId);
@@ -64,9 +198,19 @@ export default function BalcaoPage() {
         optionId: l.optionId,
         quantity: l.quantity,
       }));
+
+      const selectedAddress = selectedCustomer?.addresses.find(
+        (a) => a.id === selectedAddressId,
+      );
+
       return api.createOrder({
+        customerId: selectedCustomer?.id,
         customerName: customerName.trim() || 'Balcão',
         customerPhone: customerPhone.trim() || undefined,
+        addressStreet: selectedAddress?.street,
+        addressNumber: selectedAddress?.number ?? undefined,
+        addressLat: selectedAddress?.lat ?? undefined,
+        addressLng: selectedAddress?.lng ?? undefined,
         notes: notes.trim() || undefined,
         paymentMethod,
         items,
@@ -79,6 +223,8 @@ export default function BalcaoPage() {
       setCustomerPhone('');
       setNotes('');
       setSelectedOptions({});
+      setSelectedCustomer(null);
+      setSelectedAddressId(null);
       qc.invalidateQueries({ queryKey: ['orders'] });
     },
   });
@@ -185,6 +331,17 @@ export default function BalcaoPage() {
 
           <div className="card space-y-3 p-4">
             <h2 className="section-title">Dados do pedido</h2>
+
+            <CustomerSearch onSelect={handleCustomerSelect} />
+
+            {selectedCustomer && selectedCustomer.addresses.length > 0 && (
+              <AddressSelect
+                customer={selectedCustomer}
+                selectedAddressId={selectedAddressId}
+                onChange={setSelectedAddressId}
+              />
+            )}
+
             <input
               className="input w-full p-2 text-sm"
               placeholder="Nome do cliente (opcional)"
