@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -22,6 +23,8 @@ import { DeliveryService } from '../delivery/delivery.service';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
@@ -130,8 +133,57 @@ export class OrdersService {
     // Baixa o estoque (nunca lança — falha só é registrada no log).
     await this.stock.consumeForOrder(order);
 
+    // Auto-salva o cliente quando o pedido vem da plataforma pública.
+    // Condição: telefone presente e nenhum customerId já vinculado.
+    if (!dto.customerId && dto.customerPhone) {
+      this.autoSaveCustomer(order.id, dto).catch((e) =>
+        this.logger.warn(`Auto-save de cliente falhou: ${e?.message}`),
+      );
+    }
+
     this.realtime.emitOrderCreated(order);
     return order;
+  }
+
+  /** Cria ou encontra o cliente pelo telefone e salva o endereço do pedido. */
+  private async autoSaveCustomer(orderId: string, dto: CreateOrderDto) {
+    const customer = await this.prisma.customer.upsert({
+      where: { phone: dto.customerPhone! },
+      create: { name: dto.customerName, phone: dto.customerPhone },
+      // Não sobrescreve dados de clientes já cadastrados manualmente.
+      update: {},
+    });
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { customerId: customer.id },
+    });
+
+    const street = dto.addressStreet;
+    if (street && street !== 'Balcão') {
+      const already = await this.prisma.customerAddress.findFirst({
+        where: { customerId: customer.id, street },
+      });
+      if (!already) {
+        const isFirst =
+          (await this.prisma.customerAddress.count({
+            where: { customerId: customer.id },
+          })) === 0;
+        await this.prisma.customerAddress.create({
+          data: {
+            customerId: customer.id,
+            street,
+            number: dto.addressNumber,
+            neighborhood: dto.addressNeighborhood,
+            lat: dto.addressLat,
+            lng: dto.addressLng,
+            isDefault: isFirst,
+          },
+        });
+      }
+    }
+
+    this.logger.log(`Cliente auto-salvo: ${customer.id} (${dto.customerPhone})`);
   }
 
   /** Fila do caixa: apenas os pedidos do dia atual (ou filtrados por status). */
