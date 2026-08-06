@@ -27,7 +27,7 @@ function formatAddress(a: CustomerAddress): string {
     .join(', ');
 }
 
-// ---- Formulário de cliente ----
+// ---- Formulário de edição de cliente (só dados básicos) ----
 
 function CustomerForm({
   initial,
@@ -80,6 +80,124 @@ function CustomerForm({
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
       />
+      {error && <p className="text-sm text-brand-red">{error}</p>}
+      <div className="flex gap-2">
+        <button className="btn-primary px-4 py-1.5 text-sm" disabled={saving}>
+          {saving ? 'Salvando…' : 'Salvar'}
+        </button>
+        <button type="button" className="btn-outline px-4 py-1.5 text-sm" onClick={onCancel}>
+          Cancelar
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// ---- Formulário completo de criação (cliente + endereço numa etapa) ----
+
+function NewCustomerForm({
+  onSave,
+  onCancel,
+}: {
+  onSave: (customer: CreateCustomerPayload, address?: CreateAddressPayload) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [notes, setNotes] = useState('');
+  const [street, setStreet] = useState('');
+  const [number, setNumber] = useState('');
+  const [complement, setComplement] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
+  const [reference, setReference] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setSaving(true);
+    setError('');
+    try {
+      const address: CreateAddressPayload | undefined = street.trim()
+        ? {
+            street: street.trim(),
+            number: number.trim() || undefined,
+            complement: complement.trim() || undefined,
+            neighborhood: neighborhood.trim() || undefined,
+            reference: reference.trim() || undefined,
+            isDefault: true,
+          }
+        : undefined;
+      await onSave(
+        { name: name.trim(), phone: phone.trim() || undefined, notes: notes.trim() || undefined },
+        address,
+      );
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao salvar');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-brand-ink/40">Dados do cliente</p>
+      <input
+        className="input w-full p-2 text-sm"
+        placeholder="Nome *"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        required
+      />
+      <input
+        className="input w-full p-2 text-sm"
+        placeholder="Telefone"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+      />
+      <textarea
+        className="input w-full p-2 text-sm"
+        placeholder="Observações internas"
+        rows={2}
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+      />
+
+      <p className="text-xs font-semibold uppercase tracking-wide text-brand-ink/40">Endereço</p>
+      <input
+        className="input w-full p-2 text-sm"
+        placeholder="Rua / Logradouro"
+        value={street}
+        onChange={(e) => setStreet(e.target.value)}
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          className="input p-2 text-sm"
+          placeholder="Número"
+          value={number}
+          onChange={(e) => setNumber(e.target.value)}
+        />
+        <input
+          className="input p-2 text-sm"
+          placeholder="Complemento"
+          value={complement}
+          onChange={(e) => setComplement(e.target.value)}
+        />
+      </div>
+      <input
+        className="input w-full p-2 text-sm"
+        placeholder="Bairro"
+        value={neighborhood}
+        onChange={(e) => setNeighborhood(e.target.value)}
+      />
+      <input
+        className="input w-full p-2 text-sm"
+        placeholder="Referência"
+        value={reference}
+        onChange={(e) => setReference(e.target.value)}
+      />
+
       {error && <p className="text-sm text-brand-red">{error}</p>}
       <div className="flex gap-2">
         <button className="btn-primary px-4 py-1.5 text-sm" disabled={saving}>
@@ -424,14 +542,14 @@ export default function ClientesPage() {
     queryFn: () => api.listCustomers(search || undefined),
   });
 
-  const createCustomer = useMutation({
-    mutationFn: api.createCustomer,
-    onSuccess: (c) => {
-      qc.invalidateQueries({ queryKey: ['customers'] });
-      setCreating(false);
-      setSelectedId(c.id);
-    },
-  });
+  async function handleCreate(customerData: CreateCustomerPayload, address?: CreateAddressPayload) {
+    const c = await api.createCustomer(customerData);
+    if (address) await api.addCustomerAddress(c.id, address);
+    qc.invalidateQueries({ queryKey: ['customers'] });
+    qc.invalidateQueries({ queryKey: ['customer', c.id] });
+    setCreating(false);
+    setSelectedId(c.id);
+  }
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6">
@@ -458,8 +576,8 @@ export default function ClientesPage() {
           {creating && (
             <div className="card p-4">
               <h2 className="section-title mb-3">Novo cliente</h2>
-              <CustomerForm
-                onSave={(data) => createCustomer.mutateAsync(data)}
+              <NewCustomerForm
+                onSave={handleCreate}
                 onCancel={() => setCreating(false)}
               />
             </div>
