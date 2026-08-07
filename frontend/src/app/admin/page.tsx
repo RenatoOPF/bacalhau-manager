@@ -44,8 +44,11 @@ function normalize(text: string): string {
     .trim();
 }
 
+const DONE_STATUSES = new Set<OrderStatus>(['DELIVERED', 'CANCELED']);
+
 export default function CaixaPage() {
   const qc = useQueryClient();
+  const [showDone, setShowDone] = useState(false);
 
   const { data: orders } = useQuery({
     queryKey: ['orders'],
@@ -73,6 +76,10 @@ export default function CaixaPage() {
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['orders'] });
 
+  const all = orders ?? [];
+  const active = all.filter((o: Order) => !DONE_STATUSES.has(o.status));
+  const done = all.filter((o: Order) => DONE_STATUSES.has(o.status));
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
       <div className="flex items-center justify-between">
@@ -82,8 +89,14 @@ export default function CaixaPage() {
         </a>
       </div>
 
+      {active.length === 0 && (
+        <p className="mt-10 text-center text-sm text-brand-ink/50">
+          Nenhum pedido em andamento.
+        </p>
+      )}
+
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {(orders ?? []).map((order: Order) => (
+        {active.map((order: Order) => (
           <OrderCard
             key={order.id}
             order={order}
@@ -93,6 +106,32 @@ export default function CaixaPage() {
           />
         ))}
       </div>
+
+      {done.length > 0 && (
+        <div className="mt-8">
+          <button
+            className="flex items-center gap-2 text-sm font-medium text-brand-ink/60 hover:text-brand-ink"
+            onClick={() => setShowDone((v) => !v)}
+          >
+            <span>{showDone ? '▾' : '▸'}</span>
+            Finalizados hoje ({done.length})
+          </button>
+
+          {showDone && (
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {done.map((order: Order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  couriers={couriers ?? []}
+                  neighborhoods={neighborhoods ?? []}
+                  onChange={refresh}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </main>
   );
 }
