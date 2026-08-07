@@ -302,9 +302,10 @@ function OrderCard({
           )}
           <button
             className="btn-outline px-3 py-2 text-sm"
+            disabled={reprint.isPending}
             onClick={() => reprint.mutate()}
           >
-            Reimprimir
+            {reprint.isPending ? 'Enfileirando…' : 'Reimprimir'}
           </button>
           <button
             className="btn-danger px-3 py-2 text-sm"

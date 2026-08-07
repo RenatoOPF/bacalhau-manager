@@ -11,7 +11,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import {
   ORDERS_QUEUE,
-  PRINT_ORDER_JOB,
+  PRINT_CASHIER_JOB,
+  PRINT_KITCHEN_JOB,
   PrintOrderJobData,
 } from '../queue/queue.constants';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -127,8 +128,9 @@ export class OrdersService {
       include: { items: true },
     });
 
-    // Enfileira a impressão — a fila garante o reprocessamento se falhar.
-    await this.ordersQueue.add(PRINT_ORDER_JOB, { orderId: order.id });
+    // Jobs separados por impressora: retry de um não reimprime o outro.
+    await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
+    await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
 
     // Baixa o estoque (nunca lança — falha só é registrada no log).
     await this.stock.consumeForOrder(order);
@@ -287,10 +289,11 @@ export class OrdersService {
     return order;
   }
 
-  /** Reimpressão manual em caso de falha. */
+  /** Reimpressão manual em caso de falha (ambos os tickets). */
   async reprint(id: string) {
     const order = await this.findOne(id);
-    await this.ordersQueue.add(PRINT_ORDER_JOB, { orderId: order.id });
+    await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
+    await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
     return { enqueued: true, protocol: order.protocol };
   }
 
