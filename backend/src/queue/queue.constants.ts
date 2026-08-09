@@ -17,9 +17,7 @@ export const PRINT_ORDER_JOB = 'print-order';
  * o agente local que consome apenas obedece a essa config.
  */
 export const ORDERS_JOB_OPTIONS = {
-  // Reprocessa até 5x com backoff exponencial se a impressão falhar.
-  attempts: 5,
-  backoff: { type: 'exponential' as const, delay: 3000 },
+  attempts: 1,
   removeOnComplete: 1000,
   removeOnFail: false,
 };

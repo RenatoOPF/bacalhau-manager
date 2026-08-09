@@ -6,7 +6,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import {
   ORDERS_QUEUE,
-  PRINT_ORDER_JOB,
+  PRINT_CASHIER_JOB,
+  PRINT_KITCHEN_JOB,
   PrintOrderJobData,
 } from '../queue/queue.constants';
 import { nextDailyNumber } from '../common/daily-number';
@@ -98,7 +99,8 @@ export class IntegrationsService {
       include: { items: true },
     });
 
-    await this.ordersQueue.add(PRINT_ORDER_JOB, { orderId: order.id });
+    await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
+    await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
 
     // Baixa o estoque casando os itens por texto (nunca lança).
     await this.stock.consumeForOrder(order);
