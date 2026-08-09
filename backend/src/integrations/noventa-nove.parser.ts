@@ -84,23 +84,33 @@ export function parseNoventa_Nove(lines: string[]): ParsedExternalOrder | null {
     let name = m[2].trim();
     const qty = Number(m[1]);
     const priceCents = brlToCents(m[4]);
+    const notes: string[] = [];
 
     // 2+ espaços antes de R$ = corte em fronteira de palavra → recompor com espaço
     const wordBoundary = m[3].length > 1;
 
-    // Linhas seguintes indentadas sem preço completam o nome
+    // Linhas seguintes indentadas sem preço completam o nome ou viram nota
     while (i + 1 < lines.length) {
       const next = lines[i + 1];
       if (/^\s{2,}/.test(next) && !/R\$/.test(next)) {
         const cont = next.trim();
-        name += wordBoundary ? ' ' + cont : cont;
+        // "Tamanho: X" e "Obs: X" → nota (não faz parte do nome do item)
+        const tamM = cont.match(/^Tamanho:\s*(.+)$/i);
+        const obsM = cont.match(/^Obs(?:erva[çc][ãa]o)?:\s*(.+)$/i);
+        if (tamM) {
+          notes.push(tamM[1].trim());
+        } else if (obsM) {
+          notes.push(`Obs: ${obsM[1].trim()}`);
+        } else {
+          name += wordBoundary ? ' ' + cont : cont;
+        }
         i++;
       } else {
         break;
       }
     }
 
-    items.push({ quantity: qty, name, priceCents });
+    items.push({ quantity: qty, name, priceCents, notes: notes.join(' | ') || null });
   }
 
   // Total: "Total do pedido ... R$XX,XX" (geralmente numa única linha)
