@@ -74,40 +74,52 @@ export function parseNoventa_Nove(lines: string[]): ParsedExternalOrder | null {
     if (neighM) addressNeighborhood = neighM[1].trim();
   }
 
-  // Itens: "Nx NOME R$XX,XX" — o nome pode ser quebrado pela impressora
+  // Itens: "Nx NOME R$XX,XX" — o nome pode ser quebrado pela impressora.
+  // O 99Food usa sub-itens indentados para opções (ex.: tamanho):
+  //   1x Nome do Prato   R$0,00      ← base (preço zero quando há opção)
+  //      continuação...              ← quebra de palavra
+  //     [Tamanho]                    ← cabeçalho de categoria (ignorado)
+  //     1x Porção Inteira R$125,00   ← opção selecionada com o preço real
   const items: ParsedExternalItem[] = [];
   for (let i = 0; i < lines.length; i++) {
-    // Captura os espaços antes de "R$" para detectar quebra em fronteira de palavra
     const m = lines[i].match(/^(\d+)x\s+(.+?)(\s+)R\$\s*([\d.,]+)\s*$/);
     if (!m) continue;
 
     let name = m[2].trim();
     const qty = Number(m[1]);
-    const priceCents = brlToCents(m[4]);
+    let priceCents = brlToCents(m[4]);
     const notes: string[] = [];
 
     // 2+ espaços antes de R$ = corte em fronteira de palavra → recompor com espaço
     const wordBoundary = m[3].length > 1;
 
-    // Linhas seguintes indentadas sem preço completam o nome ou viram nota
     while (i + 1 < lines.length) {
       const next = lines[i + 1];
-      if (/^\s{2,}/.test(next) && !/R\$/.test(next)) {
-        const cont = next.trim();
-        // "Tamanho: X" e "Obs: X" → nota (não faz parte do nome do item)
-        const tamM = cont.match(/^Tamanho:\s*(.+)$/i);
-        const obsM = cont.match(/^Obs(?:erva[çc][ãa]o)?:\s*(.+)$/i);
-        if (tamM) {
-          notes.push(tamM[1].trim());
-        } else if (obsM) {
-          notes.push(`Obs: ${obsM[1].trim()}`);
-        } else {
-          name += wordBoundary ? ' ' + cont : cont;
-        }
+      if (!/^\s{2,}/.test(next)) break;
+
+      const cont = next.trim();
+      if (!cont) { i++; continue; }
+
+      // [Categoria] → cabeçalho visual, ignorar
+      if (/^\[.+\]$/.test(cont)) { i++; continue; }
+
+      // Sub-item indentado: "Nx Opção R$XX,XX" → opção selecionada
+      const subM = cont.match(/^(\d+)x\s+(.+?)\s+R\$\s*([\d.,]+)\s*$/);
+      if (subM) {
+        notes.push(subM[2].trim());
+        // Preço real vem da opção quando o item base tinha R$0
+        const subPrice = brlToCents(subM[3]);
+        if (priceCents === 0 && subPrice > 0) priceCents = subPrice;
         i++;
-      } else {
-        break;
+        continue;
       }
+
+      // Linha com R$ mas não reconhecida → fim do item
+      if (/R\$/.test(next)) break;
+
+      // Continuação do nome (quebra de palavra pela impressora)
+      name += wordBoundary ? ' ' + cont : cont;
+      i++;
     }
 
     items.push({ quantity: qty, name, priceCents, notes: notes.join(' | ') || null });
@@ -118,8 +130,14 @@ export function parseNoventa_Nove(lines: string[]): ParsedExternalOrder | null {
   const totalM = totalLine?.match(/R\$\s*([\d.,]+)/);
   const totalCents = totalM ? brlToCents(totalM[1]) : 0;
 
-  // paidOnline: se há "Cobrar do cliente", o cliente paga na entrega
-  const paidOnline = !lines.some((l) => /Cobrar do cliente/i.test(l));
+  // paidOnline: "Cobrar do cliente R$0,00" → pago via app; valor > 0 → cobrar na entrega
+  const cobrarIdx = lines.findIndex((l) => /Cobrar do cliente/i.test(l));
+  let paidOnline = true;
+  if (cobrarIdx >= 0) {
+    const cobrarText = lines[cobrarIdx] + ' ' + (lines[cobrarIdx + 1] ?? '');
+    const cobrarM = cobrarText.match(/R\$\s*([\d.,]+)/);
+    paidOnline = cobrarM ? brlToCents(cobrarM[1]) === 0 : false;
+  }
 
   if (!externalId || items.length === 0) return null;
 
