@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -10,7 +11,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import {
   ORDERS_QUEUE,
-  PRINT_ORDER_JOB,
+  PRINT_CASHIER_JOB,
+  PRINT_KITCHEN_JOB,
   PrintOrderJobData,
 } from '../queue/queue.constants';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -18,13 +20,17 @@ import { AssignDeliveryDto } from './dto/assign-delivery.dto';
 import { nextDailyNumber } from '../common/daily-number';
 import { dayRange, localDay } from '../common/date-range';
 import { StockService } from '../stock/stock.service';
+import { DeliveryService } from '../delivery/delivery.service';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
     private readonly stock: StockService,
+    private readonly delivery: DeliveryService,
     @InjectQueue(ORDERS_QUEUE)
     private readonly ordersQueue: Queue<PrintOrderJobData>,
   ) {}
@@ -78,10 +84,16 @@ export class OrdersService {
       };
     });
 
-    // Bairro escolhido define a taxa cobrada do cliente (some ao total).
+    // Taxa de entrega: coordenadas → faixa por km (pedido próprio) ou bairro (legado).
     let deliveryFeeCents = 0;
     let neighborhoodName: string | undefined;
-    if (dto.neighborhoodId) {
+    if (dto.addressLat != null && dto.addressLng != null) {
+      const { zone } = await this.delivery.feeByDistance(
+        dto.addressLat,
+        dto.addressLng,
+      );
+      if (zone) deliveryFeeCents = zone.feeCents;
+    } else if (dto.neighborhoodId) {
       const n = await this.prisma.neighborhood.findUnique({
         where: { id: dto.neighborhoodId },
       });
@@ -96,14 +108,16 @@ export class OrdersService {
     const order = await this.prisma.order.create({
       data: {
         dailyNumber,
+        customerId: dto.customerId ?? null,
         customerName: dto.customerName,
         customerPhone: dto.customerPhone,
-        addressStreet: dto.addressStreet,
+        addressStreet: dto.addressStreet ?? 'Balcão',
         addressNumber: dto.addressNumber,
         addressComplement: dto.addressComplement,
-        // Preserva o nome do bairro no texto do endereço (comanda/relatório).
         addressNeighborhood: dto.addressNeighborhood ?? neighborhoodName,
         addressReference: dto.addressReference,
+        addressLat: dto.addressLat ?? null,
+        addressLng: dto.addressLng ?? null,
         neighborhoodId: dto.neighborhoodId || null,
         paymentMethod: dto.paymentMethod,
         notes: dto.notes,
@@ -114,14 +128,64 @@ export class OrdersService {
       include: { items: true },
     });
 
-    // Enfileira a impressão — a fila garante o reprocessamento se falhar.
-    await this.ordersQueue.add(PRINT_ORDER_JOB, { orderId: order.id });
+    // Jobs separados por impressora: retry de um não reimprime o outro.
+    await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
+    await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
 
     // Baixa o estoque (nunca lança — falha só é registrada no log).
     await this.stock.consumeForOrder(order);
 
+    // Auto-salva o cliente quando o pedido vem da plataforma pública.
+    // Condição: telefone presente e nenhum customerId já vinculado.
+    if (!dto.customerId && dto.customerPhone) {
+      this.autoSaveCustomer(order.id, dto).catch((e) =>
+        this.logger.warn(`Auto-save de cliente falhou: ${e?.message}`),
+      );
+    }
+
     this.realtime.emitOrderCreated(order);
     return order;
+  }
+
+  /** Cria ou encontra o cliente pelo telefone e salva o endereço do pedido. */
+  private async autoSaveCustomer(orderId: string, dto: CreateOrderDto) {
+    const customer = await this.prisma.customer.upsert({
+      where: { phone: dto.customerPhone! },
+      create: { name: dto.customerName, phone: dto.customerPhone },
+      // Não sobrescreve dados de clientes já cadastrados manualmente.
+      update: {},
+    });
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { customerId: customer.id },
+    });
+
+    const street = dto.addressStreet;
+    if (street && street !== 'Balcão') {
+      const already = await this.prisma.customerAddress.findFirst({
+        where: { customerId: customer.id, street },
+      });
+      if (!already) {
+        const isFirst =
+          (await this.prisma.customerAddress.count({
+            where: { customerId: customer.id },
+          })) === 0;
+        await this.prisma.customerAddress.create({
+          data: {
+            customerId: customer.id,
+            street,
+            number: dto.addressNumber,
+            neighborhood: dto.addressNeighborhood,
+            lat: dto.addressLat,
+            lng: dto.addressLng,
+            isDefault: isFirst,
+          },
+        });
+      }
+    }
+
+    this.logger.log(`Cliente auto-salvo: ${customer.id} (${dto.customerPhone})`);
   }
 
   /** Fila do caixa: apenas os pedidos do dia atual (ou filtrados por status). */
@@ -225,10 +289,11 @@ export class OrdersService {
     return order;
   }
 
-  /** Reimpressão manual em caso de falha. */
+  /** Reimpressão manual em caso de falha (ambos os tickets). */
   async reprint(id: string) {
     const order = await this.findOne(id);
-    await this.ordersQueue.add(PRINT_ORDER_JOB, { orderId: order.id });
+    await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
+    await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
     return { enqueued: true, protocol: order.protocol };
   }
 

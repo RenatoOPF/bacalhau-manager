@@ -6,12 +6,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import {
   ORDERS_QUEUE,
-  PRINT_ORDER_JOB,
+  PRINT_CASHIER_JOB,
+  PRINT_KITCHEN_JOB,
   PrintOrderJobData,
 } from '../queue/queue.constants';
 import { nextDailyNumber } from '../common/daily-number';
 import { decodeEscPosBase64, toLines } from './escpos';
 import { isIfood, parseIfood } from './ifood.parser';
+import { isNoventa_Nove, parseNoventa_Nove } from './noventa-nove.parser';
 import { ParsedExternalOrder } from './parsed-order';
 import { StockService } from '../stock/stock.service';
 
@@ -38,7 +40,7 @@ export class IntegrationsService {
 
     let parsed: ParsedExternalOrder | null = null;
     if (isIfood(lines)) parsed = parseIfood(lines);
-    // (99Food entra aqui quando tivermos amostras.)
+    else if (isNoventa_Nove(lines)) parsed = parseNoventa_Nove(lines);
 
     if (!parsed) {
       this.logger.warn('Captura não reconhecida — nenhum parser aplicável.');
@@ -97,7 +99,8 @@ export class IntegrationsService {
       include: { items: true },
     });
 
-    await this.ordersQueue.add(PRINT_ORDER_JOB, { orderId: order.id });
+    await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
+    await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
 
     // Baixa o estoque casando os itens por texto (nunca lança).
     await this.stock.consumeForOrder(order);

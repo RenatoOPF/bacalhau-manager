@@ -4,6 +4,7 @@ import {
   IsArray,
   IsEnum,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Min,
@@ -31,6 +32,10 @@ export class OrderItemInputDto {
 }
 
 export class CreateOrderDto {
+  @IsOptional()
+  @IsString()
+  customerId?: string;
+
   @IsString()
   @MinLength(1)
   customerName: string;
@@ -39,9 +44,10 @@ export class CreateOrderDto {
   @IsString()
   customerPhone?: string;
 
+  @IsOptional()
   @IsString()
   @MinLength(1)
-  addressStreet: string;
+  addressStreet?: string;
 
   @IsOptional()
   @IsString()
@@ -59,7 +65,16 @@ export class CreateOrderDto {
   @IsString()
   addressReference?: string;
 
-  // Bairro de entrega escolhido (define a taxa cobrada do cliente).
+  // Coordenadas geocodificadas (Nominatim) — preferidas para cálculo de taxa por km.
+  @IsOptional()
+  @IsNumber()
+  addressLat?: number;
+
+  @IsOptional()
+  @IsNumber()
+  addressLng?: number;
+
+  // Bairro de entrega (legado / fallback se não houver coordenadas).
   @IsOptional()
   @IsString()
   neighborhoodId?: string;

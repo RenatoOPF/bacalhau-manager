@@ -6,7 +6,7 @@ import { api, auth, type Employee } from '@/lib/api';
 import { AdminUserProvider } from './user-context';
 
 const NAV = [
-  { href: '/admin', label: 'Fila' },
+  { href: '/admin', label: 'Operação' },
   { href: '/admin/caixa', label: 'Caixa' },
   { href: '/admin/cardapio', label: 'Cardápio' },
   { href: '/admin/estoque', label: 'Estoque' },
@@ -14,6 +14,7 @@ const NAV = [
   { href: '/admin/despesas', label: 'Despesas' },
   { href: '/admin/relatorios', label: 'Relatórios' },
   { href: '/admin/fichas-tecnicas', label: 'Fichas Técnicas' },
+  { href: '/admin/clientes', label: 'Clientes' },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

@@ -188,6 +188,44 @@ model StockMovement {
   @@index([orderId])
 }
 
+// ---------- Clientes ----------
+
+/// Cadastro interno de clientes — uso exclusivo do restaurante (sem login).
+/// O telefone é o identificador natural; pode ser nulo para clientes de balcão.
+model Customer {
+  id        String            @id @default(cuid())
+  name      String
+  phone     String?           @unique
+  notes     String?
+  addresses CustomerAddress[]
+  orders    Order[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([name])
+}
+
+/// Endereço de entrega vinculado a um cliente. Um cliente pode ter vários
+/// (ex.: casa e trabalho). O endereço padrão é pré-selecionado no balcão.
+model CustomerAddress {
+  id           String   @id @default(cuid())
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId   String
+  label        String?  // ex.: "Casa", "Trabalho"
+  street       String
+  number       String?
+  complement   String?
+  neighborhood String?
+  reference    String?
+  lat          Float?
+  lng          Float?
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([customerId])
+}
+
 // ---------- Pedidos ----------
 
 enum OrderChannel {
@@ -231,6 +269,10 @@ model Order {
   // Único por canal para evitar duplicar ao reimprimir a mesma comanda.
   externalId String?
 
+  // Cliente cadastrado (opcional — pedidos externos geralmente não vinculam).
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerId String?
+
   customerName  String
   customerPhone String?
 
@@ -240,6 +282,9 @@ model Order {
   addressComplement   String?
   addressNeighborhood String?
   addressReference    String?
+  // Coordenadas geocodificadas (Nominatim) — usadas para calcular taxa por km.
+  addressLat          Float?
+  addressLng          Float?
 
   paymentMethod PaymentMethod
   paymentStatus PaymentStatus @default(PENDING)
@@ -266,6 +311,7 @@ model Order {
   updatedAt DateTime @updatedAt
 
   @@unique([channel, externalId])
+  @@index([customerId])
   @@index([status])
   @@index([createdAt])
   @@index([paidAt])
@@ -419,6 +465,21 @@ model RecipeIngredient {
   updatedAt DateTime    @updatedAt
 
   @@index([recipeId])
+}
+
+/// Faixas de taxa de entrega por distância (km do restaurante).
+/// Aplicável apenas a pedidos OWN; iFood/99 têm taxas próprias.
+/// Exemplo: até 3 km → R$ 5,00 · até 6 km → R$ 10,00 · até 12 km → R$ 15,00.
+model DeliveryFeeZone {
+  id              String   @id @default(cuid())
+  label           String   // "Até 3 km", "3 a 6 km", etc.
+  maxKm           Float    // limite superior desta faixa (inclusivo)
+  feeCents        Int      // taxa cobrada do cliente (centavos)
+  courierFeeCents Int      @default(0)
+  active          Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 /// Bairro de entrega com dois valores: `customerFeeCents` (taxa cobrada do
