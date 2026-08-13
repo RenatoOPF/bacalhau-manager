@@ -104,13 +104,30 @@ export function parseNoventa_Nove(lines: string[]): ParsedExternalOrder | null {
       if (/^\[.+\]$/.test(cont)) { i++; continue; }
 
       // Sub-item indentado: "Nx Opção R$XX,XX" → opção selecionada
-      const subM = cont.match(/^(\d+)x\s+(.+?)\s+R\$\s*([\d.,]+)\s*$/);
+      const subM = cont.match(/^(\d+)x\s+(.+?)(\s+)R\$\s*([\d.,]+)\s*$/);
       if (subM) {
-        notes.push(subM[2].trim());
-        // Preço real vem da opção quando o item base tinha R$0
-        const subPrice = brlToCents(subM[3]);
-        if (priceCents === 0 && subPrice > 0) priceCents = subPrice;
+        let subName = subM[2].trim();
+        const subWordBoundary = subM[3].length > 1;
+        const subPrice = brlToCents(subM[4]);
         i++;
+
+        // O texto da opção também pode ser quebrado pela impressora
+        // (ex.: "Porção In" / "teira") — recompõe antes do próximo sub-item.
+        while (i + 1 < lines.length) {
+          const n2 = lines[i + 1];
+          if (!/^\s{2,}/.test(n2)) break;
+          const c2 = n2.trim();
+          if (!c2) { i++; continue; }
+          if (/^\[.+\]$/.test(c2)) break;
+          if (/^\d+x\s+.+R\$/.test(c2)) break; // próximo sub-item
+          if (/R\$/.test(n2)) break;
+          subName += subWordBoundary ? ' ' + c2 : c2;
+          i++;
+        }
+
+        notes.push(subName);
+        // Preço real vem da opção quando o item base tinha R$0
+        if (priceCents === 0 && subPrice > 0) priceCents = subPrice;
         continue;
       }
 
