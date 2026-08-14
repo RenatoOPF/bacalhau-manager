@@ -34,12 +34,20 @@ function toPrintOption(name: string): string {
  * livre/complemento) ou "obs: ..." (observação real do cliente) — sem isso,
  * complemento e observação saem ambos como "obs:" e a cozinha não distingue
  * "precisa adicionar" de "pedido do cliente".
+ *
+ * A etiqueta "(INTEIRA)/(INDIVIDUAL)" só vale pro 1º segmento — é sempre o
+ * Tamanho/Especificação do prato em si (1º grupo impresso pelo parser). Um
+ * complemento posterior (ex.: sobremesa com sua própria opção "Porção
+ * Inteira") viraria a mesma etiqueta genérica e ficaria indistinguível do
+ * tamanho do prato principal — por isso só o índice 0 pode virar a etiqueta.
  */
 function formatItemNote(note: string): string[] {
-  return note.split(' | ').map((part) => {
+  return note.split(' | ').map((part, index) => {
     const trimmed = part.trim();
-    const m = toPrintOption(trimmed).match(/^(?:\d+\s+)?(Individual|Inteira)$/i);
-    if (m) return `(${m[1].toUpperCase()})`;
+    if (index === 0) {
+      const m = toPrintOption(trimmed).match(/^(?:\d+\s+)?(Individual|Inteira)$/i);
+      if (m) return `(${m[1].toUpperCase()})`;
+    }
     if (/^Obs:/i.test(trimmed)) return `obs: ${trimmed.slice(4).trim()}`;
     return `+ ${trimmed}`;
   });
