@@ -29,15 +29,19 @@ function toPrintOption(name: string): string {
 
 /**
  * Formata as notes de um item iFood em segmentos prontos para imprimir.
- * O iFood une opção + obs com " | " (ex: "1 Porcao Inteira | Obs: sem cebola").
- * Cada segmento vira "(INTEIRA)" ou "obs: ..." separadamente.
+ * O iFood une opção + complementos + obs com " | " (ex.: "1 Porcao Inteira |
+ * 1 Chilli | Obs: sem cebola"). Cada segmento vira "(INTEIRA)", "+ ..." (opção
+ * livre/complemento) ou "obs: ..." (observação real do cliente) — sem isso,
+ * complemento e observação saem ambos como "obs:" e a cozinha não distingue
+ * "precisa adicionar" de "pedido do cliente".
  */
 function formatItemNote(note: string): string[] {
   return note.split(' | ').map((part) => {
-    const m = toPrintOption(part.trim()).match(/^(?:\d+\s+)?(Individual|Inteira)$/i);
+    const trimmed = part.trim();
+    const m = toPrintOption(trimmed).match(/^(?:\d+\s+)?(Individual|Inteira)$/i);
     if (m) return `(${m[1].toUpperCase()})`;
-    if (/^Obs:/i.test(part.trim())) return `obs: ${part.trim().slice(4).trim()}`;
-    return `obs: ${part.trim()}`;
+    if (/^Obs:/i.test(trimmed)) return `obs: ${trimmed.slice(4).trim()}`;
+    return `+ ${trimmed}`;
   });
 }
 
