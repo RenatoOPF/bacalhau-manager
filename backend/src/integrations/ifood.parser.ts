@@ -94,6 +94,13 @@ export function parseIfood(lines: string[]): ParsedExternalOrder | null {
       else if (s.startsWith('---') || /Pagamento/i.test(s)) {
         push();
         break;
+      } else if (cur._notes.length === 0) {
+        // Continuação do nome do prato (quebra de linha pela impressora),
+        // antes de qualquer opção/Obs — ex.: "Coca-Cola" + "350ml".
+        cur.name += ' ' + s;
+      } else {
+        // Continuação da última nota (opção ou Obs quebrados em duas linhas).
+        cur._notes[cur._notes.length - 1] += ' ' + s;
       }
     }
   }
