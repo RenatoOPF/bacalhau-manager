@@ -305,6 +305,7 @@ function StockRow({
   const [cost, setCost] = useState<string>(
     item.costCents ? String(item.costCents / 100) : '',
   );
+  const [rename, setRename] = useState(item.name);
   const [error, setError] = useState<string | null>(null);
 
   const update = useMutation({
@@ -448,6 +449,23 @@ function StockRow({
 
       {showConfig && (
         <div className="mt-2 border-t border-brand-cream-dark pt-2">
+          <p className="mb-1 text-xs font-semibold text-brand-ink/60">
+            Nome
+          </p>
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+            <input
+              className="input flex-1 p-1 text-sm"
+              value={rename}
+              onChange={(e) => setRename(e.target.value)}
+            />
+            <button
+              className="btn-primary px-2 py-1 text-xs"
+              disabled={update.isPending || !rename.trim() || rename.trim() === item.name}
+              onClick={() => update.mutate({ name: rename.trim() })}
+            >
+              Renomear
+            </button>
+          </div>
           <p className="mb-1 text-xs font-semibold text-brand-ink/60">
             Custo por {item.unit} (base do CMV/margem)
           </p>
