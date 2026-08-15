@@ -40,13 +40,20 @@ function toPrintOption(name: string): string {
  * complemento posterior (ex.: sobremesa com sua própria opção "Porção
  * Inteira") viraria a mesma etiqueta genérica e ficaria indistinguível do
  * tamanho do prato principal — por isso só o índice 0 pode virar a etiqueta.
+ * Peixes (ex.: "Sirigado - Meia Porção") trazem a proteína antes do tamanho;
+ * o prefixo entra na própria etiqueta em vez de cair como "+ ..." solto.
  */
 function formatItemNote(note: string): string[] {
   return note.split(' | ').map((part, index) => {
     const trimmed = part.trim();
     if (index === 0) {
-      const m = toPrintOption(trimmed).match(/^(?:\d+\s+)?(Individual|Inteira)$/i);
-      if (m) return `(${m[1].toUpperCase()})`;
+      const m = toPrintOption(trimmed).match(
+        /^(?:\d+\s+)?(?:(.+?)\s*-\s*)?(Individual|Inteira)$/i,
+      );
+      if (m) {
+        const prefix = m[1] ? `${m[1].toUpperCase()} - ` : '';
+        return `(${prefix}${m[2].toUpperCase()})`;
+      }
     }
     if (/^Obs:/i.test(trimmed)) return `obs: ${trimmed.slice(4).trim()}`;
     return `+ ${trimmed}`;
