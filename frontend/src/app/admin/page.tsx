@@ -262,13 +262,24 @@ function OrderCard({
             value={neighborhoodId}
             onChange={(e) => setNeighborhoodId(e.target.value)}
           >
-            <option value="">Bairro (define o repasse)…</option>
+            <option value="">Bairro (define a taxa)…</option>
             {neighborhoods.map((n) => (
               <option key={n.id} value={n.id}>
-                {n.name} — repasse {formatBRL(n.courierFeeCents)}
+                {n.name}
               </option>
             ))}
           </select>
+          {(() => {
+            const nb = neighborhoods.find((n) => n.id === neighborhoodId);
+            if (!nb) return null;
+            return (
+              <div className="rounded-lg bg-brand-cream px-3 py-2 text-sm">
+                <span>Taxa cliente: <strong className="text-brand-red">{formatBRL(nb.customerFeeCents)}</strong></span>
+                <span className="mx-2 text-brand-ink/30">·</span>
+                <span>Repasse: <strong>{formatBRL(nb.courierFeeCents)}</strong></span>
+              </div>
+            );
+          })()}
           {couriers.length === 0 && (
             <p className="text-xs text-brand-red">
               Cadastre entregadores (funcionários com perfil Entregador).
