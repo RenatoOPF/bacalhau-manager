@@ -48,13 +48,14 @@ export class CashService {
     return { closed: true };
   }
 
-  /** Pedidos do dia ainda pendentes de pagamento (não cancelados). */
+  /** Pedidos do dia pendentes de cobrança presencial (exclui pagamentos online). */
   pendingPayments() {
     const { start, end } = dayRange(localDay(new Date()));
     return this.prisma.order.findMany({
       where: {
         createdAt: { gte: start, lt: end },
         paymentStatus: PaymentStatus.PENDING,
+        paymentMethod: { not: PaymentMethod.ONLINE },
         status: { not: 'CANCELED' },
       },
       orderBy: { createdAt: 'asc' },
