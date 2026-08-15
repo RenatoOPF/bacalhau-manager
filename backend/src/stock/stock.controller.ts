@@ -15,6 +15,7 @@ import {
   CreateStockLinkDto,
   MoveStockDto,
   ProduceDto,
+  ReorderStockDto,
   UpdateStockItemDto,
   UpdateStockLinkDto,
 } from './dto/stock.dto';
@@ -59,6 +60,11 @@ export class StockController {
   @Delete('links/:id')
   removeLink(@Param('id') id: string) {
     return this.stock.removeLink(id);
+  }
+
+  @Post('reorder')
+  reorder(@Body() dto: ReorderStockDto) {
+    return this.stock.reorder(dto.ids);
   }
 
   @Post(':id/move')

@@ -706,6 +706,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ direction }),
     }),
+  reorderStock: (ids: string[]) =>
+    request<{ reordered: boolean }>('/stock/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    }),
   stockMovements: (id: string) =>
     request<StockMovementRow[]>(`/stock/${id}/movements`),
   // Produção manual (bacalhau): baixa a matéria-prima do insumo (kg) e
