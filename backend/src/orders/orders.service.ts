@@ -20,7 +20,6 @@ import { AssignDeliveryDto } from './dto/assign-delivery.dto';
 import { nextDailyNumber } from '../common/daily-number';
 import { dayRange, localDay } from '../common/date-range';
 import { StockService } from '../stock/stock.service';
-import { DeliveryService } from '../delivery/delivery.service';
 
 @Injectable()
 export class OrdersService {
@@ -30,7 +29,6 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
     private readonly stock: StockService,
-    private readonly delivery: DeliveryService,
     @InjectQueue(ORDERS_QUEUE)
     private readonly ordersQueue: Queue<PrintOrderJobData>,
   ) {}
@@ -84,16 +82,10 @@ export class OrdersService {
       };
     });
 
-    // Taxa de entrega: coordenadas → faixa por km (pedido próprio) ou bairro (legado).
+    // Taxa de entrega: lookup pelo bairro cadastrado.
     let deliveryFeeCents = 0;
     let neighborhoodName: string | undefined;
-    if (dto.addressLat != null && dto.addressLng != null) {
-      const { zone } = await this.delivery.feeByDistance(
-        dto.addressLat,
-        dto.addressLng,
-      );
-      if (zone) deliveryFeeCents = zone.feeCents;
-    } else if (dto.neighborhoodId) {
+    if (dto.neighborhoodId) {
       const n = await this.prisma.neighborhood.findUnique({
         where: { id: dto.neighborhoodId },
       });

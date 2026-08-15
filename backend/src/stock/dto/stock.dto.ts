@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsBoolean,
   IsIn,
   IsNumber,
@@ -9,6 +10,12 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
+
+export class ReorderStockDto {
+  @IsArray()
+  @IsString({ each: true })
+  ids: string[];
+}
 
 // As quantidades chegam na UNIDADE do insumo (porções/kg/un, aceitam fração:
 // 0.5 porção, 1.2 kg); o service converte para milésimos antes de gravar.

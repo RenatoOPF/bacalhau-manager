@@ -21,10 +21,19 @@ function formatBRL(cents: number): string {
  * ex.: "Tilápia Meia Porção" → "Tilápia Individual"). O cardápio do cliente
  * mantém o nome original.
  */
+// Aliases de exibição para a cozinha: nome no cardápio → label impresso.
+const KITCHEN_ALIASES: [RegExp, string][] = [
+  [/Dezena Lusitana/gi, '10 bolinhos'],
+];
+
 function toPrintOption(name: string): string {
-  return name
+  let result = name
     .replace(/Meia Por[çc][ãa]o/gi, 'Individual')
     .replace(/Por[çc][ãa]o Inteira/gi, 'Inteira');
+  for (const [pattern, alias] of KITCHEN_ALIASES) {
+    result = result.replace(pattern, alias);
+  }
+  return result;
 }
 
 /**

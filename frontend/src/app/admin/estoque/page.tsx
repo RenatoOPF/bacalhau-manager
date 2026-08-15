@@ -2,6 +2,21 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { api, formatBRL, type StockItem, type StockUnit } from '@/lib/api';
 
 /** "12,5" no lugar de "12.5" (sem casa decimal quando inteiro). */
@@ -43,6 +58,10 @@ export default function EstoquePage() {
   const [newName, setNewName] = useState('');
   const [newUnit, setNewUnit] = useState<StockUnit>('porção');
   const [newQty, setNewQty] = useState('');
+  const [localItems, setLocalItems] = useState<StockItem[] | null>(null);
+
+  const items = localItems ?? stock ?? [];
+  const low = items.filter((s) => s.active && s.qty <= s.alertQty);
 
   const create = useMutation({
     mutationFn: () =>
@@ -54,12 +73,33 @@ export default function EstoquePage() {
     onSuccess: () => {
       setNewName('');
       setNewQty('');
+      setLocalItems(null);
       invalidate();
     },
   });
 
-  const items = stock ?? [];
-  const low = items.filter((s) => s.active && s.qty <= s.alertQty);
+  const reorder = useMutation({
+    mutationFn: (ids: string[]) => api.reorderStock(ids),
+    onSuccess: () => {
+      setLocalItems(null);
+      invalidate();
+    },
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const current = localItems ?? stock ?? [];
+    const oldIdx = current.findIndex((s) => s.id === active.id);
+    const newIdx = current.findIndex((s) => s.id === over.id);
+    const reordered = arrayMove(current, oldIdx, newIdx);
+    setLocalItems(reordered);
+    reorder.mutate(reordered.map((s) => s.id));
+  }
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
@@ -67,7 +107,7 @@ export default function EstoquePage() {
       <p className="mt-1 text-sm text-brand-ink/60">
         Porções preparadas, matéria-prima (kg) e unidades. A venda desconta
         sozinha (Meia = 0,5 porção); zerado não bloqueia — só alerta aqui. Use
-        “Produção” para converter kg em porções. Vínculos: aba Cardápio.
+        &quot;Produção&quot; para converter kg em porções. Vínculos: aba Cardápio.
       </p>
 
       {low.length > 0 && (
@@ -116,23 +156,32 @@ export default function EstoquePage() {
 
       {isLoading && <p className="mt-6">Carregando...</p>}
 
-      <div className="mt-6 space-y-2">
-        {items.map((s, i, arr) => (
-          <StockRow
-            key={s.id}
-            item={s}
-            allItems={items}
-            onChange={invalidate}
-            isFirst={i === 0}
-            isLast={i === arr.length - 1}
-          />
-        ))}
-        {!isLoading && items.length === 0 && (
-          <p className="text-sm text-brand-ink/40">
-            Nenhum insumo cadastrado ainda.
-          </p>
-        )}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={items.map((s) => s.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="mt-6 space-y-2">
+            {items.map((s) => (
+              <StockRow
+                key={s.id}
+                item={s}
+                allItems={items}
+                onChange={invalidate}
+              />
+            ))}
+            {!isLoading && items.length === 0 && (
+              <p className="text-sm text-brand-ink/40">
+                Nenhum insumo cadastrado ainda.
+              </p>
+            )}
+          </div>
+        </SortableContext>
+      </DndContext>
     </main>
   );
 }
@@ -232,15 +281,20 @@ function StockRow({
   item,
   allItems,
   onChange,
-  isFirst,
-  isLast,
 }: {
   item: StockItem;
   allItems: StockItem[];
   onChange: () => void;
-  isFirst: boolean;
-  isLast: boolean;
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
   const [setValue, setSetValue] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
@@ -251,6 +305,7 @@ function StockRow({
   const [cost, setCost] = useState<string>(
     item.costCents ? String(item.costCents / 100) : '',
   );
+  const [rename, setRename] = useState(item.name);
   const [error, setError] = useState<string | null>(null);
 
   const update = useMutation({
@@ -270,12 +325,6 @@ function StockRow({
     onError: (e: Error) => setError(e.message),
   });
 
-  const move = useMutation({
-    mutationFn: (direction: 'up' | 'down') => api.moveStock(item.id, direction),
-    onSuccess: onChange,
-    onError: (e: Error) => setError(e.message),
-  });
-
   const { data: movements } = useQuery({
     queryKey: ['stock-movements', item.id],
     queryFn: () => api.stockMovements(item.id),
@@ -285,8 +334,16 @@ function StockRow({
   const zero = item.qty <= 0;
   const lowStock = !zero && item.qty <= item.alertQty;
 
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   return (
     <div
+      ref={setNodeRef}
+      style={style}
       className={`card p-3 ${
         zero
           ? 'border-brand-red/40 bg-red-50'
@@ -296,24 +353,21 @@ function StockRow({
       } ${item.active ? '' : 'opacity-50'}`}
     >
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex flex-col">
-          <button
-            className="text-xs leading-none text-brand-ink/50 disabled:opacity-20"
-            title="Mover para cima"
-            disabled={isFirst || move.isPending}
-            onClick={() => move.mutate('up')}
-          >
-            ▲
-          </button>
-          <button
-            className="text-xs leading-none text-brand-ink/50 disabled:opacity-20"
-            title="Mover para baixo"
-            disabled={isLast || move.isPending}
-            onClick={() => move.mutate('down')}
-          >
-            ▼
-          </button>
-        </div>
+        <button
+          className="cursor-grab touch-none text-brand-ink/30 hover:text-brand-ink/60 active:cursor-grabbing"
+          title="Arrastar para reordenar"
+          {...attributes}
+          {...listeners}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <rect x="3" y="3" width="3" height="3" rx="1" />
+            <rect x="10" y="3" width="3" height="3" rx="1" />
+            <rect x="3" y="7" width="3" height="3" rx="1" />
+            <rect x="10" y="7" width="3" height="3" rx="1" />
+            <rect x="3" y="11" width="3" height="3" rx="1" />
+            <rect x="10" y="11" width="3" height="3" rx="1" />
+          </svg>
+        </button>
         <div className="min-w-32 flex-1">
           <p className="font-semibold">{item.name}</p>
           <p className="text-xs text-brand-ink/60">
@@ -395,6 +449,23 @@ function StockRow({
 
       {showConfig && (
         <div className="mt-2 border-t border-brand-cream-dark pt-2">
+          <p className="mb-1 text-xs font-semibold text-brand-ink/60">
+            Nome
+          </p>
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+            <input
+              className="input flex-1 p-1 text-sm"
+              value={rename}
+              onChange={(e) => setRename(e.target.value)}
+            />
+            <button
+              className="btn-primary px-2 py-1 text-xs"
+              disabled={update.isPending || !rename.trim() || rename.trim() === item.name}
+              onClick={() => update.mutate({ name: rename.trim() })}
+            >
+              Renomear
+            </button>
+          </div>
           <p className="mb-1 text-xs font-semibold text-brand-ink/60">
             Custo por {item.unit} (base do CMV/margem)
           </p>

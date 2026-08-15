@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -7,7 +6,6 @@ import {
   Param,
   Patch,
   Post,
-  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
@@ -16,7 +14,6 @@ import {
   CreateNeighborhoodDto,
   UpdateNeighborhoodDto,
 } from './dto/neighborhood.dto';
-import { CreateFeeZoneDto, UpdateFeeZoneDto } from './dto/fee-zone.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -68,57 +65,4 @@ export class DeliveryController {
     return this.delivery.remove(id);
   }
 
-  // ---- Faixas de taxa por distância ----
-
-  /** Faixas ativas — público (checkout usa para exibir tabela de taxas). */
-  @Get('fee-zones')
-  listZonesPublic() {
-    return this.delivery.listZones(true);
-  }
-
-  @Get('fee-zones/all')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.MANAGER)
-  listZonesAll() {
-    return this.delivery.listZones(false);
-  }
-
-  /**
-   * Calcula a taxa de entrega para as coordenadas do cliente.
-   * Público — chamado pelo checkout após geocodificação do endereço.
-   * Retorna `zone: null` se o endereço estiver fora das faixas cadastradas.
-   */
-  @Get('delivery/fee')
-  async feeByDistance(
-    @Query('lat') latStr: string,
-    @Query('lng') lngStr: string,
-  ) {
-    const lat = parseFloat(latStr);
-    const lng = parseFloat(lngStr);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      throw new BadRequestException('lat e lng devem ser números válidos.');
-    }
-    return this.delivery.feeByDistance(lat, lng);
-  }
-
-  @Post('fee-zones')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.MANAGER)
-  createZone(@Body() dto: CreateFeeZoneDto) {
-    return this.delivery.createZone(dto);
-  }
-
-  @Patch('fee-zones/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.MANAGER)
-  updateZone(@Param('id') id: string, @Body() dto: UpdateFeeZoneDto) {
-    return this.delivery.updateZone(id, dto);
-  }
-
-  @Delete('fee-zones/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.MANAGER)
-  removeZone(@Param('id') id: string) {
-    return this.delivery.removeZone(id);
-  }
 }

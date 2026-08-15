@@ -7,7 +7,6 @@ import {
   formatBRL,
   mediaUrl,
   type CreateOrderPayload,
-  type FeeByDistanceResult,
   type MenuItem,
 } from '@/lib/api';
 import dynamic from 'next/dynamic';
@@ -92,18 +91,6 @@ export default function CardapioPage() {
     window.scrollTo(0, 0);
   }, [view]);
 
-  // Taxa de entrega calculada no backend via haversine (apenas pedidos próprios).
-  const feeQuery = useQuery<FeeByDistanceResult>({
-    queryKey: ['delivery-fee', mapCoords?.lat, mapCoords?.lon],
-    queryFn: () =>
-      api.feeByDistance(
-        parseFloat(mapCoords!.lat),
-        parseFloat(mapCoords!.lon),
-      ),
-    enabled: mapCoords != null,
-    staleTime: 60_000,
-  });
-
   const totalCents = useMemo(
     () =>
       Object.values(cart).reduce(
@@ -112,9 +99,6 @@ export default function CardapioPage() {
       ),
     [cart],
   );
-
-  const deliveryFeeCents = feeQuery.data?.zone?.feeCents ?? 0;
-  const grandTotalCents = totalCents + deliveryFeeCents;
 
   const createOrder = useMutation({
     mutationFn: (payload: CreateOrderPayload) => api.createOrder(payload),
@@ -311,34 +295,6 @@ export default function CardapioPage() {
                 value={form.address}
                 onChange={handleAddressChange}
               />
-              {/* Taxa de entrega calculada automaticamente pelo endereço */}
-              {mapCoords && (
-                <div className="rounded-lg border border-brand-cream-dark bg-brand-cream px-3 py-2 text-sm">
-                  {feeQuery.isPending && (
-                    <span className="text-brand-ink/50">Calculando taxa de entrega…</span>
-                  )}
-                  {feeQuery.data && feeQuery.data.zone && (
-                    <span>
-                      Entrega{' '}
-                      <strong>{feeQuery.data.zone.label}</strong>
-                      {' — '}
-                      <strong className="text-brand-red">
-                        {feeQuery.data.zone.feeCents > 0
-                          ? formatBRL(feeQuery.data.zone.feeCents)
-                          : 'grátis'}
-                      </strong>
-                      <span className="ml-2 text-brand-ink/50">
-                        ({feeQuery.data.distanceKm.toFixed(1)} km)
-                      </span>
-                    </span>
-                  )}
-                  {feeQuery.data && !feeQuery.data.zone && (
-                    <span className="text-brand-red">
-                      Endereço fora da área de entrega ({feeQuery.data.distanceKm.toFixed(1)} km do restaurante).
-                    </span>
-                  )}
-                </div>
-              )}
               <input
                 className="input w-full p-2"
                 placeholder="Complemento (apto, bloco, referência…)"
@@ -377,15 +333,11 @@ export default function CardapioPage() {
               </div>
               <div className="flex justify-between text-brand-ink/70">
                 <span>Entrega</span>
-                <span>
-                  {deliveryFeeCents > 0 ? formatBRL(deliveryFeeCents) : 'grátis'}
-                </span>
+                <span>a confirmar</span>
               </div>
               <div className="flex justify-between font-bold">
-                <span>Total</span>
-                <span className="text-brand-red">
-                  {formatBRL(grandTotalCents)}
-                </span>
+                <span>Total estimado</span>
+                <span className="text-brand-red">{formatBRL(totalCents)}</span>
               </div>
             </section>
 
@@ -393,7 +345,7 @@ export default function CardapioPage() {
             <div className="fixed inset-x-0 bottom-0 z-20 border-t-2 border-brand-gold bg-brand-red p-3 shadow-lg">
               <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
                 <span className="font-display text-lg font-bold text-white">
-                  {formatBRL(grandTotalCents)}
+                  {formatBRL(totalCents)}
                 </span>
                 <button
                   className="btn-gold px-5 py-2"

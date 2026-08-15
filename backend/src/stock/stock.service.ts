@@ -193,6 +193,16 @@ export class StockService {
     return { moved: true };
   }
 
+  /** Reordena todos os insumos de acordo com a lista de IDs recebida. */
+  async reorder(ids: string[]) {
+    await this.prisma.$transaction(
+      ids.map((id, i) =>
+        this.prisma.stockItem.update({ where: { id }, data: { sortOrder: i } }),
+      ),
+    );
+    return { reordered: true };
+  }
+
   /** Últimas movimentações do insumo (auditoria). */
   async movements(id: string) {
     const rows = await this.prisma.stockMovement.findMany({

@@ -4,7 +4,6 @@ import { ORDERS_QUEUE, ORDERS_JOB_OPTIONS } from '../queue/queue.constants';
 import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
 import { StockModule } from '../stock/stock.module';
-import { DeliveryModule } from '../delivery/delivery.module';
 
 @Module({
   // defaultJobOptions no lado produtor: o retry é gravado no job ao enfileirar.
@@ -14,7 +13,6 @@ import { DeliveryModule } from '../delivery/delivery.module';
       defaultJobOptions: ORDERS_JOB_OPTIONS,
     }),
     StockModule,
-    DeliveryModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

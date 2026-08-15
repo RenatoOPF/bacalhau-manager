@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, formatBRL, type DeliveryFeeZone, type Neighborhood } from '@/lib/api';
+import { api, formatBRL, type Neighborhood } from '@/lib/api';
 
 function isoDaysAgo(days: number): string {
   const d = new Date();
@@ -21,17 +21,10 @@ export default function EntregasPage() {
   const qc = useQueryClient();
   const invalidate = () =>
     qc.invalidateQueries({ queryKey: ['neighborhoods-all'] });
-  const invalidateZones = () =>
-    qc.invalidateQueries({ queryKey: ['fee-zones-all'] });
 
   const neighborhoods = useQuery({
     queryKey: ['neighborhoods-all'],
     queryFn: () => api.listNeighborhoodsAll(),
-  });
-
-  const zonesQuery = useQuery({
-    queryKey: ['fee-zones-all'],
-    queryFn: () => api.listFeeZonesAll(),
   });
 
   const [from, setFrom] = useState(isoDaysAgo(7));
@@ -46,37 +39,6 @@ export default function EntregasPage() {
   const [customerFee, setCustomerFee] = useState('');
   const [courierFee, setCourierFee] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  // Nova faixa de taxa por km.
-  const [zLabel, setZLabel] = useState('');
-  const [zMaxKm, setZMaxKm] = useState('');
-  const [zFee, setZFee] = useState('');
-  const [zCourierFee, setZCourierFee] = useState('');
-  const [zError, setZError] = useState<string | null>(null);
-
-  const addZone = useMutation({
-    mutationFn: () => {
-      if (!zLabel.trim()) throw new Error('Informe o rótulo da faixa.');
-      const maxKm = parseFloat(zMaxKm.replace(',', '.'));
-      if (!Number.isFinite(maxKm) || maxKm <= 0)
-        throw new Error('Informe um limite de km válido.');
-      return api.createFeeZone({
-        label: zLabel.trim(),
-        maxKm,
-        feeCents: reaisToCents(zFee) ?? 0,
-        courierFeeCents: reaisToCents(zCourierFee) ?? 0,
-      });
-    },
-    onSuccess: () => {
-      setZLabel('');
-      setZMaxKm('');
-      setZFee('');
-      setZCourierFee('');
-      setZError(null);
-      invalidateZones();
-    },
-    onError: (e: Error) => setZError(e.message),
-  });
 
   const add = useMutation({
     mutationFn: () => {
@@ -102,59 +64,6 @@ export default function EntregasPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
       <h1 className="page-title">Entregas</h1>
-
-      {/* Faixas de taxa por distância */}
-      <section className="card mt-4 p-4">
-        <h2 className="section-title">Taxas por distância (km)</h2>
-        <p className="text-sm text-brand-ink/60">
-          Faixas usadas no cardápio próprio. Ordene pelo limite (menor primeiro).
-          iFood e 99Food usam taxas próprias.
-        </p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto]">
-          <input
-            className="input p-2"
-            placeholder="Rótulo (ex: Até 5 km)"
-            value={zLabel}
-            onChange={(e) => setZLabel(e.target.value)}
-          />
-          <input
-            className="input w-24 p-2"
-            placeholder="Até km"
-            value={zMaxKm}
-            onChange={(e) => setZMaxKm(e.target.value)}
-          />
-          <input
-            className="input w-28 p-2"
-            placeholder="Cliente R$"
-            value={zFee}
-            onChange={(e) => setZFee(e.target.value)}
-          />
-          <input
-            className="input w-28 p-2"
-            placeholder="Repasse R$"
-            value={zCourierFee}
-            onChange={(e) => setZCourierFee(e.target.value)}
-          />
-          <button
-            className="btn-success px-3 py-2"
-            disabled={addZone.isPending}
-            onClick={() => addZone.mutate()}
-          >
-            Adicionar
-          </button>
-        </div>
-        {zError && <p className="mt-1 text-sm text-brand-red">{zError}</p>}
-        <ul className="mt-3 divide-y divide-brand-cream-dark">
-          {(zonesQuery.data ?? []).map((z) => (
-            <FeeZoneRow key={z.id} z={z} onChange={invalidateZones} />
-          ))}
-          {(zonesQuery.data ?? []).length === 0 && (
-            <li className="py-3 text-sm text-brand-ink/40">
-              Nenhuma faixa cadastrada. Sem faixas, a entrega é sempre grátis.
-            </li>
-          )}
-        </ul>
-      </section>
 
       {/* Cadastro de bairros */}
       <section className="card mt-4 p-4">
@@ -261,123 +170,6 @@ export default function EntregasPage() {
         </div>
       </section>
     </main>
-  );
-}
-
-function FeeZoneRow({
-  z,
-  onChange,
-}: {
-  z: DeliveryFeeZone;
-  onChange: () => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [label, setLabel] = useState(z.label);
-  const [maxKm, setMaxKm] = useState(String(z.maxKm));
-  const [fee, setFee] = useState((z.feeCents / 100).toFixed(2));
-  const [courierFee, setCourierFee] = useState(
-    (z.courierFeeCents / 100).toFixed(2),
-  );
-
-  const save = useMutation({
-    mutationFn: () =>
-      api.updateFeeZone(z.id, {
-        label: label.trim(),
-        maxKm: parseFloat(maxKm.replace(',', '.')),
-        feeCents: reaisToCents(fee) ?? 0,
-        courierFeeCents: reaisToCents(courierFee) ?? 0,
-      }),
-    onSuccess: () => {
-      setEditing(false);
-      onChange();
-    },
-  });
-  const toggle = useMutation({
-    mutationFn: () => api.updateFeeZone(z.id, { active: !z.active }),
-    onSuccess: onChange,
-  });
-  const remove = useMutation({
-    mutationFn: () => api.deleteFeeZone(z.id),
-    onSuccess: onChange,
-  });
-
-  if (editing) {
-    return (
-      <li className="flex flex-wrap items-center gap-2 py-2 text-sm">
-        <input
-          className="input flex-1 p-1"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="Rótulo"
-        />
-        <input
-          className="input w-20 p-1"
-          value={maxKm}
-          onChange={(e) => setMaxKm(e.target.value)}
-          title="Limite em km"
-          placeholder="km"
-        />
-        <input
-          className="input w-24 p-1"
-          value={fee}
-          onChange={(e) => setFee(e.target.value)}
-          title="Taxa do cliente"
-        />
-        <input
-          className="input w-24 p-1"
-          value={courierFee}
-          onChange={(e) => setCourierFee(e.target.value)}
-          title="Repasse ao entregador"
-        />
-        <button
-          className="btn-primary px-2 py-1 text-xs"
-          onClick={() => save.mutate()}
-        >
-          Salvar
-        </button>
-        <button
-          className="btn-outline px-2 py-1 text-xs"
-          onClick={() => setEditing(false)}
-        >
-          Cancelar
-        </button>
-      </li>
-    );
-  }
-
-  return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
-      <span
-        className={z.active ? 'flex-1' : 'flex-1 text-brand-ink/40 line-through'}
-      >
-        {z.label}{' '}
-        <span className="text-brand-ink/40">(até {z.maxKm} km)</span>
-      </span>
-      <span className="text-brand-ink/60">
-        cliente {formatBRL(z.feeCents)} · repasse{' '}
-        <strong className="text-brand-red">{formatBRL(z.courierFeeCents)}</strong>
-      </span>
-      <button
-        className="btn-outline px-2 py-0.5 text-xs"
-        onClick={() => setEditing(true)}
-      >
-        Editar
-      </button>
-      <button
-        className="btn-outline px-2 py-0.5 text-xs"
-        onClick={() => toggle.mutate()}
-      >
-        {z.active ? 'Desativar' : 'Ativar'}
-      </button>
-      <button
-        className="btn-danger px-2 py-0.5 text-xs"
-        onClick={() => {
-          if (confirm(`Excluir a faixa "${z.label}"?`)) remove.mutate();
-        }}
-      >
-        Excluir
-      </button>
-    </li>
   );
 }
 
