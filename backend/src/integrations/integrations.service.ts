@@ -16,6 +16,7 @@ import { isIfood, parseIfood } from './ifood.parser';
 import { isNoventa_Nove, parseNoventa_Nove } from './noventa-nove.parser';
 import { ParsedExternalOrder } from './parsed-order';
 import { StockService } from '../stock/stock.service';
+import { PrintConfigService } from '../printing/print-config.service';
 
 export type IngestResult =
   | { status: 'created'; protocol: number; channel: string }
@@ -30,6 +31,7 @@ export class IntegrationsService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
     private readonly stock: StockService,
+    private readonly printConfig: PrintConfigService,
     @InjectQueue(ORDERS_QUEUE)
     private readonly ordersQueue: Queue<PrintOrderJobData>,
   ) {}
@@ -99,8 +101,10 @@ export class IntegrationsService {
       include: { items: true },
     });
 
-    await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
-    await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
+    if (this.printConfig.isEnabled()) {
+      await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
+      await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
+    }
 
     // Baixa o estoque casando os itens por texto (nunca lança).
     await this.stock.consumeForOrder(order);

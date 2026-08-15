@@ -62,6 +62,14 @@ export default function CaixaPage() {
     queryKey: ['neighborhoods'],
     queryFn: () => api.listNeighborhoods(),
   });
+  const { data: printConfig } = useQuery({
+    queryKey: ['print-config'],
+    queryFn: () => api.getPrintConfig(),
+  });
+  const togglePrint = useMutation({
+    mutationFn: (enabled: boolean) => api.setPrintConfig(enabled),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['print-config'] }),
+  });
 
   // Tempo real: novos pedidos e mudanças de status recarregam a fila.
   useEffect(() => {
@@ -84,9 +92,22 @@ export default function CaixaPage() {
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
       <div className="flex items-center justify-between">
         <h1 className="page-title">Fila de pedidos</h1>
-        <a href="/admin/balcao" className="btn-primary px-4 py-2 text-sm">
-          + Novo pedido
-        </a>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => togglePrint.mutate(!(printConfig?.enabled ?? true))}
+            disabled={togglePrint.isPending}
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              (printConfig?.enabled ?? true)
+                ? 'bg-brand-ink text-white hover:bg-brand-ink/80'
+                : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+            }`}
+          >
+            {(printConfig?.enabled ?? true) ? 'Impressao: ON' : 'Impressao: OFF'}
+          </button>
+          <a href="/admin/balcao" className="btn-primary px-4 py-2 text-sm">
+            + Novo pedido
+          </a>
+        </div>
       </div>
 
       {active.length === 0 && (

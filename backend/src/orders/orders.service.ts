@@ -20,6 +20,7 @@ import { AssignDeliveryDto } from './dto/assign-delivery.dto';
 import { nextDailyNumber } from '../common/daily-number';
 import { dayRange, localDay } from '../common/date-range';
 import { StockService } from '../stock/stock.service';
+import { PrintConfigService } from '../printing/print-config.service';
 
 @Injectable()
 export class OrdersService {
@@ -29,6 +30,7 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
     private readonly stock: StockService,
+    private readonly printConfig: PrintConfigService,
     @InjectQueue(ORDERS_QUEUE)
     private readonly ordersQueue: Queue<PrintOrderJobData>,
   ) {}
@@ -120,9 +122,10 @@ export class OrdersService {
       include: { items: true },
     });
 
-    // Jobs separados por impressora: retry de um não reimprime o outro.
-    await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
-    await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
+    if (this.printConfig.isEnabled()) {
+      await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
+      await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
+    }
 
     // Baixa o estoque (nunca lança — falha só é registrada no log).
     await this.stock.consumeForOrder(order);
@@ -284,8 +287,10 @@ export class OrdersService {
   /** Reimpressão manual em caso de falha (ambos os tickets). */
   async reprint(id: string) {
     const order = await this.findOne(id);
-    await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
-    await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
+    if (this.printConfig.isEnabled()) {
+      await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
+      await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
+    }
     return { enqueued: true, protocol: order.protocol };
   }
 

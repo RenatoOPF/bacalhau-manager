@@ -999,6 +999,12 @@ export const api = {
       `/customers/${customerId}/addresses/${addressId}`,
       { method: 'DELETE' },
     ),
+  getPrintConfig: () => request<{ enabled: boolean }>('/config/printing'),
+  setPrintConfig: (enabled: boolean) =>
+    request<{ enabled: boolean }>('/config/printing', {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled }),
+    }),
 };
 
 function periodQuery(from?: string, to?: string): string {
