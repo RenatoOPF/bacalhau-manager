@@ -6,7 +6,7 @@ import {
 import { PaymentMethod, PaymentStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-import { dayRange, periodFilter } from '../common/date-range';
+import { dayRange, localDay, periodFilter } from '../common/date-range';
 import { resetOrderNumber } from '../common/daily-number';
 
 @Injectable()
@@ -48,10 +48,12 @@ export class CashService {
     return { closed: true };
   }
 
-  /** Pedidos ainda pendentes de pagamento (não cancelados). */
+  /** Pedidos do dia ainda pendentes de pagamento (não cancelados). */
   pendingPayments() {
+    const { start, end } = dayRange(localDay(new Date()));
     return this.prisma.order.findMany({
       where: {
+        createdAt: { gte: start, lt: end },
         paymentStatus: PaymentStatus.PENDING,
         status: { not: 'CANCELED' },
       },
