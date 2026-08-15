@@ -2,7 +2,7 @@
 
 import { useRef, useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, formatBRL, type MenuItem, type MenuCategory, type Customer } from '@/lib/api';
+import { api, formatBRL, type MenuItem, type MenuCategory, type Customer, type Neighborhood } from '@/lib/api';
 
 interface CartLine {
   menuItemId: string;
@@ -137,10 +137,15 @@ export default function BalcaoPage() {
     queryKey: ['menu'],
     queryFn: api.getMenu,
   });
+  const { data: neighborhoods = [] } = useQuery<Neighborhood[]>({
+    queryKey: ['neighborhoods'],
+    queryFn: () => api.listNeighborhoods(),
+  });
 
   const [cart, setCart] = useState<Record<string, CartLine>>({});
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [selectedNeighborhoodId, setSelectedNeighborhoodId] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
@@ -153,6 +158,22 @@ export default function BalcaoPage() {
     [cart],
   );
 
+  function normalize(s: string) {
+    return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  }
+
+  function matchNeighborhood(neighborhoodName?: string | null): string | null {
+    if (!neighborhoodName) return null;
+    const n = normalize(neighborhoodName);
+    const exact = neighborhoods.find((nb) => normalize(nb.name) === n);
+    if (exact) return exact.id;
+    const partial = neighborhoods.find((nb) => {
+      const a = normalize(nb.name);
+      return a.includes(n) || n.includes(a);
+    });
+    return partial?.id ?? null;
+  }
+
   // Quando seleciona cliente, preenche nome e telefone e pré-seleciona endereço padrão.
   function handleCustomerSelect(c: Customer | null) {
     setSelectedCustomer(c);
@@ -161,9 +182,17 @@ export default function BalcaoPage() {
       setCustomerPhone(c.phone ?? '');
       const def = c.addresses.find((a) => a.isDefault) ?? c.addresses[0];
       setSelectedAddressId(def?.id ?? null);
+      setSelectedNeighborhoodId(matchNeighborhood(def?.neighborhood));
     } else {
       setSelectedAddressId(null);
+      setSelectedNeighborhoodId(null);
     }
+  }
+
+  function handleAddressChange(addressId: string) {
+    setSelectedAddressId(addressId);
+    const addr = selectedCustomer?.addresses.find((a) => a.id === addressId);
+    setSelectedNeighborhoodId(matchNeighborhood(addr?.neighborhood));
   }
 
   const addToCart = (item: MenuItem, optionId?: string) => {
@@ -209,8 +238,10 @@ export default function BalcaoPage() {
         customerPhone: customerPhone.trim() || undefined,
         addressStreet: selectedAddress?.street,
         addressNumber: selectedAddress?.number ?? undefined,
+        addressNeighborhood: selectedAddress?.neighborhood ?? undefined,
         addressLat: selectedAddress?.lat ?? undefined,
         addressLng: selectedAddress?.lng ?? undefined,
+        neighborhoodId: selectedNeighborhoodId ?? undefined,
         notes: notes.trim() || undefined,
         paymentMethod,
         items,
@@ -338,7 +369,7 @@ export default function BalcaoPage() {
               <AddressSelect
                 customer={selectedCustomer}
                 selectedAddressId={selectedAddressId}
-                onChange={setSelectedAddressId}
+                onChange={handleAddressChange}
               />
             )}
 
