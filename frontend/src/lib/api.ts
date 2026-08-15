@@ -470,21 +470,6 @@ export interface CreateOrderPayload {
   }[];
 }
 
-export interface DeliveryFeeZone {
-  id: string;
-  label: string;
-  maxKm: number;
-  feeCents: number;
-  courierFeeCents: number;
-  active: boolean;
-  sortOrder: number;
-}
-
-export interface FeeByDistanceResult {
-  distanceKm: number;
-  zone: DeliveryFeeZone | null;
-}
-
 export interface Neighborhood {
   id: string;
   name: string;
@@ -780,36 +765,6 @@ export const api = {
     request<{ deleted: boolean }>(`/orders/${id}`, { method: 'DELETE' }),
 
   // ---- Entrega (bairros / entregadores) ----
-  feeByDistance: (lat: number, lng: number) =>
-    request<FeeByDistanceResult>(`/delivery/fee?lat=${lat}&lng=${lng}`),
-  listFeeZones: () => request<DeliveryFeeZone[]>('/fee-zones'),
-  listFeeZonesAll: () => request<DeliveryFeeZone[]>('/fee-zones/all'),
-  createFeeZone: (payload: {
-    label: string;
-    maxKm: number;
-    feeCents: number;
-    courierFeeCents?: number;
-  }) =>
-    request<DeliveryFeeZone>('/fee-zones', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  updateFeeZone: (
-    id: string,
-    payload: {
-      label?: string;
-      maxKm?: number;
-      feeCents?: number;
-      courierFeeCents?: number;
-      active?: boolean;
-    },
-  ) =>
-    request<DeliveryFeeZone>(`/fee-zones/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    }),
-  deleteFeeZone: (id: string) =>
-    request<{ id: string }>(`/fee-zones/${id}`, { method: 'DELETE' }),
   listNeighborhoods: () => request<Neighborhood[]>('/neighborhoods'),
   listNeighborhoodsAll: () => request<Neighborhood[]>('/neighborhoods/all'),
   createNeighborhood: (payload: {
