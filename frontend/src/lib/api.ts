@@ -1025,7 +1025,8 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ enabled }),
     }),
-  getCourierOrders: () => request<CourierOrder[]>('/orders/courier/mine'),
+  getCourierOrders: (from?: string, to?: string) =>
+    request<CourierOrder[]>(`/orders/courier/mine${periodQuery(from, to)}`),
   updateCourierStatus: (
     id: string,
     status: 'OUT_FOR_DELIVERY' | 'DELIVERED',

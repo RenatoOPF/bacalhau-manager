@@ -37,12 +37,16 @@ export class OrdersController {
     return this.orders.findByProtocol(protocol);
   }
 
-  /** Pedidos do dia atribuídos ao entregador autenticado. */
+  /** Pedidos atribuídos ao entregador autenticado. Sem datas = hoje. */
   @Get('courier/mine')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.DELIVERY)
-  listMine(@Req() req: Request & { user: { sub: string } }) {
-    return this.orders.listForCourier(req.user.sub);
+  listMine(
+    @Req() req: Request & { user: { sub: string } },
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.orders.listForCourier(req.user.sub, from, to);
   }
 
   /** Entregador atualiza o status do seu pedido (saiu/entregue). */

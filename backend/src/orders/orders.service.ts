@@ -18,7 +18,7 @@ import {
 import { CreateOrderDto } from './dto/create-order.dto';
 import { AssignDeliveryDto } from './dto/assign-delivery.dto';
 import { nextDailyNumber } from '../common/daily-number';
-import { dayRange, localDay } from '../common/date-range';
+import { dayRange, localDay, periodFilter } from '../common/date-range';
 import { StockService } from '../stock/stock.service';
 import { PrintConfigService } from '../printing/print-config.service';
 
@@ -284,13 +284,19 @@ export class OrdersService {
     return order;
   }
 
-  /** Pedidos atribuídos ao entregador autenticado no dia atual. */
-  listForCourier(courierId: string) {
-    const { start, end } = dayRange(localDay(new Date()));
+  /** Pedidos atribuídos ao entregador autenticado. Sem datas = dia atual. */
+  listForCourier(courierId: string, from?: string, to?: string) {
+    const createdAt =
+      from || to
+        ? periodFilter(from, to)
+        : (() => {
+            const { start, end } = dayRange(localDay(new Date()));
+            return { gte: start, lt: end };
+          })();
     return this.prisma.order.findMany({
       where: {
         courierId,
-        createdAt: { gte: start, lt: end },
+        createdAt,
       },
       orderBy: { createdAt: 'asc' },
       select: {
