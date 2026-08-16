@@ -284,6 +284,54 @@ export class OrdersService {
     return order;
   }
 
+  /** Pedidos atribuídos ao entregador autenticado no dia atual. */
+  listForCourier(courierId: string) {
+    const { start, end } = dayRange(localDay(new Date()));
+    return this.prisma.order.findMany({
+      where: {
+        courierId,
+        createdAt: { gte: start, lt: end },
+      },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        protocol: true,
+        dailyNumber: true,
+        status: true,
+        customerName: true,
+        customerPhone: true,
+        addressStreet: true,
+        addressNumber: true,
+        addressComplement: true,
+        addressNeighborhood: true,
+        addressReference: true,
+        courierFeeCents: true,
+        notes: true,
+        createdAt: true,
+        neighborhood: { select: { name: true } },
+      },
+    });
+  }
+
+  /** Entregador atualiza o status do seu próprio pedido (só OUT_FOR_DELIVERY ou DELIVERED). */
+  async updateCourierStatus(
+    orderId: string,
+    courierId: string,
+    status: OrderStatus.OUT_FOR_DELIVERY | OrderStatus.DELIVERED,
+  ) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order || order.courierId !== courierId) {
+      throw new NotFoundException('Pedido não encontrado');
+    }
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: { status },
+      include: { items: true },
+    });
+    this.realtime.emitOrderStatusChanged(updated);
+    return updated;
+  }
+
   /** Reimpressão manual em caso de falha (ambos os tickets). */
   async reprint(id: string) {
     const order = await this.findOne(id);

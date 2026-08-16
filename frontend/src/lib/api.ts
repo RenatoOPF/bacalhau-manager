@@ -161,6 +161,24 @@ export interface Order {
   neighborhoodId?: string | null;
 }
 
+export interface CourierOrder {
+  id: string;
+  protocol: number;
+  dailyNumber: number;
+  status: OrderStatus;
+  customerName: string;
+  customerPhone?: string | null;
+  addressStreet: string;
+  addressNumber?: string | null;
+  addressComplement?: string | null;
+  addressNeighborhood?: string | null;
+  addressReference?: string | null;
+  courierFeeCents: number;
+  notes?: string | null;
+  createdAt: string;
+  neighborhood?: { name: string } | null;
+}
+
 export type PaymentMethod = 'CASH' | 'PIX' | 'ONLINE';
 
 /** Rótulos de canal e forma de pagamento para exibição. */
@@ -1004,6 +1022,15 @@ export const api = {
     request<{ enabled: boolean }>('/config/printing', {
       method: 'PATCH',
       body: JSON.stringify({ enabled }),
+    }),
+  getCourierOrders: () => request<CourierOrder[]>('/orders/courier/mine'),
+  updateCourierStatus: (
+    id: string,
+    status: 'OUT_FOR_DELIVERY' | 'DELIVERED',
+  ) =>
+    request<{ id: string }>(`/orders/courier/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
     }),
 };
 
