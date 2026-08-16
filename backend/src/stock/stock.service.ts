@@ -447,6 +447,30 @@ export class StockService {
           Math.round(link.qtyMilli * factor) * item.quantity,
         );
       }
+
+      // Complementos iFood: segmentos "N Nome" nas notes (ex.: "4 Coca Cola Zero 350 Ml").
+      // O primeiro segmento é o tamanho/opção ("1 Porcao Inteira") — não é complemento.
+      if (item.notes) {
+        const segments = item.notes.split(' | ').slice(1);
+        for (const seg of segments) {
+          const m = seg.trim().match(/^(\d+)\s+(.+)$/);
+          if (!m || /^obs:/i.test(seg.trim())) continue;
+          const compQty = Number(m[1]);
+          const compName = m[2].trim();
+          const compItem =
+            this.matchByText(compName, byName) ??
+            this.matchByPrefix(compName, byName);
+          if (!compItem) {
+            this.logger.warn(
+              `Estoque: complemento "${compName}" sem correspondência no cardápio.`,
+            );
+            continue;
+          }
+          for (const link of compItem.stockLinks) {
+            add(link.stockItemId, link.qtyMilli * compQty * item.quantity);
+          }
+        }
+      }
     }
     // Substituição: se um insumo estiver zerado e tiver substituto com saldo,
     // redireciona o consumo (ex.: Porção 200g zerada → usa 0,5 de Porção 400g).
@@ -514,6 +538,28 @@ export class StockService {
       return byName.get(beforeDash);
 
     return undefined;
+  }
+
+  /**
+   * Busca por prefixo para complementos iFood: o nome do complemento pode ter
+   * informação extra (ex.: "Coca Cola Zero 350 Ml") que não está no cadastro
+   * ("Coca Cola Zero"). Retorna o item cujo nome normalizado for o maior prefixo
+   * encontrado no texto do complemento.
+   */
+  private matchByPrefix<T>(
+    complementName: string,
+    byName: Map<string, T>,
+  ): T | undefined {
+    const name = normalize(complementName);
+    let best: T | undefined;
+    let bestLen = 0;
+    for (const [menuName, item] of byName) {
+      if (menuName.length > bestLen && name.startsWith(menuName)) {
+        best = item;
+        bestLen = menuName.length;
+      }
+    }
+    return best;
   }
 
   private matchOption(
