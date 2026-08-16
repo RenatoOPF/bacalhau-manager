@@ -4,11 +4,17 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, formatBRL, type Courier, type CourierOrder, type CourierReportRow, type Neighborhood } from '@/lib/api';
 
+function isoToday(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function isoDaysAgo(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() - days);
   return d.toISOString().slice(0, 10);
 }
+
+type Period = 'today' | 'week' | 'custom';
 
 /** "8,90" | "8.90" → centavos. */
 function reaisToCents(value: string): number | null {
@@ -191,8 +197,15 @@ export default function EntregasPage() {
     queryFn: () => api.listNeighborhoodsAll(),
   });
 
-  const [from, setFrom] = useState(isoDaysAgo(7));
-  const [to, setTo] = useState(isoDaysAgo(0));
+  const [period, setPeriod] = useState<Period>('today');
+  const [customFrom, setCustomFrom] = useState(isoToday());
+  const [customTo, setCustomTo] = useState(isoToday());
+
+  const { from, to } = (() => {
+    if (period === 'week') return { from: isoDaysAgo(6), to: isoToday() };
+    if (period === 'custom') return { from: customFrom, to: customTo };
+    return { from: isoToday(), to: isoToday() };
+  })();
 
   const couriersQuery = useQuery({
     queryKey: ['couriers'],
@@ -240,29 +253,46 @@ export default function EntregasPage() {
 
       {/* Entregadores */}
       <section className="mt-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="section-title">Entregadores</h2>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="text-sm">
+          <div className="flex flex-wrap gap-2">
+            {(['today', 'week', 'custom'] as Period[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  period === p
+                    ? 'bg-brand-red text-white'
+                    : 'border bg-white text-brand-ink hover:bg-brand-cream'
+                }`}
+              >
+                {p === 'today' ? 'Hoje' : p === 'week' ? 'Esta semana' : 'Personalizado'}
+              </button>
+            ))}
+          </div>
+        </div>
+        {period === 'custom' && (
+          <div className="mt-2 flex flex-wrap gap-3 text-sm">
+            <label>
               De
               <input
                 type="date"
                 className="input ml-2 p-1"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
               />
             </label>
-            <label className="text-sm">
+            <label>
               Ate
               <input
                 type="date"
                 className="input ml-2 p-1"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
               />
             </label>
           </div>
-        </div>
+        )}
 
         {allCouriers.length === 0 ? (
           <p className="mt-4 text-sm text-brand-ink/50">
