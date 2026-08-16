@@ -817,6 +817,8 @@ export const api = {
   listCouriers: () => request<Courier[]>('/couriers'),
   couriersReport: (from?: string, to?: string) =>
     request<CourierReportRow[]>(`/reports/couriers${periodQuery(from, to)}`),
+  courierOrdersAdmin: (id: string, from?: string, to?: string) =>
+    request<CourierOrder[]>(`/reports/couriers/${id}/orders${periodQuery(from, to)}`),
 
   // ---- Caixa / fechamento ----
   payOrder: (id: string, paymentMethod?: PaymentMethod) =>

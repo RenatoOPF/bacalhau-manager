@@ -85,6 +85,15 @@ export class ReportsController {
     return this.reports.couriers(from, to);
   }
 
+  @Get('couriers/:id/orders')
+  courierOrders(
+    @Param('id') id: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.reports.courierOrders(id, from, to);
+  }
+
   @Get('channel-config')
   channelConfig() {
     return this.reports.channelConfig();
