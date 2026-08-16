@@ -184,6 +184,7 @@ function OrderCard({
     : undefined;
 
   const [picking, setPicking] = useState(false);
+  const [dispatchMode, setDispatchMode] = useState<'delivery' | 'coleta'>('delivery');
   const [courierId, setCourierId] = useState('');
   const [neighborhoodId, setNeighborhoodId] = useState(
     order.neighborhoodId ?? suggested?.id ?? '',
@@ -205,6 +206,16 @@ function OrderCard({
         neighborhoodId: neighborhoodId || null,
       });
       await api.updateStatus(order.id, 'OUT_FOR_DELIVERY');
+    },
+    onSuccess: () => {
+      setPicking(false);
+      onChange();
+    },
+  });
+  const collectDispatch = useMutation({
+    mutationFn: async () => {
+      await api.assignDelivery(order.id, { courierId: null, neighborhoodId: null });
+      await api.updateStatus(order.id, 'DELIVERED');
     },
     onSuccess: () => {
       setPicking(false);
@@ -266,61 +277,103 @@ function OrderCard({
 
       {picking ? (
         <div className="mt-3 space-y-2 border-t border-brand-cream-dark pt-3">
-          <select
-            className="input w-full p-2 text-sm"
-            value={courierId}
-            onChange={(e) => setCourierId(e.target.value)}
-          >
-            <option value="">Escolha o entregador…</option>
-            {couriers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+          {/* Toggle Entregador / Coleta */}
+          <div className="flex rounded-lg border border-brand-cream-dark p-0.5">
+            {(['delivery', 'coleta'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setDispatchMode(m)}
+                className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${
+                  dispatchMode === m
+                    ? 'bg-brand-red text-white'
+                    : 'text-brand-ink/60 hover:text-brand-ink'
+                }`}
+              >
+                {m === 'delivery' ? 'Entregador' : 'Coleta'}
+              </button>
             ))}
-          </select>
-          <select
-            className="input w-full p-2 text-sm"
-            value={neighborhoodId}
-            onChange={(e) => setNeighborhoodId(e.target.value)}
-          >
-            <option value="">Bairro (define a taxa)…</option>
-            {neighborhoods.map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.name}
-              </option>
-            ))}
-          </select>
-          {(() => {
-            const nb = neighborhoods.find((n) => n.id === neighborhoodId);
-            if (!nb) return null;
-            return (
-              <div className="rounded-lg bg-brand-cream px-3 py-2 text-sm">
-                <span>Taxa cliente: <strong className="text-brand-red">{formatBRL(nb.customerFeeCents)}</strong></span>
-                <span className="mx-2 text-brand-ink/30">·</span>
-                <span>Repasse: <strong>{formatBRL(nb.courierFeeCents)}</strong></span>
-              </div>
-            );
-          })()}
-          {couriers.length === 0 && (
-            <p className="text-xs text-brand-red">
-              Cadastre entregadores (funcionários com perfil Entregador).
-            </p>
-          )}
-          <div className="flex gap-2">
-            <button
-              className="btn-primary flex-1 px-3 py-2 text-sm"
-              disabled={!courierId || dispatch.isPending}
-              onClick={() => dispatch.mutate()}
-            >
-              Confirmar saída
-            </button>
-            <button
-              className="btn-outline px-3 py-2 text-sm"
-              onClick={() => setPicking(false)}
-            >
-              Cancelar
-            </button>
           </div>
+
+          {dispatchMode === 'delivery' ? (
+            <>
+              <select
+                className="input w-full p-2 text-sm"
+                value={courierId}
+                onChange={(e) => setCourierId(e.target.value)}
+              >
+                <option value="">Escolha o entregador…</option>
+                {couriers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="input w-full p-2 text-sm"
+                value={neighborhoodId}
+                onChange={(e) => setNeighborhoodId(e.target.value)}
+              >
+                <option value="">Bairro (define a taxa)…</option>
+                {neighborhoods.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.name}
+                  </option>
+                ))}
+              </select>
+              {(() => {
+                const nb = neighborhoods.find((n) => n.id === neighborhoodId);
+                if (!nb) return null;
+                return (
+                  <div className="rounded-lg bg-brand-cream px-3 py-2 text-sm">
+                    <span>Taxa cliente: <strong className="text-brand-red">{formatBRL(nb.customerFeeCents)}</strong></span>
+                    <span className="mx-2 text-brand-ink/30">·</span>
+                    <span>Repasse: <strong>{formatBRL(nb.courierFeeCents)}</strong></span>
+                  </div>
+                );
+              })()}
+              {couriers.length === 0 && (
+                <p className="text-xs text-brand-red">
+                  Cadastre entregadores (funcionários com perfil Entregador).
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  className="btn-primary flex-1 px-3 py-2 text-sm"
+                  disabled={!courierId || dispatch.isPending}
+                  onClick={() => dispatch.mutate()}
+                >
+                  Confirmar saída
+                </button>
+                <button
+                  className="btn-outline px-3 py-2 text-sm"
+                  onClick={() => setPicking(false)}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-brand-ink/60">
+                O cliente veio buscar o pedido. Nenhum entregador será atribuído.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  className="btn-primary flex-1 px-3 py-2 text-sm"
+                  disabled={collectDispatch.isPending}
+                  onClick={() => collectDispatch.mutate()}
+                >
+                  Confirmar coleta
+                </button>
+                <button
+                  className="btn-outline px-3 py-2 text-sm"
+                  onClick={() => setPicking(false)}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
