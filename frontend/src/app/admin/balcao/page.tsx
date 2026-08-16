@@ -250,9 +250,12 @@ export default function BalcaoPage() {
   });
 
   const [cart, setCart] = useState<Record<string, CartLine>>({});
+  const [deliveryMode, setDeliveryMode] = useState<'delivery' | 'coleta'>('delivery');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [selectedNeighborhoodId, setSelectedNeighborhoodId] = useState<string | null>(null);
+  const [street, setStreet] = useState('');
+  const [addressNum, setAddressNum] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
@@ -261,10 +264,15 @@ export default function BalcaoPage() {
   const [search, setSearch] = useState('');
   const [modalItem, setModalItem] = useState<MenuItem | null>(null);
 
-  const totalCents = useMemo(
+  const itemsTotalCents = useMemo(
     () => Object.values(cart).reduce((s, l) => s + l.priceCents * l.quantity, 0),
     [cart],
   );
+  const deliveryFeeCents = useMemo(() => {
+    if (deliveryMode !== 'delivery') return 0;
+    return neighborhoods.find((n) => n.id === selectedNeighborhoodId)?.customerFeeCents ?? 0;
+  }, [deliveryMode, selectedNeighborhoodId, neighborhoods]);
+  const totalCents = itemsTotalCents + deliveryFeeCents;
 
   function normalizeStr(s: string) {
     return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -289,9 +297,13 @@ export default function BalcaoPage() {
       setCustomerPhone(c.phone ?? '');
       const def = c.addresses.find((a) => a.isDefault) ?? c.addresses[0];
       setSelectedAddressId(def?.id ?? null);
+      setStreet(def?.street ?? '');
+      setAddressNum(def?.number ?? '');
       setSelectedNeighborhoodId(matchNeighborhood(def?.neighborhood));
     } else {
       setSelectedAddressId(null);
+      setStreet('');
+      setAddressNum('');
       setSelectedNeighborhoodId(null);
     }
   }
@@ -299,6 +311,8 @@ export default function BalcaoPage() {
   function handleAddressChange(addressId: string) {
     setSelectedAddressId(addressId);
     const addr = selectedCustomer?.addresses.find((a) => a.id === addressId);
+    setStreet(addr?.street ?? '');
+    setAddressNum(addr?.number ?? '');
     setSelectedNeighborhoodId(matchNeighborhood(addr?.neighborhood));
   }
 
@@ -327,6 +341,10 @@ export default function BalcaoPage() {
       return copy;
     });
 
+  const canSubmit =
+    Object.keys(cart).length > 0 &&
+    (deliveryMode === 'coleta' || street.trim().length > 0);
+
   const createOrder = useMutation({
     mutationFn: () => {
       const items = Object.values(cart).map((l) => ({
@@ -335,12 +353,22 @@ export default function BalcaoPage() {
         quantity: l.quantity,
       }));
       const selectedAddress = selectedCustomer?.addresses.find((a) => a.id === selectedAddressId);
+      if (deliveryMode === 'coleta') {
+        return api.createOrder({
+          customerId: selectedCustomer?.id,
+          customerName: customerName.trim() || 'Balcão',
+          customerPhone: customerPhone.trim() || undefined,
+          notes: notes.trim() || undefined,
+          paymentMethod,
+          items,
+        });
+      }
       return api.createOrder({
         customerId: selectedCustomer?.id,
         customerName: customerName.trim() || 'Balcão',
         customerPhone: customerPhone.trim() || undefined,
-        addressStreet: selectedAddress?.street,
-        addressNumber: selectedAddress?.number ?? undefined,
+        addressStreet: street.trim() || undefined,
+        addressNumber: addressNum.trim() || undefined,
         addressNeighborhood: selectedAddress?.neighborhood ?? undefined,
         addressLat: selectedAddress?.lat ?? undefined,
         addressLng: selectedAddress?.lng ?? undefined,
@@ -353,12 +381,16 @@ export default function BalcaoPage() {
     onSuccess: (order) => {
       setSuccess({ dailyNumber: order.dailyNumber, protocol: order.protocol });
       setCart({});
+      setDeliveryMode('delivery');
       setCustomerName('');
       setCustomerPhone('');
       setNotes('');
       setSearch('');
+      setStreet('');
+      setAddressNum('');
       setSelectedCustomer(null);
       setSelectedAddressId(null);
+      setSelectedNeighborhoodId(null);
       qc.invalidateQueries({ queryKey: ['orders'] });
     },
   });
@@ -489,10 +521,22 @@ export default function BalcaoPage() {
                 ))}
               </ul>
             )}
-            {totalCents > 0 && (
-              <div className="mt-3 flex justify-between border-t border-brand-cream-dark pt-2 font-bold">
-                <span>Total</span>
-                <span className="text-brand-red">{formatBRL(totalCents)}</span>
+            {itemsTotalCents > 0 && (
+              <div className="mt-3 space-y-1 border-t border-brand-cream-dark pt-2 text-sm">
+                <div className="flex justify-between text-brand-ink/60">
+                  <span>Subtotal</span>
+                  <span>{formatBRL(itemsTotalCents)}</span>
+                </div>
+                {deliveryFeeCents > 0 && (
+                  <div className="flex justify-between text-brand-ink/60">
+                    <span>Taxa de entrega</span>
+                    <span>{formatBRL(deliveryFeeCents)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold">
+                  <span>Total</span>
+                  <span className="text-brand-red">{formatBRL(totalCents)}</span>
+                </div>
               </div>
             )}
           </div>
@@ -500,14 +544,74 @@ export default function BalcaoPage() {
           <div className="card space-y-3 p-4">
             <h2 className="section-title">Dados do pedido</h2>
 
+            {/* Toggle Entrega / Coleta */}
+            <div className="flex rounded-lg border border-brand-cream-dark p-0.5">
+              {(['delivery', 'coleta'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setDeliveryMode(m)}
+                  className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${
+                    deliveryMode === m
+                      ? 'bg-brand-red text-white'
+                      : 'text-brand-ink/60 hover:text-brand-ink'
+                  }`}
+                >
+                  {m === 'delivery' ? 'Entrega' : 'Coleta'}
+                </button>
+              ))}
+            </div>
+
             <CustomerSearch onSelect={handleCustomerSelect} />
 
-            {selectedCustomer && selectedCustomer.addresses.length > 0 && (
-              <AddressSelect
-                customer={selectedCustomer}
-                selectedAddressId={selectedAddressId}
-                onChange={handleAddressChange}
-              />
+            {/* Endereço — somente no modo entrega */}
+            {deliveryMode === 'delivery' && (
+              <>
+                {selectedCustomer && selectedCustomer.addresses.length > 0 && (
+                  <AddressSelect
+                    customer={selectedCustomer}
+                    selectedAddressId={selectedAddressId}
+                    onChange={handleAddressChange}
+                  />
+                )}
+
+                <div className="flex gap-2">
+                  <input
+                    className="input flex-1 p-2 text-sm"
+                    placeholder="Rua / Av. *"
+                    value={street}
+                    onChange={(e) => setStreet(e.target.value)}
+                  />
+                  <input
+                    className="input w-24 p-2 text-sm"
+                    placeholder="Nº"
+                    value={addressNum}
+                    onChange={(e) => setAddressNum(e.target.value)}
+                  />
+                </div>
+
+                <select
+                  className="input w-full p-2 text-sm"
+                  value={selectedNeighborhoodId ?? ''}
+                  onChange={(e) => setSelectedNeighborhoodId(e.target.value || null)}
+                >
+                  <option value="">Bairro…</option>
+                  {neighborhoods.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.name} — taxa {formatBRL(n.customerFeeCents)}
+                    </option>
+                  ))}
+                </select>
+
+                {!street.trim() && (
+                  <p className="text-xs text-brand-red">Endereço obrigatório para entrega.</p>
+                )}
+              </>
+            )}
+
+            {deliveryMode === 'coleta' && (
+              <p className="rounded-lg bg-brand-cream px-3 py-2 text-sm text-brand-ink/60">
+                Sem entrega — cliente retira no local.
+              </p>
             )}
 
             <input
@@ -551,7 +655,7 @@ export default function BalcaoPage() {
 
             <button
               className="btn-primary w-full py-2.5"
-              disabled={Object.keys(cart).length === 0 || createOrder.isPending}
+              disabled={!canSubmit || createOrder.isPending}
               onClick={() => createOrder.mutate()}
             >
               {createOrder.isPending ? 'Criando…' : 'Criar pedido'}
