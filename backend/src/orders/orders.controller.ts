@@ -51,7 +51,7 @@ export class OrdersController {
   @Roles(Role.DELIVERY)
   updateCourierStatus(
     @Param('id') id: string,
-    @Body() dto: { status: OrderStatus.OUT_FOR_DELIVERY | OrderStatus.DELIVERED },
+    @Body() dto: { status: 'OUT_FOR_DELIVERY' | 'DELIVERED' },
     @Req() req: Request & { user: { sub: string } },
   ) {
     return this.orders.updateCourierStatus(id, req.user.sub, dto.status);

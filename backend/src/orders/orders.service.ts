@@ -317,7 +317,7 @@ export class OrdersService {
   async updateCourierStatus(
     orderId: string,
     courierId: string,
-    status: OrderStatus.OUT_FOR_DELIVERY | OrderStatus.DELIVERED,
+    status: 'OUT_FOR_DELIVERY' | 'DELIVERED',
   ) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order || order.courierId !== courierId) {
