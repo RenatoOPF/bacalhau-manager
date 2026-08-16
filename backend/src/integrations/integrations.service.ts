@@ -23,6 +23,15 @@ export type IngestResult =
   | { status: 'duplicate'; protocol: number }
   | { status: 'unrecognized' };
 
+/** Remove acentos e converte para minúsculas para comparação flexível de nomes. */
+function normalize(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim();
+}
+
 @Injectable()
 export class IntegrationsService {
   private readonly logger = new Logger(IntegrationsService.name);
@@ -65,6 +74,29 @@ export class IntegrationsService {
       parsed.channel === OrderChannel.IFOOD ? 'iFood' : '99';
     const dailyNumber = await nextDailyNumber(this.prisma);
 
+    // Tenta vincular o bairro do texto ao cadastro (sem acento, sem case).
+    let neighborhoodId: string | null = null;
+    if (parsed.addressNeighborhood) {
+      const normalizedTarget = normalize(parsed.addressNeighborhood);
+      const neighborhoods = await this.prisma.neighborhood.findMany({
+        where: { active: true },
+        select: { id: true, name: true },
+      });
+      const match = neighborhoods.find(
+        (n) => normalize(n.name) === normalizedTarget,
+      );
+      if (match) {
+        neighborhoodId = match.id;
+        this.logger.log(
+          `Bairro "${parsed.addressNeighborhood}" vinculado ao cadastro "${match.name}".`,
+        );
+      } else {
+        this.logger.warn(
+          `Bairro "${parsed.addressNeighborhood}" não encontrado no cadastro.`,
+        );
+      }
+    }
+
     const order = await this.prisma.order.create({
       data: {
         dailyNumber,
@@ -76,6 +108,7 @@ export class IntegrationsService {
         addressComplement: parsed.addressComplement,
         addressNeighborhood: parsed.addressNeighborhood,
         addressReference: parsed.addressReference,
+        neighborhoodId,
         paymentMethod: PaymentMethod.ONLINE,
         paymentStatus: parsed.paidOnline
           ? PaymentStatus.PAID
