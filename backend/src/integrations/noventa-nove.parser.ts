@@ -63,15 +63,23 @@ export function parseNoventa_Nove(lines: string[]): ParsedExternalOrder | null {
       const s = lines[i].trim();
       if (s) addrParts.push(s);
     }
-    const fullAddr = addrParts
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .replace(/\s*,/g, ',')
-      .trim();
+    // Recompõe palavras partidas pela impressora: se o trecho anterior termina
+    // em letra e o próximo começa em minúscula, são a mesma palavra (ex.: "M" + "angabeiras").
+    let fullAddr = '';
+    for (const part of addrParts) {
+      if (fullAddr.match(/[a-zA-Z]$/) && part.match(/^[a-z]/)) {
+        fullAddr += part;
+      } else {
+        fullAddr += (fullAddr ? ' ' : '') + part;
+      }
+    }
+    fullAddr = fullAddr.replace(/\s+/g, ' ').replace(/\s*,/g, ',').trim();
     addressStreet = fullAddr;
-    // Bairro: primeiro "- BAIRRO," no endereço completo
-    const neighM = fullAddr.match(/-\s*([^-,]+),/);
-    if (neighM) addressNeighborhood = neighM[1].trim();
+    // Bairro: tenta "- BAIRRO," primeiro; fallback para "bairro NOME" explícito.
+    const neighDash = fullAddr.match(/-\s*([^-,]+),/);
+    const neighWord = fullAddr.match(/\bbairro\s+([^,]+?)(?:\s*[,-]|$)/i);
+    const rawNeighborhood = (neighDash?.[1] ?? neighWord?.[1])?.trim();
+    if (rawNeighborhood) addressNeighborhood = rawNeighborhood;
   }
 
   // Itens: "Nx NOME R$XX,XX" — o nome pode ser quebrado pela impressora.
