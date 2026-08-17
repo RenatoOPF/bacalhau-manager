@@ -125,7 +125,7 @@ export function parseNoventa_Nove(lines: string[]): ParsedExternalOrder | null {
           i++;
         }
 
-        notes.push(subName);
+        notes.push(`${subM[1]} ${subName}`);
         // Preço real vem da opção quando o item base tinha R$0
         if (priceCents === 0 && subPrice > 0) priceCents = subPrice;
         continue;
