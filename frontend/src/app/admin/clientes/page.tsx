@@ -17,6 +17,7 @@ import {
   type CustomerDetail,
   type CreateCustomerPayload,
   type CreateAddressPayload,
+  type Neighborhood,
   CHANNEL_LABEL,
 } from '@/lib/api';
 
@@ -131,21 +132,41 @@ function AddressBlock({
   addr,
   complement,
   reference,
+  neighborhoodId,
   onChange,
   onComplementChange,
   onReferenceChange,
+  onNeighborhoodIdChange,
 }: {
   addr: AddressValue;
   complement: string;
   reference: string;
+  neighborhoodId: string;
   onChange: (v: AddressValue) => void;
   onComplementChange: (v: string) => void;
   onReferenceChange: (v: string) => void;
+  onNeighborhoodIdChange: (id: string) => void;
 }) {
   const coords = useGeocode(addr.street, addr.number);
+  const { data: neighborhoods = [] } = useQuery<Neighborhood[]>({
+    queryKey: ['neighborhoods'],
+    queryFn: () => api.listNeighborhoods(),
+  });
   return (
     <div className="space-y-2">
       <UnifiedAddressInput value={addr} onChange={onChange} />
+      <select
+        className="input w-full p-2 text-sm"
+        value={neighborhoodId}
+        onChange={(e) => onNeighborhoodIdChange(e.target.value)}
+      >
+        <option value="">Bairro (taxa de entrega)…</option>
+        {neighborhoods.map((n) => (
+          <option key={n.id} value={n.id}>
+            {n.name}
+          </option>
+        ))}
+      </select>
       <input
         className="input w-full p-2 text-sm"
         placeholder="Complemento (apto, bloco…)"
@@ -178,6 +199,7 @@ function NewCustomerForm({
   const [addr, setAddr] = useState<AddressValue>({ street: '', number: '', cep: '', neighborhood: '' });
   const [complement, setComplement] = useState('');
   const [reference, setReference] = useState('');
+  const [neighborhoodId, setNeighborhoodId] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -195,6 +217,7 @@ function NewCustomerForm({
             number: addr.number.trim() || undefined,
             complement: complement.trim() || undefined,
             neighborhood: addr.neighborhood.trim() || undefined,
+            neighborhoodId: neighborhoodId || undefined,
             reference: reference.trim() || undefined,
             lat: coords ? parseFloat(coords.lat) : undefined,
             lng: coords ? parseFloat(coords.lon) : undefined,
@@ -240,9 +263,11 @@ function NewCustomerForm({
         addr={addr}
         complement={complement}
         reference={reference}
+        neighborhoodId={neighborhoodId}
         onChange={setAddr}
         onComplementChange={setComplement}
         onReferenceChange={setReference}
+        onNeighborhoodIdChange={setNeighborhoodId}
       />
       {error && <p className="text-sm text-brand-red">{error}</p>}
       <div className="flex gap-2">
@@ -277,6 +302,7 @@ function AddressForm({
   });
   const [complement, setComplement] = useState(initial?.complement ?? '');
   const [reference, setReference] = useState(initial?.reference ?? '');
+  const [neighborhoodId, setNeighborhoodId] = useState(initial?.neighborhoodId ?? '');
   const [isDefault, setIsDefault] = useState(initial?.isDefault ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -295,6 +321,7 @@ function AddressForm({
         number: addr.number.trim() || undefined,
         complement: complement.trim() || undefined,
         neighborhood: addr.neighborhood.trim() || undefined,
+        neighborhoodId: neighborhoodId || undefined,
         reference: reference.trim() || undefined,
         lat: coords ? parseFloat(coords.lat) : undefined,
         lng: coords ? parseFloat(coords.lon) : undefined,
@@ -319,9 +346,11 @@ function AddressForm({
         addr={addr}
         complement={complement}
         reference={reference}
+        neighborhoodId={neighborhoodId}
         onChange={setAddr}
         onComplementChange={setComplement}
         onReferenceChange={setReference}
+        onNeighborhoodIdChange={setNeighborhoodId}
       />
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />
@@ -484,6 +513,7 @@ function CustomerPanel({
                     number: addr.number ?? '',
                     complement: addr.complement ?? '',
                     neighborhood: addr.neighborhood ?? '',
+                    neighborhoodId: addr.neighborhoodId ?? '',
                     reference: addr.reference ?? '',
                     isDefault: addr.isDefault,
                   }}

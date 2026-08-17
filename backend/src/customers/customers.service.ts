@@ -18,6 +18,7 @@ const ADDRESS_SELECT = {
   number: true,
   complement: true,
   neighborhood: true,
+  neighborhoodId: true,
   reference: true,
   lat: true,
   lng: true,

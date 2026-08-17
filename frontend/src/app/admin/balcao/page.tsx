@@ -290,6 +290,12 @@ export default function BalcaoPage() {
     return partial?.id ?? null;
   }
 
+  function applyAddress(addr: { street: string; number?: string | null; neighborhood?: string | null; neighborhoodId?: string | null } | undefined) {
+    setStreet(addr?.street ?? '');
+    setAddressNum(addr?.number ?? '');
+    setSelectedNeighborhoodId(addr?.neighborhoodId ?? matchNeighborhood(addr?.neighborhood));
+  }
+
   function handleCustomerSelect(c: Customer | null) {
     setSelectedCustomer(c);
     if (c) {
@@ -297,9 +303,7 @@ export default function BalcaoPage() {
       setCustomerPhone(c.phone ?? '');
       const def = c.addresses.find((a) => a.isDefault) ?? c.addresses[0];
       setSelectedAddressId(def?.id ?? null);
-      setStreet(def?.street ?? '');
-      setAddressNum(def?.number ?? '');
-      setSelectedNeighborhoodId(matchNeighborhood(def?.neighborhood));
+      applyAddress(def);
     } else {
       setSelectedAddressId(null);
       setStreet('');
@@ -311,9 +315,7 @@ export default function BalcaoPage() {
   function handleAddressChange(addressId: string) {
     setSelectedAddressId(addressId);
     const addr = selectedCustomer?.addresses.find((a) => a.id === addressId);
-    setStreet(addr?.street ?? '');
-    setAddressNum(addr?.number ?? '');
-    setSelectedNeighborhoodId(matchNeighborhood(addr?.neighborhood));
+    applyAddress(addr);
   }
 
   const addToCart = (item: MenuItem, optionId: string | undefined, qty: number) => {

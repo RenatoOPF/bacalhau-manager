@@ -423,6 +423,7 @@ export interface CustomerAddress {
   number?: string | null;
   complement?: string | null;
   neighborhood?: string | null;
+  neighborhoodId?: string | null;
   reference?: string | null;
   lat?: number | null;
   lng?: number | null;
@@ -462,6 +463,7 @@ export interface CreateAddressPayload {
   number?: string;
   complement?: string;
   neighborhood?: string;
+  neighborhoodId?: string;
   reference?: string;
   lat?: number;
   lng?: number;
