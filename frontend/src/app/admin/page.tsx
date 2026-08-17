@@ -46,6 +46,20 @@ function normalize(text: string): string {
 
 const DONE_STATUSES = new Set<OrderStatus>(['DELIVERED', 'CANCELED']);
 
+const SIZE_KEYWORDS = ['meia', 'inteira', 'porcao', 'porcão', 'porção', 'individual', 'unico', 'único'];
+
+function extractSizeTag(notes: string | null): { tag: string | null; rest: string | null } {
+  if (!notes) return { tag: null, rest: null };
+  const segments = notes.split(' | ');
+  const first = segments[0].trim();
+  const stripped = first.replace(/^\d+\s+/, '');
+  const lc = stripped.toLowerCase();
+  if (SIZE_KEYWORDS.some((kw) => lc.includes(kw))) {
+    return { tag: stripped.toUpperCase(), rest: segments.slice(1).join(' | ') || null };
+  }
+  return { tag: null, rest: notes };
+}
+
 export default function CaixaPage() {
   const qc = useQueryClient();
   const [showDone, setShowDone] = useState(false);
@@ -258,9 +272,19 @@ function OrderCard({
         {order.items.map((it) => (
           <li key={it.id}>
             {it.quantity}x {printLabel(it.nameSnapshot, it.optionNameSnapshot)}
-            {it.notes && (
-              <span className="text-brand-ink/60"> — {it.notes}</span>
-            )}
+            {(() => {
+              const { tag, rest } = extractSizeTag(it.notes);
+              return (
+                <>
+                  {tag && (
+                    <span className="ml-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+                      {tag}
+                    </span>
+                  )}
+                  {rest && <span className="text-brand-ink/60"> — {rest}</span>}
+                </>
+              );
+            })()}
           </li>
         ))}
       </ul>
