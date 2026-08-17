@@ -204,6 +204,15 @@ function OrderCard({
     order.neighborhoodId ?? suggested?.id ?? '',
   );
 
+  // Quando os bairros carregam depois do primeiro render, sincroniza o select
+  // (o useState inicial roda com neighborhoods=[] se o fetch ainda não terminou).
+  useEffect(() => {
+    if (!neighborhoodId) {
+      const id = order.neighborhoodId ?? suggested?.id ?? '';
+      if (id) setNeighborhoodId(id);
+    }
+  }, [suggested?.id, order.neighborhoodId]);
+
   const advance = useMutation({
     mutationFn: (status: OrderStatus) => api.updateStatus(order.id, status),
     onSuccess: onChange,

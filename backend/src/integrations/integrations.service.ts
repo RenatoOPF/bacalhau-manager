@@ -82,9 +82,12 @@ export class IntegrationsService {
         where: { active: true },
         select: { id: true, name: true },
       });
-      const match = neighborhoods.find(
-        (n) => normalize(n.name) === normalizedTarget,
-      );
+      const match =
+        neighborhoods.find((n) => normalize(n.name) === normalizedTarget) ??
+        neighborhoods.find((n) => {
+          const a = normalize(n.name);
+          return a.includes(normalizedTarget) || normalizedTarget.includes(a);
+        });
       if (match) {
         neighborhoodId = match.id;
         this.logger.log(
