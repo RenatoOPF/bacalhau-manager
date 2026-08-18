@@ -334,6 +334,9 @@ model OrderItem {
   nameSnapshot       String
   optionNameSnapshot String? // opção escolhida (ex.: "Inteira"), se o item tiver
   priceCents         Int
+  // Custo unitário do insumo no momento da venda (centavos). Snapshot imune a
+  // alterações futuras no preço do insumo — garante CMV histórico correto.
+  unitCostCents      Int     @default(0)
   quantity           Int     @default(1)
   notes              String?
 

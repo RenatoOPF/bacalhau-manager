@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { redisConnection } from './redis.config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -23,6 +25,9 @@ import { CustomersModule } from './customers/customers.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // 200 requisições por minuto por IP — padrão para rotas autenticadas do admin.
+    // Rotas públicas sensíveis sobrescrevem com @Throttle() nos seus controllers.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 200 }]),
     // Conexão única do BullMQ com o Redis, compartilhada por todas as filas.
     BullModule.forRoot({ connection: redisConnection() }),
     PrismaModule,
@@ -42,6 +47,11 @@ import { CustomersModule } from './customers/customers.module';
     DeliveryModule,
     RecipeModule,
     CustomersModule,
+  ],
+  providers: [
+    // Guard global: aplica o ThrottlerModule a todas as rotas.
+    // Rotas autenticadas já têm proteção pelo JWT; o throttler barra bots antes disso.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

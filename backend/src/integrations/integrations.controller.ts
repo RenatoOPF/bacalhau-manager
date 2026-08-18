@@ -1,4 +1,5 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { IsString, MinLength } from 'class-validator';
 import { IntegrationsService } from './integrations.service';
 import { IntegrationKeyGuard } from './integration-key.guard';
@@ -17,6 +18,7 @@ export class IntegrationsController {
   /** Recebe uma impressão capturada pelo agente do caixa (iFood/99). */
   @Post('capture')
   @UseGuards(IntegrationKeyGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
   capture(@Body() dto: CaptureDto) {
     return this.integrations.ingestCapture(dto.raw);
   }

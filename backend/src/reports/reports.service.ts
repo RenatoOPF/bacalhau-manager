@@ -197,10 +197,12 @@ export class ReportsService {
   }
 
   /**
-   * Margem de contribuição por produto vendido: preço − custo de ingredientes
-   * (CMV unitário estimado pelo StockService). Agrupa por nome+opção. Custo é o
-   * ATUAL do insumo (sem snapshot histórico); `hasCost=false` sinaliza produtos
-   * sem vínculo/custo cadastrado (aparecem com custo 0).
+   * Margem de contribuição por produto vendido: preço − CMV unitário.
+   * Para itens com `unitCostCents > 0` usa o snapshot gravado no momento da
+   * venda (imune a reajustes futuros de insumo). Para itens históricos sem
+   * snapshot (unitCostCents = 0), cai no estimador com o custo atual — mantendo
+   * o comportamento anterior para o legado. Agrupa por nome+opção; preço e custo
+   * exibidos são médias ponderadas pela quantidade.
    */
   async margins(from?: string, to?: string) {
     const items = await this.prisma.orderItem.findMany({
@@ -210,53 +212,66 @@ export class ReportsService {
         optionNameSnapshot: true,
         notes: true,
         priceCents: true,
+        unitCostCents: true,
         quantity: true,
       },
     });
-    const costOf = await this.stock.buildCostEstimator();
+
+    // Carrega o estimador apenas quando há itens legados sem snapshot.
+    const needsEstimator = items.some((it) => it.unitCostCents === 0);
+    const costOf = needsEstimator ? await this.stock.buildCostEstimator() : null;
 
     const map = new Map<
       string,
       {
         name: string;
         optionName: string | null;
-        unitPriceCents: number;
-        unitCostCents: number;
+        totalRevenueCents: number;
+        totalCostCents: number;
         quantity: number;
+        hasAnyCost: boolean;
       }
     >();
     for (const it of items) {
+      const cost =
+        it.unitCostCents > 0
+          ? it.unitCostCents
+          : (costOf?.(it.nameSnapshot, it.optionNameSnapshot, it.notes) ?? 0);
       const key = `${it.nameSnapshot}|${it.optionNameSnapshot ?? ''}`;
       const entry = map.get(key) ?? {
         name: it.nameSnapshot,
         optionName: it.optionNameSnapshot,
-        unitPriceCents: it.priceCents,
-        unitCostCents: costOf(
-          it.nameSnapshot,
-          it.optionNameSnapshot,
-          it.notes,
-        ),
+        totalRevenueCents: 0,
+        totalCostCents: 0,
         quantity: 0,
+        hasAnyCost: false,
       };
+      entry.totalRevenueCents += it.priceCents * it.quantity;
+      entry.totalCostCents += cost * it.quantity;
       entry.quantity += it.quantity;
+      if (cost > 0) entry.hasAnyCost = true;
       map.set(key, entry);
     }
 
     return [...map.values()]
       .map((e) => {
-        const marginCents = e.unitPriceCents - e.unitCostCents;
+        const unitPriceCents =
+          e.quantity > 0 ? Math.round(e.totalRevenueCents / e.quantity) : 0;
+        const unitCostCents =
+          e.quantity > 0 ? Math.round(e.totalCostCents / e.quantity) : 0;
+        const marginCents = unitPriceCents - unitCostCents;
         const marginPct =
-          e.unitPriceCents > 0 ? (marginCents / e.unitPriceCents) * 100 : 0;
+          unitPriceCents > 0 ? (marginCents / unitPriceCents) * 100 : 0;
         return {
           name: e.name,
           optionName: e.optionName,
-          unitPriceCents: e.unitPriceCents,
-          unitCostCents: e.unitCostCents,
+          unitPriceCents,
+          unitCostCents,
           marginCents,
           marginPct,
           quantity: e.quantity,
-          contributionCents: marginCents * e.quantity,
-          hasCost: e.unitCostCents > 0,
+          contributionCents: e.totalRevenueCents - e.totalCostCents,
+          hasCost: e.hasAnyCost,
         };
       })
       .sort((a, b) => b.contributionCents - a.contributionCents);
@@ -270,16 +285,30 @@ export class ReportsService {
         nameSnapshot: true,
         optionNameSnapshot: true,
         notes: true,
+        unitCostCents: true,
         quantity: true,
       },
     });
-    const costOf = await this.stock.buildCostEstimator();
-    return items.reduce(
-      (sum, it) =>
-        sum +
-        costOf(it.nameSnapshot, it.optionNameSnapshot, it.notes) * it.quantity,
+
+    const [withSnapshot, legacy] = items.reduce<[typeof items, typeof items]>(
+      ([a, b], it) =>
+        it.unitCostCents > 0 ? [[...a, it], b] : [a, [...b, it]],
+      [[], []],
+    );
+
+    const storedCmv = withSnapshot.reduce(
+      (sum, it) => sum + it.unitCostCents * it.quantity,
       0,
     );
+    if (legacy.length === 0) return storedCmv;
+
+    const costOf = await this.stock.buildCostEstimator();
+    const legacyCmv = legacy.reduce(
+      (sum, it) =>
+        sum + costOf(it.nameSnapshot, it.optionNameSnapshot, it.notes) * it.quantity,
+      0,
+    );
+    return storedCmv + legacyCmv;
   }
 
   /**

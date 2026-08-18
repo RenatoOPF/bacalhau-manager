@@ -73,6 +73,7 @@ export class IntegrationsService {
     const channelLabel =
       parsed.channel === OrderChannel.IFOOD ? 'iFood' : '99';
     const dailyNumber = await nextDailyNumber(this.prisma);
+    const costOf = await this.stock.buildCostEstimator();
 
     // Tenta vincular o bairro do texto ao cadastro (sem acento, sem case).
     let neighborhoodId: string | null = null;
@@ -129,6 +130,7 @@ export class IntegrationsService {
             menuItemId: null,
             nameSnapshot: it.name,
             priceCents: it.priceCents,
+            unitCostCents: costOf(it.name, null, it.notes ?? null),
             quantity: it.quantity,
             notes: it.notes ?? null,
           })),
