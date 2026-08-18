@@ -44,6 +44,9 @@ export class OrdersService {
     });
     const byId = new Map(menuItems.map((m) => [m.id, m]));
 
+    // Estimador de custo carregado uma vez para todos os itens do pedido.
+    const costOf = await this.stock.buildCostEstimator();
+
     let totalCents = 0;
     const itemsData = dto.items.map((input) => {
       const menuItem = byId.get(input.menuItemId);
@@ -67,6 +70,7 @@ export class OrdersService {
           nameSnapshot: menuItem.name,
           optionNameSnapshot: option.name,
           priceCents: option.priceCents,
+          unitCostCents: costOf(menuItem.name, option.name, null, menuItem.id, option.id),
           quantity: input.quantity,
           notes: input.notes,
         };
@@ -79,6 +83,7 @@ export class OrdersService {
         nameSnapshot: menuItem.name,
         optionNameSnapshot: null,
         priceCents: menuItem.priceCents,
+        unitCostCents: costOf(menuItem.name, null, null, menuItem.id, null),
         quantity: input.quantity,
         notes: input.notes,
       };
@@ -181,6 +186,35 @@ export class OrdersService {
     }
 
     this.logger.log(`Cliente auto-salvo: ${customer.id} (${dto.customerPhone})`);
+  }
+
+  /** Visão da cozinha: pedidos ativos de hoje, sem dados pessoais do cliente. */
+  listForKitchen() {
+    const { start, end } = dayRange(localDay(new Date()));
+    return this.prisma.order.findMany({
+      where: {
+        createdAt: { gte: start, lt: end },
+        status: { in: ['RECEIVED', 'IN_PREPARATION', 'READY'] },
+      },
+      orderBy: { dailyNumber: 'asc' },
+      select: {
+        id: true,
+        dailyNumber: true,
+        channel: true,
+        status: true,
+        notes: true,
+        createdAt: true,
+        items: {
+          select: {
+            id: true,
+            nameSnapshot: true,
+            optionNameSnapshot: true,
+            quantity: true,
+            notes: true,
+          },
+        },
+      },
+    });
   }
 
   /** Fila do caixa: apenas os pedidos do dia atual (ou filtrados por status). */

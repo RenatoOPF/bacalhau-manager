@@ -434,29 +434,29 @@ export class StockService {
         for (const link of option.stockLinks) {
           add(link.stockItemId, link.qtyMilli * item.quantity);
         }
-        continue;
-      }
-
-      if (menuItem.stockLinks.length === 0) continue;
-      // Vínculo do item: qty é por Inteira; Meia desconta metade. Sem tamanho
-      // no texto, itens sem opções consomem o vínculo exato (fator 1).
-      const factor = sizeFactor(context) ?? 1;
-      for (const link of menuItem.stockLinks) {
-        add(
-          link.stockItemId,
-          Math.round(link.qtyMilli * factor) * item.quantity,
-        );
+      } else if (menuItem.stockLinks.length > 0) {
+        // Vínculo do item: qty é por Inteira; Meia desconta metade. Sem tamanho
+        // no texto, itens sem opções consomem o vínculo exato (fator 1).
+        const factor = sizeFactor(context) ?? 1;
+        for (const link of menuItem.stockLinks) {
+          add(
+            link.stockItemId,
+            Math.round(link.qtyMilli * factor) * item.quantity,
+          );
+        }
       }
 
       // Complementos iFood: segmentos "N Nome" nas notes (ex.: "4 Coca Cola Zero 350 Ml").
-      // O primeiro segmento é o tamanho/opção ("1 Porcao Inteira") — não é complemento.
+      // Segmentos de tamanho ("Porcao Inteira", "Meia Porcao") são ignorados; os demais são complementos.
       if (item.notes) {
-        const segments = item.notes.split(' | ').slice(1);
+        const segments = item.notes.split(' | ');
         for (const seg of segments) {
           const m = seg.trim().match(/^(\d+)\s+(.+)$/);
           if (!m || /^obs:/i.test(seg.trim())) continue;
           const compQty = Number(m[1]);
           const compName = m[2].trim();
+          // Segmentos de tamanho não são complementos (o fator já foi aplicado acima).
+          if (/^(meia porcao|porcao inteira|porcao|individual|inteira|unico)$/.test(normalize(compName))) continue;
           const compItem =
             this.matchByText(compName, byName) ??
             this.matchByPrefix(compName, byName);
@@ -603,24 +603,28 @@ export class StockService {
   }
 
   /**
-   * Estimador de CUSTO de ingredientes por unidade de prato (em centavos), para
-   * os relatórios de margem/CMV. Carrega o cardápio uma vez e devolve uma função
-   * pura que casa nome/opção/notes com o MESMO critério da baixa de estoque
-   * (matchByText/matchOptionByContext/sizeFactor). Usa o custo ATUAL do insumo
-   * (não há snapshot de custo histórico). Retorna 0 quando não há vínculo/custo.
+   * Estimador de CUSTO de ingredientes por unidade de prato (em centavos).
+   * Carrega o cardápio uma vez e devolve uma função pura que aceita o snapshot
+   * do item + IDs opcionais. Quando os IDs são fornecidos (pedidos próprios),
+   * usa lookup exato; sem IDs (pedidos externos/legados), cai no match por texto.
+   * Retorna 0 quando não há vínculo ou custo cadastrado.
    */
   async buildCostEstimator(): Promise<
     (
       nameSnapshot: string,
       optionNameSnapshot: string | null,
       notes: string | null,
+      menuItemId?: string | null,
+      optionId?: string | null,
     ) => number
   > {
     type LinkCost = { qtyMilli: number; stockItem: { costCents: number } };
+    type OptionCost = { id: string; name: string; stockLinks: LinkCost[] };
     type ItemCost = {
+      id: string;
       name: string;
       extraCostCents: number;
-      options: { name: string; stockLinks: LinkCost[] }[];
+      options: OptionCost[];
       stockLinks: LinkCost[];
     };
 
@@ -633,6 +637,7 @@ export class StockService {
       },
     })) as unknown as ItemCost[];
 
+    const byId   = new Map(menuItems.map((m) => [m.id, m]));
     const byName = new Map(menuItems.map((m) => [normalize(m.name), m]));
 
     const linkCost = (links: LinkCost[], factor: number) =>
@@ -642,25 +647,24 @@ export class StockService {
         0,
       );
 
-    return (nameSnapshot, optionNameSnapshot, notes) => {
-      const menuItem = this.matchByText(nameSnapshot, byName);
+    return (nameSnapshot, optionNameSnapshot, notes, menuItemId, optionId) => {
+      const menuItem = menuItemId
+        ? (byId.get(menuItemId) ?? this.matchByText(nameSnapshot, byName))
+        : this.matchByText(nameSnapshot, byName);
       if (!menuItem) return 0;
 
       const context = normalize(
         [nameSnapshot, optionNameSnapshot, notes].filter(Boolean).join(' '),
       );
       const factor = sizeFactor(context) ?? 1;
-      // Custo adicional (tempero/guarnição não controlados em estoque): vale por
-      // Porção Inteira e a Meia desconta metade, igual aos vínculos do item.
       const extra = Math.round(menuItem.extraCostCents * factor);
 
-      const option = this.matchOptionByContext(
-        menuItem.options,
-        optionNameSnapshot,
-        context,
-      );
-      // Vínculo da opção já embute o tamanho (fator 1); vínculo do item vale por
-      // Porção Inteira e a Meia desconta metade (fator do texto).
+      // Lookup de opção: por ID quando disponível, senão por texto.
+      const option = optionId
+        ? (menuItem.options.find((o) => o.id === optionId) ??
+           this.matchOptionByContext(menuItem.options, optionNameSnapshot, context))
+        : this.matchOptionByContext(menuItem.options, optionNameSnapshot, context);
+
       if (option && option.stockLinks.length > 0) {
         return linkCost(option.stockLinks, 1) + extra;
       }

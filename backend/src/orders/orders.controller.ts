@@ -11,6 +11,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { OrderStatus, Role } from '@prisma/client';
 import { Request } from 'express';
 import { OrdersService } from './orders.service';
@@ -27,12 +28,14 @@ export class OrdersController {
 
   /** Cliente cria o pedido pelo cardápio (público). */
   @Post()
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   create(@Body() dto: CreateOrderDto) {
     return this.orders.create(dto);
   }
 
   /** Acompanhamento público do pedido pelo protocolo (sem endereço). */
   @Get('track/:protocol')
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
   track(@Param('protocol', ParseIntPipe) protocol: number) {
     return this.orders.findByProtocol(protocol);
   }
@@ -67,6 +70,12 @@ export class OrdersController {
   @Roles(Role.ADMIN, Role.MANAGER)
   list(@Query('status') status?: OrderStatus) {
     return this.orders.list(status);
+  }
+
+  /** Visão pública da cozinha: pedidos ativos sem dados pessoais. */
+  @Get('kitchen')
+  kitchen() {
+    return this.orders.listForKitchen();
   }
 
   @Get(':id')
