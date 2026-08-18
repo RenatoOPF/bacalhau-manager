@@ -16,11 +16,21 @@ import { isIfood, parseIfood } from './ifood.parser';
 import { isNoventa_Nove, parseNoventa_Nove } from './noventa-nove.parser';
 import { ParsedExternalOrder } from './parsed-order';
 import { StockService } from '../stock/stock.service';
+import { PrintConfigService } from '../printing/print-config.service';
 
 export type IngestResult =
   | { status: 'created'; protocol: number; channel: string }
   | { status: 'duplicate'; protocol: number }
   | { status: 'unrecognized' };
+
+/** Remove acentos e converte para minúsculas para comparação flexível de nomes. */
+function normalize(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim();
+}
 
 @Injectable()
 export class IntegrationsService {
@@ -30,6 +40,7 @@ export class IntegrationsService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
     private readonly stock: StockService,
+    private readonly printConfig: PrintConfigService,
     @InjectQueue(ORDERS_QUEUE)
     private readonly ordersQueue: Queue<PrintOrderJobData>,
   ) {}
@@ -63,6 +74,32 @@ export class IntegrationsService {
       parsed.channel === OrderChannel.IFOOD ? 'iFood' : '99';
     const dailyNumber = await nextDailyNumber(this.prisma);
 
+    // Tenta vincular o bairro do texto ao cadastro (sem acento, sem case).
+    let neighborhoodId: string | null = null;
+    if (parsed.addressNeighborhood) {
+      const normalizedTarget = normalize(parsed.addressNeighborhood);
+      const neighborhoods = await this.prisma.neighborhood.findMany({
+        where: { active: true },
+        select: { id: true, name: true },
+      });
+      const match =
+        neighborhoods.find((n) => normalize(n.name) === normalizedTarget) ??
+        neighborhoods.find((n) => {
+          const a = normalize(n.name);
+          return a.includes(normalizedTarget) || normalizedTarget.includes(a);
+        });
+      if (match) {
+        neighborhoodId = match.id;
+        this.logger.log(
+          `Bairro "${parsed.addressNeighborhood}" vinculado ao cadastro "${match.name}".`,
+        );
+      } else {
+        this.logger.warn(
+          `Bairro "${parsed.addressNeighborhood}" não encontrado no cadastro.`,
+        );
+      }
+    }
+
     const order = await this.prisma.order.create({
       data: {
         dailyNumber,
@@ -74,6 +111,7 @@ export class IntegrationsService {
         addressComplement: parsed.addressComplement,
         addressNeighborhood: parsed.addressNeighborhood,
         addressReference: parsed.addressReference,
+        neighborhoodId,
         paymentMethod: PaymentMethod.ONLINE,
         paymentStatus: parsed.paidOnline
           ? PaymentStatus.PAID
@@ -99,8 +137,10 @@ export class IntegrationsService {
       include: { items: true },
     });
 
-    await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
-    await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
+    if (this.printConfig.isEnabled()) {
+      await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
+      await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
+    }
 
     // Baixa o estoque casando os itens por texto (nunca lança).
     await this.stock.consumeForOrder(order);

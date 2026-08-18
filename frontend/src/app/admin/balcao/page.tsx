@@ -12,13 +12,127 @@ interface CartLine {
   quantity: number;
 }
 
+// ---- Modal de adição de item ----
+
+function AddItemModal({
+  item,
+  onConfirm,
+  onClose,
+}: {
+  item: MenuItem;
+  onConfirm: (optionId: string | undefined, qty: number) => void;
+  onClose: () => void;
+}) {
+  const hasOptions = (item.options ?? []).length > 0;
+  const availableOptions = (item.options ?? []).filter((o) => o.available);
+  const [selectedOptionId, setSelectedOptionId] = useState<string | undefined>(
+    availableOptions.length === 1 ? availableOptions[0].id : undefined,
+  );
+  const [qty, setQty] = useState(1);
+
+  const selectedOption = availableOptions.find((o) => o.id === selectedOptionId);
+  const price = selectedOption ? selectedOption.priceCents : item.priceCents;
+  const canConfirm = !hasOptions || !!selectedOptionId;
+
+  // Fecha com Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-sm rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl">
+        <h3 className="text-lg font-bold text-brand-ink">{item.name}</h3>
+
+        {/* Opções de tamanho */}
+        {hasOptions && (
+          <div className="mt-4">
+            <p className="mb-2 text-sm font-medium text-brand-ink/60">Tamanho</p>
+            <div className="grid gap-2">
+              {availableOptions.map((o) => (
+                <button
+                  key={o.id}
+                  onClick={() => setSelectedOptionId(o.id)}
+                  className={`flex items-center justify-between rounded-xl border-2 px-4 py-3 text-sm font-medium transition-colors ${
+                    selectedOptionId === o.id
+                      ? 'border-brand-red bg-brand-red/5 text-brand-ink'
+                      : 'border-brand-cream-dark text-brand-ink/70 hover:border-brand-red/40'
+                  }`}
+                >
+                  <span>{o.name}</span>
+                  <span className={selectedOptionId === o.id ? 'font-bold text-brand-red' : ''}>
+                    {formatBRL(o.priceCents)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Sem opções: preço direto */}
+        {!hasOptions && (
+          <p className="mt-2 text-xl font-bold text-brand-red">{formatBRL(item.priceCents)}</p>
+        )}
+
+        {/* Quantidade */}
+        <div className="mt-5 flex items-center justify-between">
+          <span className="text-sm font-medium text-brand-ink/60">Quantidade</span>
+          <div className="flex items-center gap-3">
+            <button
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-cream-dark text-lg font-bold"
+              onClick={() => setQty((q) => Math.max(1, q - 1))}
+            >
+              −
+            </button>
+            <span className="w-6 text-center font-bold text-brand-ink">{qty}</span>
+            <button
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-cream-dark text-lg font-bold"
+              onClick={() => setQty((q) => q + 1)}
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {/* Total parcial */}
+        {canConfirm && (
+          <p className="mt-3 text-right text-sm text-brand-ink/50">
+            Subtotal:{' '}
+            <strong className="text-brand-ink">{formatBRL(price * qty)}</strong>
+          </p>
+        )}
+
+        {/* Ações */}
+        <div className="mt-5 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-xl border border-brand-cream-dark py-2.5 text-sm font-medium text-brand-ink/60 hover:bg-brand-cream"
+          >
+            Cancelar
+          </button>
+          <button
+            disabled={!canConfirm}
+            onClick={() => { onConfirm(selectedOptionId, qty); onClose(); }}
+            className="flex-1 rounded-xl bg-brand-red py-2.5 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-red/90"
+          >
+            Adicionar ao pedido
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---- Busca de cliente com autocomplete ----
 
-function CustomerSearch({
-  onSelect,
-}: {
-  onSelect: (customer: Customer | null) => void;
-}) {
+function CustomerSearch({ onSelect }: { onSelect: (customer: Customer | null) => void }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Customer | null>(null);
@@ -59,12 +173,7 @@ function CustomerSearch({
           className="input flex-1 p-2 text-sm"
           placeholder="Buscar cliente (nome ou telefone)…"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setSelected(null);
-            onSelect(null);
-            setOpen(true);
-          }}
+          onChange={(e) => { setQuery(e.target.value); setSelected(null); onSelect(null); setOpen(true); }}
           onFocus={() => { if (query.trim()) setOpen(true); }}
         />
         {selected && (
@@ -77,7 +186,6 @@ function CustomerSearch({
           </button>
         )}
       </div>
-
       {open && results.length > 0 && !selected && (
         <ul className="absolute z-10 mt-1 w-full rounded-lg border border-brand-cream-dark bg-white shadow-md">
           {results.map((c) => (
@@ -110,7 +218,6 @@ function AddressSelect({
   onChange: (id: string) => void;
 }) {
   if (customer.addresses.length === 0) return null;
-
   return (
     <select
       className="input w-full p-2 text-sm"
@@ -143,38 +250,52 @@ export default function BalcaoPage() {
   });
 
   const [cart, setCart] = useState<Record<string, CartLine>>({});
+  const [deliveryMode, setDeliveryMode] = useState<'delivery' | 'coleta'>('delivery');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [selectedNeighborhoodId, setSelectedNeighborhoodId] = useState<string | null>(null);
+  const [street, setStreet] = useState('');
+  const [addressNum, setAddressNum] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'PIX'>('CASH');
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState<{ dailyNumber: number; protocol: number } | null>(null);
+  const [search, setSearch] = useState('');
+  const [modalItem, setModalItem] = useState<MenuItem | null>(null);
 
-  const totalCents = useMemo(
+  const itemsTotalCents = useMemo(
     () => Object.values(cart).reduce((s, l) => s + l.priceCents * l.quantity, 0),
     [cart],
   );
+  const deliveryFeeCents = useMemo(() => {
+    if (deliveryMode !== 'delivery') return 0;
+    return neighborhoods.find((n) => n.id === selectedNeighborhoodId)?.customerFeeCents ?? 0;
+  }, [deliveryMode, selectedNeighborhoodId, neighborhoods]);
+  const totalCents = itemsTotalCents + deliveryFeeCents;
 
-  function normalize(s: string) {
+  function normalizeStr(s: string) {
     return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   }
 
   function matchNeighborhood(neighborhoodName?: string | null): string | null {
     if (!neighborhoodName) return null;
-    const n = normalize(neighborhoodName);
-    const exact = neighborhoods.find((nb) => normalize(nb.name) === n);
+    const n = normalizeStr(neighborhoodName);
+    const exact = neighborhoods.find((nb) => normalizeStr(nb.name) === n);
     if (exact) return exact.id;
     const partial = neighborhoods.find((nb) => {
-      const a = normalize(nb.name);
+      const a = normalizeStr(nb.name);
       return a.includes(n) || n.includes(a);
     });
     return partial?.id ?? null;
   }
 
-  // Quando seleciona cliente, preenche nome e telefone e pré-seleciona endereço padrão.
+  function applyAddress(addr: { street: string; number?: string | null; neighborhood?: string | null; neighborhoodId?: string | null } | undefined) {
+    setStreet(addr?.street ?? '');
+    setAddressNum(addr?.number ?? '');
+    setSelectedNeighborhoodId(addr?.neighborhoodId ?? matchNeighborhood(addr?.neighborhood));
+  }
+
   function handleCustomerSelect(c: Customer | null) {
     setSelectedCustomer(c);
     if (c) {
@@ -182,9 +303,11 @@ export default function BalcaoPage() {
       setCustomerPhone(c.phone ?? '');
       const def = c.addresses.find((a) => a.isDefault) ?? c.addresses[0];
       setSelectedAddressId(def?.id ?? null);
-      setSelectedNeighborhoodId(matchNeighborhood(def?.neighborhood));
+      applyAddress(def);
     } else {
       setSelectedAddressId(null);
+      setStreet('');
+      setAddressNum('');
       setSelectedNeighborhoodId(null);
     }
   }
@@ -192,10 +315,10 @@ export default function BalcaoPage() {
   function handleAddressChange(addressId: string) {
     setSelectedAddressId(addressId);
     const addr = selectedCustomer?.addresses.find((a) => a.id === addressId);
-    setSelectedNeighborhoodId(matchNeighborhood(addr?.neighborhood));
+    applyAddress(addr);
   }
 
-  const addToCart = (item: MenuItem, optionId?: string) => {
+  const addToCart = (item: MenuItem, optionId: string | undefined, qty: number) => {
     const option = (item.options ?? []).find((o) => o.id === optionId);
     const key = optionId ?? item.id;
     const label = option ? `${item.name} — ${option.name}` : item.name;
@@ -207,7 +330,7 @@ export default function BalcaoPage() {
         optionId,
         label,
         priceCents,
-        quantity: (prev[key]?.quantity ?? 0) + 1,
+        quantity: (prev[key]?.quantity ?? 0) + qty,
       },
     }));
   };
@@ -220,6 +343,10 @@ export default function BalcaoPage() {
       return copy;
     });
 
+  const canSubmit =
+    Object.keys(cart).length > 0 &&
+    (deliveryMode === 'coleta' || street.trim().length > 0);
+
   const createOrder = useMutation({
     mutationFn: () => {
       const items = Object.values(cart).map((l) => ({
@@ -227,17 +354,23 @@ export default function BalcaoPage() {
         optionId: l.optionId,
         quantity: l.quantity,
       }));
-
-      const selectedAddress = selectedCustomer?.addresses.find(
-        (a) => a.id === selectedAddressId,
-      );
-
+      const selectedAddress = selectedCustomer?.addresses.find((a) => a.id === selectedAddressId);
+      if (deliveryMode === 'coleta') {
+        return api.createOrder({
+          customerId: selectedCustomer?.id,
+          customerName: customerName.trim() || 'Balcão',
+          customerPhone: customerPhone.trim() || undefined,
+          notes: notes.trim() || undefined,
+          paymentMethod,
+          items,
+        });
+      }
       return api.createOrder({
         customerId: selectedCustomer?.id,
         customerName: customerName.trim() || 'Balcão',
         customerPhone: customerPhone.trim() || undefined,
-        addressStreet: selectedAddress?.street,
-        addressNumber: selectedAddress?.number ?? undefined,
+        addressStreet: street.trim() || undefined,
+        addressNumber: addressNum.trim() || undefined,
         addressNeighborhood: selectedAddress?.neighborhood ?? undefined,
         addressLat: selectedAddress?.lat ?? undefined,
         addressLng: selectedAddress?.lng ?? undefined,
@@ -250,15 +383,34 @@ export default function BalcaoPage() {
     onSuccess: (order) => {
       setSuccess({ dailyNumber: order.dailyNumber, protocol: order.protocol });
       setCart({});
+      setDeliveryMode('delivery');
       setCustomerName('');
       setCustomerPhone('');
       setNotes('');
-      setSelectedOptions({});
+      setSearch('');
+      setStreet('');
+      setAddressNum('');
       setSelectedCustomer(null);
       setSelectedAddressId(null);
+      setSelectedNeighborhoodId(null);
       qc.invalidateQueries({ queryKey: ['orders'] });
     },
   });
+
+  // Filtra o cardápio pela busca
+  const filteredMenu = useMemo(() => {
+    if (!menu) return [];
+    const q = normalizeStr(search);
+    if (!q) return menu as MenuCategory[];
+    return (menu as MenuCategory[])
+      .map((cat) => ({
+        ...cat,
+        items: cat.items.filter(
+          (item) => item.available && normalizeStr(item.name).includes(q),
+        ),
+      }))
+      .filter((cat) => cat.items.length > 0);
+  }, [menu, search]);
 
   if (isLoading) {
     return <div className="p-8 text-center text-brand-ink/40">Carregando cardápio…</div>;
@@ -267,6 +419,15 @@ export default function BalcaoPage() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-6">
       <h1 className="page-title">Pedido no balcão</h1>
+
+      {/* Modal de confirmação de item */}
+      {modalItem && (
+        <AddItemModal
+          item={modalItem}
+          onConfirm={(optionId, qty) => addToCart(modalItem, optionId, qty)}
+          onClose={() => setModalItem(null)}
+        />
+      )}
 
       {success && (
         <div className="mt-4 rounded-lg border-2 border-brand-gold bg-brand-gold/10 p-4">
@@ -290,32 +451,43 @@ export default function BalcaoPage() {
 
       <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_340px]">
         {/* Cardápio */}
-        <div className="space-y-6">
-          {(menu ?? []).map((cat: MenuCategory) => (
-            <section key={cat.id}>
-              <h2 className="section-title border-b border-brand-cream-dark pb-1">
-                {cat.name}
-              </h2>
-              <ul className="mt-2 divide-y divide-brand-cream-dark">
-                {cat.items
-                  .filter((item) => item.available)
-                  .map((item) => (
-                    <ItemRow
-                      key={item.id}
-                      item={item}
-                      selectedOption={selectedOptions[item.id]}
-                      onOptionChange={(optId) =>
-                        setSelectedOptions((prev) => ({ ...prev, [item.id]: optId }))
-                      }
-                      onAdd={() => {
-                        if ((item.options ?? []).length > 0 && !selectedOptions[item.id]) return;
-                        addToCart(item, selectedOptions[item.id]);
-                      }}
-                    />
-                  ))}
-              </ul>
-            </section>
-          ))}
+        <div>
+          {/* Busca */}
+          <input
+            className="input w-full p-2 text-sm"
+            placeholder="Buscar item do cardápio…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          <div className="mt-4 space-y-6">
+            {filteredMenu.length === 0 && (
+              <p className="text-sm text-brand-ink/40">Nenhum item encontrado.</p>
+            )}
+            {filteredMenu.map((cat) => (
+              <section key={cat.id}>
+                <h2 className="section-title border-b border-brand-cream-dark pb-1">
+                  {cat.name}
+                </h2>
+                <ul className="mt-2 divide-y divide-brand-cream-dark">
+                  {cat.items
+                    .filter((item) => item.available)
+                    .map((item) => (
+                      <ItemRow
+                        key={item.id}
+                        item={item}
+                        cartQty={
+                          Object.values(cart)
+                            .filter((l) => l.menuItemId === item.id)
+                            .reduce((s, l) => s + l.quantity, 0)
+                        }
+                        onClick={() => setModalItem(item)}
+                      />
+                    ))}
+                </ul>
+              </section>
+            ))}
+          </div>
         </div>
 
         {/* Carrinho + dados do pedido */}
@@ -329,7 +501,7 @@ export default function BalcaoPage() {
                 {Object.entries(cart).map(([key, line]) => (
                   <li key={key} className="flex items-center gap-2 py-2 text-sm">
                     <span className="flex-1 leading-tight">{line.label}</span>
-                    <span className="text-brand-red font-semibold">
+                    <span className="font-semibold text-brand-red">
                       {formatBRL(line.priceCents * line.quantity)}
                     </span>
                     <div className="flex items-center gap-1">
@@ -351,11 +523,22 @@ export default function BalcaoPage() {
                 ))}
               </ul>
             )}
-
-            {totalCents > 0 && (
-              <div className="mt-3 flex justify-between border-t border-brand-cream-dark pt-2 font-bold">
-                <span>Total</span>
-                <span className="text-brand-red">{formatBRL(totalCents)}</span>
+            {itemsTotalCents > 0 && (
+              <div className="mt-3 space-y-1 border-t border-brand-cream-dark pt-2 text-sm">
+                <div className="flex justify-between text-brand-ink/60">
+                  <span>Subtotal</span>
+                  <span>{formatBRL(itemsTotalCents)}</span>
+                </div>
+                {deliveryFeeCents > 0 && (
+                  <div className="flex justify-between text-brand-ink/60">
+                    <span>Taxa de entrega</span>
+                    <span>{formatBRL(deliveryFeeCents)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold">
+                  <span>Total</span>
+                  <span className="text-brand-red">{formatBRL(totalCents)}</span>
+                </div>
               </div>
             )}
           </div>
@@ -363,14 +546,74 @@ export default function BalcaoPage() {
           <div className="card space-y-3 p-4">
             <h2 className="section-title">Dados do pedido</h2>
 
+            {/* Toggle Entrega / Coleta */}
+            <div className="flex rounded-lg border border-brand-cream-dark p-0.5">
+              {(['delivery', 'coleta'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setDeliveryMode(m)}
+                  className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${
+                    deliveryMode === m
+                      ? 'bg-brand-red text-white'
+                      : 'text-brand-ink/60 hover:text-brand-ink'
+                  }`}
+                >
+                  {m === 'delivery' ? 'Entrega' : 'Coleta'}
+                </button>
+              ))}
+            </div>
+
             <CustomerSearch onSelect={handleCustomerSelect} />
 
-            {selectedCustomer && selectedCustomer.addresses.length > 0 && (
-              <AddressSelect
-                customer={selectedCustomer}
-                selectedAddressId={selectedAddressId}
-                onChange={handleAddressChange}
-              />
+            {/* Endereço — somente no modo entrega */}
+            {deliveryMode === 'delivery' && (
+              <>
+                {selectedCustomer && selectedCustomer.addresses.length > 0 && (
+                  <AddressSelect
+                    customer={selectedCustomer}
+                    selectedAddressId={selectedAddressId}
+                    onChange={handleAddressChange}
+                  />
+                )}
+
+                <div className="flex gap-2">
+                  <input
+                    className="input flex-1 p-2 text-sm"
+                    placeholder="Rua / Av. *"
+                    value={street}
+                    onChange={(e) => setStreet(e.target.value)}
+                  />
+                  <input
+                    className="input w-24 p-2 text-sm"
+                    placeholder="Nº"
+                    value={addressNum}
+                    onChange={(e) => setAddressNum(e.target.value)}
+                  />
+                </div>
+
+                <select
+                  className="input w-full p-2 text-sm"
+                  value={selectedNeighborhoodId ?? ''}
+                  onChange={(e) => setSelectedNeighborhoodId(e.target.value || null)}
+                >
+                  <option value="">Bairro…</option>
+                  {neighborhoods.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.name} — taxa {formatBRL(n.customerFeeCents)}
+                    </option>
+                  ))}
+                </select>
+
+                {!street.trim() && (
+                  <p className="text-xs text-brand-red">Endereço obrigatório para entrega.</p>
+                )}
+              </>
+            )}
+
+            {deliveryMode === 'coleta' && (
+              <p className="rounded-lg bg-brand-cream px-3 py-2 text-sm text-brand-ink/60">
+                Sem entrega — cliente retira no local.
+              </p>
             )}
 
             <input
@@ -414,7 +657,7 @@ export default function BalcaoPage() {
 
             <button
               className="btn-primary w-full py-2.5"
-              disabled={Object.keys(cart).length === 0 || createOrder.isPending}
+              disabled={!canSubmit || createOrder.isPending}
               onClick={() => createOrder.mutate()}
             >
               {createOrder.isPending ? 'Criando…' : 'Criar pedido'}
@@ -426,54 +669,52 @@ export default function BalcaoPage() {
   );
 }
 
+// ---- Item do cardápio ----
+
 function ItemRow({
   item,
-  selectedOption,
-  onOptionChange,
-  onAdd,
+  cartQty,
+  onClick,
 }: {
   item: MenuItem;
-  selectedOption?: string;
-  onOptionChange: (optionId: string) => void;
-  onAdd: () => void;
+  cartQty: number;
+  onClick: () => void;
 }) {
   const hasOptions = (item.options ?? []).length > 0;
-  const canAdd = !hasOptions || !!selectedOption;
+  const priceRange = hasOptions
+    ? (() => {
+        const prices = (item.options ?? [])
+          .filter((o) => o.available)
+          .map((o) => o.priceCents);
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        return min === max ? formatBRL(min) : `${formatBRL(min)} – ${formatBRL(max)}`;
+      })()
+    : null;
 
   return (
-    <li className="flex items-center gap-3 py-2.5">
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold leading-tight">{item.name}</p>
-        {!hasOptions && (
-          <p className="text-sm font-bold text-brand-red">{formatBRL(item.priceCents)}</p>
-        )}
-        {hasOptions && (
-          <select
-            className="input mt-1 w-full p-1 text-sm"
-            value={selectedOption ?? ''}
-            onChange={(e) => onOptionChange(e.target.value)}
-          >
-            <option value="" disabled>Escolha o tamanho…</option>
-            {(item.options ?? [])
-              .filter((o) => o.available)
-              .map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name} — {formatBRL(o.priceCents)}
-                </option>
-              ))}
-          </select>
-        )}
-      </div>
+    <li>
       <button
-        className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
-          canAdd
-            ? 'bg-brand-red text-white hover:bg-brand-red/80'
-            : 'cursor-not-allowed bg-brand-cream-dark text-brand-ink/30'
-        }`}
-        onClick={onAdd}
-        disabled={!canAdd}
+        onClick={onClick}
+        className="flex w-full items-center gap-3 py-2.5 text-left hover:bg-brand-cream/60 transition-colors rounded-lg px-1"
       >
-        + Adicionar
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold leading-tight text-brand-ink">{item.name}</p>
+          <p className="text-sm text-brand-ink/60">
+            {hasOptions ? priceRange : formatBRL(item.priceCents)}
+            {hasOptions && (
+              <span className="ml-2 text-xs text-brand-ink/40">
+                {(item.options ?? []).filter((o) => o.available).map((o) => o.name).join(' · ')}
+              </span>
+            )}
+          </p>
+        </div>
+        {cartQty > 0 && (
+          <span className="shrink-0 rounded-full bg-brand-red px-2 py-0.5 text-xs font-bold text-white">
+            {cartQty}
+          </span>
+        )}
+        <span className="shrink-0 text-brand-ink/30 text-lg">›</span>
       </button>
     </li>
   );

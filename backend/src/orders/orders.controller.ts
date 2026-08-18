@@ -8,9 +8,11 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { OrderStatus, Role } from '@prisma/client';
+import { Request } from 'express';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
@@ -33,6 +35,30 @@ export class OrdersController {
   @Get('track/:protocol')
   track(@Param('protocol', ParseIntPipe) protocol: number) {
     return this.orders.findByProtocol(protocol);
+  }
+
+  /** Pedidos atribuídos ao entregador autenticado. Sem datas = hoje. */
+  @Get('courier/mine')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.DELIVERY)
+  listMine(
+    @Req() req: Request & { user: { sub: string } },
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.orders.listForCourier(req.user.sub, from, to);
+  }
+
+  /** Entregador atualiza o status do seu pedido (saiu/entregue). */
+  @Patch('courier/:id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.DELIVERY)
+  updateCourierStatus(
+    @Param('id') id: string,
+    @Body() dto: { status: 'OUT_FOR_DELIVERY' | 'DELIVERED' },
+    @Req() req: Request & { user: { sub: string } },
+  ) {
+    return this.orders.updateCourierStatus(id, req.user.sub, dto.status);
   }
 
   /** Fila do caixa (opcionalmente filtrada por status). */

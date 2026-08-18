@@ -161,6 +161,24 @@ export interface Order {
   neighborhoodId?: string | null;
 }
 
+export interface CourierOrder {
+  id: string;
+  protocol: number;
+  dailyNumber: number;
+  status: OrderStatus;
+  customerName: string;
+  customerPhone?: string | null;
+  addressStreet: string;
+  addressNumber?: string | null;
+  addressComplement?: string | null;
+  addressNeighborhood?: string | null;
+  addressReference?: string | null;
+  courierFeeCents: number;
+  notes?: string | null;
+  createdAt: string;
+  neighborhood?: { name: string } | null;
+}
+
 export type PaymentMethod = 'CASH' | 'PIX' | 'ONLINE';
 
 /** Rótulos de canal e forma de pagamento para exibição. */
@@ -405,6 +423,7 @@ export interface CustomerAddress {
   number?: string | null;
   complement?: string | null;
   neighborhood?: string | null;
+  neighborhoodId?: string | null;
   reference?: string | null;
   lat?: number | null;
   lng?: number | null;
@@ -444,6 +463,7 @@ export interface CreateAddressPayload {
   number?: string;
   complement?: string;
   neighborhood?: string;
+  neighborhoodId?: string;
   reference?: string;
   lat?: number;
   lng?: number;
@@ -799,6 +819,8 @@ export const api = {
   listCouriers: () => request<Courier[]>('/couriers'),
   couriersReport: (from?: string, to?: string) =>
     request<CourierReportRow[]>(`/reports/couriers${periodQuery(from, to)}`),
+  courierOrdersAdmin: (id: string, from?: string, to?: string) =>
+    request<CourierOrder[]>(`/reports/couriers/${id}/orders${periodQuery(from, to)}`),
 
   // ---- Caixa / fechamento ----
   payOrder: (id: string, paymentMethod?: PaymentMethod) =>
@@ -999,6 +1021,22 @@ export const api = {
       `/customers/${customerId}/addresses/${addressId}`,
       { method: 'DELETE' },
     ),
+  getPrintConfig: () => request<{ enabled: boolean }>('/config/printing'),
+  setPrintConfig: (enabled: boolean) =>
+    request<{ enabled: boolean }>('/config/printing', {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled }),
+    }),
+  getCourierOrders: (from?: string, to?: string) =>
+    request<CourierOrder[]>(`/orders/courier/mine${periodQuery(from, to)}`),
+  updateCourierStatus: (
+    id: string,
+    status: 'OUT_FOR_DELIVERY' | 'DELIVERED',
+  ) =>
+    request<{ id: string }>(`/orders/courier/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
 };
 
 function periodQuery(from?: string, to?: string): string {

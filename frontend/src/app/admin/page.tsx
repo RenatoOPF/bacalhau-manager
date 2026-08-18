@@ -46,6 +46,20 @@ function normalize(text: string): string {
 
 const DONE_STATUSES = new Set<OrderStatus>(['DELIVERED', 'CANCELED']);
 
+const SIZE_KEYWORDS = ['meia', 'inteira', 'porcao', 'porcão', 'porção', 'individual', 'unico', 'único'];
+
+function extractSizeTag(notes: string | null): { tag: string | null; rest: string | null } {
+  if (!notes) return { tag: null, rest: null };
+  const segments = notes.split(' | ');
+  const first = segments[0].trim();
+  const stripped = first.replace(/^\d+\s+/, '');
+  const lc = stripped.toLowerCase();
+  if (SIZE_KEYWORDS.some((kw) => lc.includes(kw))) {
+    return { tag: stripped.toUpperCase(), rest: segments.slice(1).join(' | ') || null };
+  }
+  return { tag: null, rest: notes };
+}
+
 export default function CaixaPage() {
   const qc = useQueryClient();
   const [showDone, setShowDone] = useState(false);
@@ -61,6 +75,14 @@ export default function CaixaPage() {
   const { data: neighborhoods } = useQuery({
     queryKey: ['neighborhoods'],
     queryFn: () => api.listNeighborhoods(),
+  });
+  const { data: printConfig } = useQuery({
+    queryKey: ['print-config'],
+    queryFn: () => api.getPrintConfig(),
+  });
+  const togglePrint = useMutation({
+    mutationFn: (enabled: boolean) => api.setPrintConfig(enabled),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['print-config'] }),
   });
 
   // Tempo real: novos pedidos e mudanças de status recarregam a fila.
@@ -84,9 +106,22 @@ export default function CaixaPage() {
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
       <div className="flex items-center justify-between">
         <h1 className="page-title">Fila de pedidos</h1>
-        <a href="/admin/balcao" className="btn-primary px-4 py-2 text-sm">
-          + Novo pedido
-        </a>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => togglePrint.mutate(!(printConfig?.enabled ?? true))}
+            disabled={togglePrint.isPending}
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              (printConfig?.enabled ?? true)
+                ? 'bg-brand-ink text-white hover:bg-brand-ink/80'
+                : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+            }`}
+          >
+            {(printConfig?.enabled ?? true) ? 'Impressao: ON' : 'Impressao: OFF'}
+          </button>
+          <a href="/admin/balcao" className="btn-primary px-4 py-2 text-sm">
+            + Novo pedido
+          </a>
+        </div>
       </div>
 
       {active.length === 0 && (
@@ -163,10 +198,20 @@ function OrderCard({
     : undefined;
 
   const [picking, setPicking] = useState(false);
+  const [dispatchMode, setDispatchMode] = useState<'delivery' | 'coleta'>('delivery');
   const [courierId, setCourierId] = useState('');
   const [neighborhoodId, setNeighborhoodId] = useState(
     order.neighborhoodId ?? suggested?.id ?? '',
   );
+
+  // Quando os bairros carregam depois do primeiro render, sincroniza o select
+  // (o useState inicial roda com neighborhoods=[] se o fetch ainda não terminou).
+  useEffect(() => {
+    if (!neighborhoodId) {
+      const id = order.neighborhoodId ?? suggested?.id ?? '';
+      if (id) setNeighborhoodId(id);
+    }
+  }, [suggested?.id, order.neighborhoodId]);
 
   const advance = useMutation({
     mutationFn: (status: OrderStatus) => api.updateStatus(order.id, status),
@@ -184,6 +229,16 @@ function OrderCard({
         neighborhoodId: neighborhoodId || null,
       });
       await api.updateStatus(order.id, 'OUT_FOR_DELIVERY');
+    },
+    onSuccess: () => {
+      setPicking(false);
+      onChange();
+    },
+  });
+  const collectDispatch = useMutation({
+    mutationFn: async () => {
+      await api.assignDelivery(order.id, { courierId: null, neighborhoodId: null });
+      await api.updateStatus(order.id, 'DELIVERED');
     },
     onSuccess: () => {
       setPicking(false);
@@ -226,9 +281,19 @@ function OrderCard({
         {order.items.map((it) => (
           <li key={it.id}>
             {it.quantity}x {printLabel(it.nameSnapshot, it.optionNameSnapshot)}
-            {it.notes && (
-              <span className="text-brand-ink/60"> — {it.notes}</span>
-            )}
+            {(() => {
+              const { tag, rest } = extractSizeTag(it.notes);
+              return (
+                <>
+                  {tag && (
+                    <span className="ml-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+                      {tag}
+                    </span>
+                  )}
+                  {rest && <span className="text-brand-ink/60"> — {rest}</span>}
+                </>
+              );
+            })()}
           </li>
         ))}
       </ul>
@@ -245,61 +310,103 @@ function OrderCard({
 
       {picking ? (
         <div className="mt-3 space-y-2 border-t border-brand-cream-dark pt-3">
-          <select
-            className="input w-full p-2 text-sm"
-            value={courierId}
-            onChange={(e) => setCourierId(e.target.value)}
-          >
-            <option value="">Escolha o entregador…</option>
-            {couriers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+          {/* Toggle Entregador / Coleta */}
+          <div className="flex rounded-lg border border-brand-cream-dark p-0.5">
+            {(['delivery', 'coleta'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setDispatchMode(m)}
+                className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${
+                  dispatchMode === m
+                    ? 'bg-brand-red text-white'
+                    : 'text-brand-ink/60 hover:text-brand-ink'
+                }`}
+              >
+                {m === 'delivery' ? 'Entregador' : 'Coleta'}
+              </button>
             ))}
-          </select>
-          <select
-            className="input w-full p-2 text-sm"
-            value={neighborhoodId}
-            onChange={(e) => setNeighborhoodId(e.target.value)}
-          >
-            <option value="">Bairro (define a taxa)…</option>
-            {neighborhoods.map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.name}
-              </option>
-            ))}
-          </select>
-          {(() => {
-            const nb = neighborhoods.find((n) => n.id === neighborhoodId);
-            if (!nb) return null;
-            return (
-              <div className="rounded-lg bg-brand-cream px-3 py-2 text-sm">
-                <span>Taxa cliente: <strong className="text-brand-red">{formatBRL(nb.customerFeeCents)}</strong></span>
-                <span className="mx-2 text-brand-ink/30">·</span>
-                <span>Repasse: <strong>{formatBRL(nb.courierFeeCents)}</strong></span>
-              </div>
-            );
-          })()}
-          {couriers.length === 0 && (
-            <p className="text-xs text-brand-red">
-              Cadastre entregadores (funcionários com perfil Entregador).
-            </p>
-          )}
-          <div className="flex gap-2">
-            <button
-              className="btn-primary flex-1 px-3 py-2 text-sm"
-              disabled={!courierId || dispatch.isPending}
-              onClick={() => dispatch.mutate()}
-            >
-              Confirmar saída
-            </button>
-            <button
-              className="btn-outline px-3 py-2 text-sm"
-              onClick={() => setPicking(false)}
-            >
-              Cancelar
-            </button>
           </div>
+
+          {dispatchMode === 'delivery' ? (
+            <>
+              <select
+                className="input w-full p-2 text-sm"
+                value={courierId}
+                onChange={(e) => setCourierId(e.target.value)}
+              >
+                <option value="">Escolha o entregador…</option>
+                {couriers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="input w-full p-2 text-sm"
+                value={neighborhoodId}
+                onChange={(e) => setNeighborhoodId(e.target.value)}
+              >
+                <option value="">Bairro (define a taxa)…</option>
+                {neighborhoods.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.name}
+                  </option>
+                ))}
+              </select>
+              {(() => {
+                const nb = neighborhoods.find((n) => n.id === neighborhoodId);
+                if (!nb) return null;
+                return (
+                  <div className="rounded-lg bg-brand-cream px-3 py-2 text-sm">
+                    <span>Taxa cliente: <strong className="text-brand-red">{formatBRL(nb.customerFeeCents)}</strong></span>
+                    <span className="mx-2 text-brand-ink/30">·</span>
+                    <span>Repasse: <strong>{formatBRL(nb.courierFeeCents)}</strong></span>
+                  </div>
+                );
+              })()}
+              {couriers.length === 0 && (
+                <p className="text-xs text-brand-red">
+                  Cadastre entregadores (funcionários com perfil Entregador).
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  className="btn-primary flex-1 px-3 py-2 text-sm"
+                  disabled={!courierId || dispatch.isPending}
+                  onClick={() => dispatch.mutate()}
+                >
+                  Confirmar saída
+                </button>
+                <button
+                  className="btn-outline px-3 py-2 text-sm"
+                  onClick={() => setPicking(false)}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-brand-ink/60">
+                O cliente veio buscar o pedido. Nenhum entregador será atribuído.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  className="btn-primary flex-1 px-3 py-2 text-sm"
+                  disabled={collectDispatch.isPending}
+                  onClick={() => collectDispatch.mutate()}
+                >
+                  Confirmar coleta
+                </button>
+                <button
+                  className="btn-outline px-3 py-2 text-sm"
+                  onClick={() => setPicking(false)}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">

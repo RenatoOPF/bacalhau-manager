@@ -77,10 +77,13 @@ export function parseIfood(lines: string[]): ParsedExternalOrder | null {
     const m = l.match(/^(\d+)x\s+(.+?)\s+R\$\s*([\d.,]+)\s*$/);
     if (m) {
       push();
+      const qty = Number(m[1]);
+      // O valor impresso é o total da linha (qty × unitário), não o unitário.
+      const unitCents = Math.round(brlToCents(m[3]) / qty);
       cur = {
-        quantity: Number(m[1]),
+        quantity: qty,
         name: m[2].trim(),
-        priceCents: brlToCents(m[3]),
+        priceCents: unitCents,
         _notes: [],
       };
       continue;

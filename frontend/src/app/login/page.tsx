@@ -18,7 +18,7 @@ export default function LoginPage() {
     try {
       const session = await api.login(username, password);
       auth.setToken(session.token);
-      router.replace('/admin');
+      router.replace(session.employee.role === 'DELIVERY' ? '/entregador' : '/admin');
     } catch {
       setError('Usuário ou senha inválidos.');
     } finally {

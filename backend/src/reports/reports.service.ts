@@ -321,6 +321,35 @@ export class ReportsService {
     return [...map.values()].sort((a, b) => b.totalCents - a.totalCents);
   }
 
+  /** Pedidos detalhados de um entregador específico no período (visão admin). */
+  async courierOrders(courierId: string, from?: string, to?: string) {
+    const where: Prisma.OrderWhereInput = { courierId };
+    const createdAt = periodFilter(from, to);
+    if (createdAt) where.createdAt = createdAt;
+
+    return this.prisma.order.findMany({
+      where,
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        protocol: true,
+        dailyNumber: true,
+        status: true,
+        customerName: true,
+        customerPhone: true,
+        addressStreet: true,
+        addressNumber: true,
+        addressComplement: true,
+        addressNeighborhood: true,
+        addressReference: true,
+        courierFeeCents: true,
+        notes: true,
+        createdAt: true,
+        neighborhood: { select: { name: true } },
+      },
+    });
+  }
+
   /** Soma dos repasses a entregadores no período (pedidos pagos), p/ o DRE. */
   async courierCostCents(from?: string, to?: string): Promise<number> {
     const agg = await this.prisma.order.aggregate({

@@ -208,20 +208,22 @@ model Customer {
 /// Endereço de entrega vinculado a um cliente. Um cliente pode ter vários
 /// (ex.: casa e trabalho). O endereço padrão é pré-selecionado no balcão.
 model CustomerAddress {
-  id           String   @id @default(cuid())
-  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  customerId   String
-  label        String?  // ex.: "Casa", "Trabalho"
-  street       String
-  number       String?
-  complement   String?
-  neighborhood String?
-  reference    String?
-  lat          Float?
-  lng          Float?
-  isDefault    Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id               String        @id @default(cuid())
+  customer         Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId       String
+  label            String?       // ex.: "Casa", "Trabalho"
+  street           String
+  number           String?
+  complement       String?
+  neighborhood     String?       // texto livre (legado / geocoding)
+  neighborhoodId   String?
+  neighborhoodRel  Neighborhood? @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
+  reference        String?
+  lat              Float?
+  lng              Float?
+  isDefault        Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([customerId])
 }
@@ -485,13 +487,14 @@ model DeliveryFeeZone {
 /// Bairro de entrega com dois valores: `customerFeeCents` (taxa cobrada do
 /// cliente) e `courierFeeCents` (repasse ao entregador). Cadastrável no admin.
 model Neighborhood {
-  id               String   @id @default(cuid())
-  name             String   @unique
-  customerFeeCents Int      @default(0)
-  courierFeeCents  Int      @default(0)
-  active           Boolean  @default(true)
-  sortOrder        Int      @default(0)
+  id               String            @id @default(cuid())
+  name             String            @unique
+  customerFeeCents Int               @default(0)
+  courierFeeCents  Int               @default(0)
+  active           Boolean           @default(true)
+  sortOrder        Int               @default(0)
   orders           Order[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  customerAddresses CustomerAddress[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }

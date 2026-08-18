@@ -58,6 +58,10 @@ export class CreateAddressDto {
 
   @IsOptional()
   @IsString()
+  neighborhoodId?: string;
+
+  @IsOptional()
+  @IsString()
   reference?: string;
 
   @IsOptional()
@@ -94,6 +98,10 @@ export class UpdateAddressDto {
   @IsOptional()
   @IsString()
   neighborhood?: string;
+
+  @IsOptional()
+  @IsString()
+  neighborhoodId?: string;
 
   @IsOptional()
   @IsString()
