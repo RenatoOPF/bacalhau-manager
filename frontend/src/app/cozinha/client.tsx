@@ -4,8 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { CHANNEL_LABEL, type OrderChannel, type OrderStatus } from '@/lib/api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:3001';
-const POLL_INTERVAL = 30_000;
+const POLL_INTERVAL = 10_000;
 
 export interface KitchenOrder {
   id: string;
@@ -112,37 +111,12 @@ export function CozinhaClient({
   }, []);
 
   useEffect(() => {
-    // Polling a cada 30s — funciona em qualquer browser incluindo TVs antigas.
+    fetchOrders();
     const pollInterval = setInterval(fetchOrders, POLL_INTERVAL);
-
-    // WebSocket para atualizações instantâneas em browsers modernos.
-    // Envolvido em try/catch: browsers antigos podem não suportar socket.io.
-    let socketCleanup: (() => void) | null = null;
-    try {
-      // Importação dinâmica para não bloquear o bundle em TVs com JS limitado.
-      import('socket.io-client').then(({ io }) => {
-        try {
-          const socket = io(WS_URL, { transports: ['websocket'] });
-          socket.on('order:created', fetchOrders);
-          socket.on('order:status', fetchOrders);
-          socketCleanup = () => socket.disconnect();
-        } catch {
-          // WebSocket indisponível — polling é suficiente.
-        }
-      }).catch(() => {
-        // Falha ao carregar socket.io — continua só com polling.
-      });
-    } catch {
-      // Fallback silencioso.
-    }
-
-    // Atualiza o tempo decorrido a cada minuto.
     const tickInterval = setInterval(() => setTick((t) => t + 1), 60_000);
-
     return () => {
       clearInterval(pollInterval);
       clearInterval(tickInterval);
-      socketCleanup?.();
     };
   }, [fetchOrders]);
 
