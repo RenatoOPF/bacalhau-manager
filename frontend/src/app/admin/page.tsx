@@ -282,7 +282,7 @@ function OrderCard({
           <li key={it.id}>
             {it.quantity}x {printLabel(it.nameSnapshot, it.optionNameSnapshot)}
             {(() => {
-              const { tag, rest } = extractSizeTag(it.notes);
+              const { tag, rest } = extractSizeTag(it.notes ?? null);
               return (
                 <>
                   {tag && (
