@@ -46,6 +46,85 @@ const QUICK: Record<StockUnit, number[]> = {
   un: [-6, -1, 1, 6, 12],
 };
 
+function exportStock(items: StockItem[]) {
+  const active = items.filter((s) => s.active);
+  const rows = active
+    .map((s) => {
+      const zero = s.qty <= 0;
+      const low = !zero && s.qty <= s.alertQty;
+      const badge = zero
+        ? '<span style="color:#b91c1c;font-weight:600">Zerado</span>'
+        : low
+          ? '<span style="color:#b45309;font-weight:600">Baixo</span>'
+          : '<span style="color:#15803d">OK</span>';
+      const rowStyle = zero
+        ? 'background:#fef2f2'
+        : low
+          ? 'background:#fffbeb'
+          : '';
+      return `<tr style="${rowStyle}">
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${s.name}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-variant-numeric:tabular-nums">
+          ${fmtQty(s.qty)} ${unitLabel(s.unit, s.qty)}
+        </td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center">${badge}</td>
+      </tr>`;
+    })
+    .join('');
+
+  const now = new Date().toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Estoque — ${now}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; padding: 32px; color: #111; font-size: 14px; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .meta { color: #6b7280; margin-bottom: 20px; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      background: #f9fafb; text-align: left; padding: 8px 12px;
+      border-bottom: 2px solid #d1d5db; font-size: 12px;
+      text-transform: uppercase; letter-spacing: .05em; color: #6b7280;
+    }
+    thead th:nth-child(2) { text-align: right; }
+    thead th:nth-child(3) { text-align: center; }
+    @media print {
+      body { padding: 16px; }
+      @page { margin: 1.5cm; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Estoque</h1>
+  <p class="meta">Gerado em ${now} · ${active.length} insumo${active.length !== 1 ? 's' : ''}</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Insumo</th>
+        <th style="text-align:right">Quantidade</th>
+        <th style="text-align:center">Status</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) return;
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  win.print();
+}
+
 export default function EstoquePage() {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: ['stock'] });
@@ -103,7 +182,16 @@ export default function EstoquePage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-      <h1 className="page-title">Estoque</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="page-title">Estoque</h1>
+        <button
+          className="btn-outline px-3 py-2 text-sm"
+          disabled={items.length === 0}
+          onClick={() => exportStock(items)}
+        >
+          Exportar PDF
+        </button>
+      </div>
       <p className="mt-1 text-sm text-brand-ink/60">
         Porções preparadas, matéria-prima (kg) e unidades. A venda desconta
         sozinha (Meia = 0,5 porção); zerado não bloqueia — só alerta aqui. Use
