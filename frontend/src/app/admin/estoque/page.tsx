@@ -125,6 +125,25 @@ function exportStock(items: StockItem[]) {
   win.print();
 }
 
+function copyStock(items: StockItem[]) {
+  const now = new Date().toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+
+  const lines = items
+    .filter((s) => s.active)
+    .map((s) => {
+      const zero = s.qty <= 0;
+      const low = !zero && s.qty <= s.alertQty;
+      const icon = zero ? '❌' : low ? '⚠️' : '✅';
+      return `${icon} ${s.name}: ${fmtQty(s.qty)} ${unitLabel(s.unit, s.qty)}`;
+    });
+
+  const text = `📦 *Estoque* — ${now}\n\n${lines.join('\n')}`;
+  navigator.clipboard.writeText(text);
+}
+
 export default function EstoquePage() {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: ['stock'] });
@@ -138,6 +157,7 @@ export default function EstoquePage() {
   const [newUnit, setNewUnit] = useState<StockUnit>('porção');
   const [newQty, setNewQty] = useState('');
   const [localItems, setLocalItems] = useState<StockItem[] | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const items = localItems ?? stock ?? [];
   const low = items.filter((s) => s.active && s.qty <= s.alertQty);
@@ -184,13 +204,26 @@ export default function EstoquePage() {
     <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
       <div className="flex items-center justify-between">
         <h1 className="page-title">Estoque</h1>
-        <button
-          className="btn-outline px-3 py-2 text-sm"
-          disabled={items.length === 0}
-          onClick={() => exportStock(items)}
-        >
-          Exportar PDF
-        </button>
+        <div className="flex gap-2">
+          <button
+            className="btn-outline px-3 py-2 text-sm"
+            disabled={items.length === 0 || copied}
+            onClick={() => {
+              copyStock(items);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+          >
+            {copied ? 'Copiado! ✓' : 'Copiar WhatsApp'}
+          </button>
+          <button
+            className="btn-outline px-3 py-2 text-sm"
+            disabled={items.length === 0}
+            onClick={() => exportStock(items)}
+          >
+            Exportar PDF
+          </button>
+        </div>
       </div>
       <p className="mt-1 text-sm text-brand-ink/60">
         Porções preparadas, matéria-prima (kg) e unidades. A venda desconta
