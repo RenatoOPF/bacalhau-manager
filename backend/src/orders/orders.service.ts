@@ -205,6 +205,7 @@ export class OrdersService {
         status: true,
         notes: true,
         createdAt: true,
+        customerName: true,
         items: {
           select: {
             id: true,

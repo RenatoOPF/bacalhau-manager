@@ -13,6 +13,7 @@ export interface KitchenOrder {
   status: OrderStatus;
   notes: string | null;
   createdAt: string;
+  customerName: string | null;
   items: KitchenItem[];
 }
 
@@ -187,6 +188,12 @@ function OrderCard({ order }: { order: KitchenOrder }) {
           </span>
         </div>
       </div>
+
+      {order.customerName && (
+        <p className="mt-1 text-sm font-semibold text-brand-ink/70">
+          {order.customerName}
+        </p>
+      )}
 
       {order.notes && (
         <p className="mt-1 text-xs font-medium text-brand-ink/50">
