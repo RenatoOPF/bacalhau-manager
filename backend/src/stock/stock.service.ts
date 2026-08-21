@@ -326,7 +326,7 @@ export class StockService {
             data: {
               stockItemId,
               deltaMilli: -milli,
-              reason: `Venda pedido #${order.protocol}`,
+              reason: `Venda pedido #${order.dailyNumber}`,
               orderId: order.id,
             },
           }),
