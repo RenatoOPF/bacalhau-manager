@@ -462,7 +462,7 @@ export class ReportsService {
    */
   async dre(from?: string, to?: string) {
     const dueDate = periodFilter(from, to);
-    const [byChannel, config, cmvCents, courierCents, expenseGroups] =
+    const [byChannel, config, cmvCents, courierCents, expenseGroups, discountAgg] =
       await Promise.all([
         this.byChannel(from, to),
         this.channelConfig(),
@@ -472,6 +472,10 @@ export class ReportsService {
           by: ['categoryId'],
           where: dueDate ? { dueDate } : {},
           _sum: { amountCents: true },
+        }),
+        this.prisma.order.aggregate({
+          where: this.paidWhere(from, to),
+          _sum: { discountCents: true },
         }),
       ]);
 
@@ -515,12 +519,14 @@ export class ReportsService {
       0,
     );
 
+    const discountCents = discountAgg._sum.discountCents ?? 0;
     const netCents =
       grossCents - commissionCents - cmvCents - courierCents - expensesCents;
     return {
       from,
       to,
       grossCents,
+      discountCents,
       grossByChannel,
       commissionCents,
       cmvCents,
@@ -529,6 +535,29 @@ export class ReportsService {
       expensesCents,
       netCents,
     };
+  }
+
+  /**
+   * Despesas não pagas com vencimento nos próximos `days` dias (a partir de
+   * hoje), ordenadas por data de vencimento. Usado no calendário de projeção.
+   */
+  async upcomingExpenses(days = 30) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const until = new Date(today);
+    until.setDate(until.getDate() + days);
+
+    return this.prisma.expense.findMany({
+      where: {
+        paidAt: null,
+        dueDate: { gte: today, lte: until },
+      },
+      orderBy: { dueDate: 'asc' },
+      include: {
+        category: { select: { id: true, name: true } },
+        account: { select: { id: true, name: true } },
+      },
+    });
   }
 
   /**

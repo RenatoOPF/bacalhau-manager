@@ -179,7 +179,7 @@ export interface CourierOrder {
   neighborhood?: { name: string } | null;
 }
 
-export type PaymentMethod = 'CASH' | 'PIX' | 'ONLINE';
+export type PaymentMethod = 'CASH' | 'PIX' | 'CARD' | 'ONLINE';
 
 /** Rótulos de canal e forma de pagamento para exibição. */
 export const CHANNEL_LABEL: Record<OrderChannel, string> = {
@@ -192,6 +192,7 @@ export const CHANNEL_LABEL: Record<OrderChannel, string> = {
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   CASH: 'Dinheiro',
   PIX: 'PIX',
+  CARD: 'Cartão',
   ONLINE: 'Online (app)',
 };
 
@@ -313,6 +314,7 @@ export interface DreReport {
   from?: string;
   to?: string;
   grossCents: number;
+  discountCents: number;
   grossByChannel: {
     channel: OrderChannel;
     grossCents: number;
@@ -329,6 +331,16 @@ export interface DreReport {
   }[];
   expensesCents: number;
   netCents: number;
+}
+
+export interface UpcomingExpense {
+  id: string;
+  description: string;
+  amountCents: number;
+  dueDate: string;
+  recurring: boolean;
+  category?: { id: string; name: string } | null;
+  account?: { id: string; name: string } | null;
 }
 
 export interface CashflowRow {
@@ -480,8 +492,9 @@ export interface CreateOrderPayload {
   addressLat?: number;
   addressLng?: number;
   neighborhoodId?: string;
-  paymentMethod: 'CASH' | 'PIX';
+  paymentMethod: 'CASH' | 'PIX' | 'CARD';
   notes?: string;
+  discountCents?: number;
   items: {
     menuItemId: string;
     optionId?: string;
@@ -874,6 +887,8 @@ export const api = {
     request<MarginRow[]>(`/reports/margins${periodQuery(from, to)}`),
   dre: (from?: string, to?: string) =>
     request<DreReport>(`/reports/dre${periodQuery(from, to)}`),
+  upcomingExpenses: (days = 30) =>
+    request<UpcomingExpense[]>(`/reports/upcoming?days=${days}`),
   cashflow: (from?: string, to?: string) =>
     request<CashflowRow[]>(`/reports/cashflow${periodQuery(from, to)}`),
   channelConfig: () =>

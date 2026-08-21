@@ -142,8 +142,12 @@ export function parseNoventa_Nove(lines: string[]): ParsedExternalOrder | null {
       // Linha com R$ mas não reconhecida → fim do item
       if (/R\$/.test(next)) break;
 
-      // Continuação do nome (quebra de palavra pela impressora)
-      name += wordBoundary ? ' ' + cont : cont;
+      // Continuação do nome (quebra de linha pela impressora).
+      // Sempre insere espaço: o corte pode cair no fim de uma palavra mesmo
+      // quando só havia 1 espaço antes de R$ (sem padding). O pior caso —
+      // corte mid-word como "Bacal" + "hau" → "Bacal hau" — ainda é
+      // reconhecível pelo normalize() do estimador de CMV.
+      name += ' ' + cont;
       i++;
     }
 

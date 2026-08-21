@@ -7,6 +7,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   Min,
   MinLength,
   ValidateNested,
@@ -85,6 +86,12 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100_000_00) // max R$ 100.000
+  discountCents?: number;
 
   @IsArray()
   @ArrayMinSize(1)

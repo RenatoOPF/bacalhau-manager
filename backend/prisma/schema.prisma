@@ -249,6 +249,7 @@ enum OrderStatus {
 enum PaymentMethod {
   CASH // dinheiro
   PIX // PIX
+  CARD // cartão de crédito/débito
   ONLINE // pago no app (iFood/99) — não entra no fechamento de caixa
 }
 
@@ -298,6 +299,8 @@ model Order {
   // Taxa de entrega COBRADA DO CLIENTE, já inclusa no totalCents (iFood/99 vêm
   // da captura; pedidos próprios vêm do bairro escolhido). 0 se não houver.
   deliveryFeeCents Int @default(0)
+  // Desconto concedido manualmente no balcão (já deduzido do totalCents).
+  discountCents    Int @default(0)
   notes      String?
 
   // Entrega: entregador designado e o REPASSE a ele por esta entrega (snapshot).

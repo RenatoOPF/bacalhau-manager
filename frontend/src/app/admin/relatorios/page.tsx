@@ -7,6 +7,7 @@ import {
   formatBRL,
   type MarginRow,
   type OrderChannel,
+  type UpcomingExpense,
 } from '@/lib/api';
 import { BarChart, Heatmap, LineChart } from '@/components/charts';
 
@@ -713,14 +714,10 @@ function FinanceiroTab({
   fromPrev?: string;
   toPrev?: string;
 }) {
-  const dre = useQuery({
-    queryKey: ['rep-dre', from, to],
-    queryFn: () => api.dre(from, to),
-  });
-  const cashflow = useQuery({
-    queryKey: ['rep-cashflow', from, to],
-    queryFn: () => api.cashflow(from, to),
-  });
+  const dre = useQuery({ queryKey: ['rep-dre', from, to], queryFn: () => api.dre(from, to) });
+  const cashflow = useQuery({ queryKey: ['rep-cashflow', from, to], queryFn: () => api.cashflow(from, to) });
+  const couriers = useQuery({ queryKey: ['rep-couriers', from, to], queryFn: () => api.couriersReport(from, to) });
+  const upcoming = useQuery({ queryKey: ['rep-upcoming'], queryFn: () => api.upcomingExpenses(30) });
   const drePrev = useQuery({
     queryKey: ['rep-dre', fromPrev, toPrev],
     queryFn: () => api.dre(fromPrev!, toPrev!),
@@ -731,17 +728,24 @@ function FinanceiroTab({
   const dp = drePrev.data;
   const comparing = !!fromPrev;
 
+  // Contas a receber: por canal externo, gross - comissão = repasse esperado
+  const receivables = (d?.grossByChannel ?? [])
+    .filter((c) => c.channel !== 'OWN' && c.grossCents > 0)
+    .map((c) => ({
+      channel: c.channel,
+      grossCents: c.grossCents,
+      commissionCents: c.commissionCents,
+      netCents: c.grossCents - c.commissionCents,
+      commissionPct: (c.commissionBps / 100).toFixed(0),
+    }));
+
   return (
     <div className="mt-6 space-y-8">
       {/* DRE */}
       <section>
         <h2 className="section-title">
           DRE
-          {comparing && (
-            <span className="ml-2 text-sm font-normal text-brand-ink/50">
-              (atual × ano anterior)
-            </span>
-          )}
+          {comparing && <span className="ml-2 text-sm font-normal text-brand-ink/50">(atual × ano anterior)</span>}
         </h2>
         <div className="card mt-2 space-y-1 p-4">
           <DreLine
@@ -751,13 +755,21 @@ function FinanceiroTab({
             bold
           />
           {(d?.grossByChannel ?? []).map((c) => (
-            <DreLine
-              key={c.channel}
-              indent
-              label={CHANNEL_LABEL[c.channel] ?? c.channel}
-              value={formatBRL(c.grossCents)}
-            />
+            <DreLine key={c.channel} indent label={CHANNEL_LABEL[c.channel] ?? c.channel} value={formatBRL(c.grossCents)} />
           ))}
+
+          {(d?.discountCents ?? 0) > 0 && (
+            <>
+              <div className="pt-1" />
+              <DreLine
+                label="(−) Descontos concedidos"
+                value={`- ${formatBRL(d?.discountCents ?? 0)}`}
+                prev={comparing && (dp?.discountCents ?? 0) > 0 ? `- ${formatBRL(dp?.discountCents ?? 0)}` : undefined}
+                bold
+                danger
+              />
+            </>
+          )}
 
           <div className="pt-2" />
           <DreLine
@@ -789,12 +801,7 @@ function FinanceiroTab({
             danger
           />
           {(d?.expensesByCategory ?? []).map((e) => (
-            <DreLine
-              key={e.categoryId ?? 'none'}
-              indent
-              label={e.name}
-              value={`- ${formatBRL(e.amountCents)}`}
-            />
+            <DreLine key={e.categoryId ?? 'none'} indent label={e.name} value={`- ${formatBRL(e.amountCents)}`} />
           ))}
 
           <div className="mt-2 border-t-2 border-brand-gold/60 pt-2">
@@ -810,14 +817,8 @@ function FinanceiroTab({
 
           {comparing && (
             <div className="mt-3 flex gap-4 border-t border-brand-cream-dark pt-2 text-xs text-brand-ink/50">
-              <span className="flex items-center gap-1">
-                <span className="inline-block h-2 w-3 rounded bg-brand-red" />
-                Atual
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block h-2 w-3 rounded bg-brand-ink/20" />
-                Ano anterior
-              </span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded bg-brand-red" />Atual</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded bg-brand-ink/20" />Ano anterior</span>
             </div>
           )}
         </div>
@@ -826,15 +827,60 @@ function FinanceiroTab({
       {/* Config de comissão */}
       <CommissionConfig />
 
+      {/* Contas a receber */}
+      {receivables.length > 0 && (
+        <section>
+          <h2 className="section-title">Contas a receber</h2>
+          <p className="text-sm text-brand-ink/60">Repasse esperado dos marketplaces no período (bruto − comissão).</p>
+          <div className="card mt-2 divide-y divide-brand-cream-dark p-3">
+            {receivables.map((r) => (
+              <div key={r.channel} className="flex items-center justify-between py-2 text-sm">
+                <div>
+                  <p className="font-semibold">{CHANNEL_LABEL[r.channel] ?? r.channel}</p>
+                  <p className="text-xs text-brand-ink/50">
+                    {formatBRL(r.grossCents)} − {r.commissionPct}% comissão ({formatBRL(r.commissionCents)})
+                  </p>
+                </div>
+                <span className="font-bold text-brand-green">{formatBRL(r.netCents)}</span>
+              </div>
+            ))}
+            <div className="flex items-center justify-between pt-2 text-sm font-bold">
+              <span>Total a receber</span>
+              <span className="text-brand-green">{formatBRL(receivables.reduce((s, r) => s + r.netCents, 0))}</span>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Repasse de entregadores */}
+      {(couriers.data ?? []).length > 0 && (
+        <section>
+          <h2 className="section-title">Repasse de entregadores</h2>
+          <p className="text-sm text-brand-ink/60">Total a pagar a cada entregador no período.</p>
+          <div className="card mt-2 divide-y divide-brand-cream-dark p-3">
+            {(couriers.data ?? []).map((c) => (
+              <div key={c.courierId} className="flex items-center justify-between py-2 text-sm">
+                <div>
+                  <p className="font-semibold">{c.courierName}</p>
+                  <p className="text-xs text-brand-ink/50">{c.deliveries} entrega(s)</p>
+                </div>
+                <span className="font-bold text-brand-red">{formatBRL(c.totalCents)}</span>
+              </div>
+            ))}
+            <div className="flex items-center justify-between pt-2 text-sm font-bold">
+              <span>Total</span>
+              <span className="text-brand-red">{formatBRL((couriers.data ?? []).reduce((s, c) => s + c.totalCents, 0))}</span>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Fluxo de caixa */}
       <section>
         <h2 className="section-title">Fluxo de caixa</h2>
         <div className="card mt-2 p-3">
           <LineChart
-            points={(cashflow.data ?? []).map((c) => ({
-              label: c.date.slice(5),
-              value: c.balanceCents,
-            }))}
+            points={(cashflow.data ?? []).map((c) => ({ label: c.date.slice(5), value: c.balanceCents }))}
             formatY={(v) => formatBRL(v)}
           />
         </div>
@@ -852,29 +898,80 @@ function FinanceiroTab({
               {(cashflow.data ?? []).map((c) => (
                 <tr key={c.date} className="border-b border-brand-cream-dark">
                   <td className="py-2">{c.date}</td>
-                  <td className="text-right text-brand-green">
-                    {formatBRL(c.inCents)}
-                  </td>
-                  <td className="text-right text-brand-red">
-                    {c.outCents > 0 ? `- ${formatBRL(c.outCents)}` : '—'}
-                  </td>
-                  <td className="text-right font-semibold">
-                    {formatBRL(c.balanceCents)}
-                  </td>
+                  <td className="text-right text-brand-green">{formatBRL(c.inCents)}</td>
+                  <td className="text-right text-brand-red">{c.outCents > 0 ? `- ${formatBRL(c.outCents)}` : '—'}</td>
+                  <td className={`text-right font-semibold ${c.balanceCents < 0 ? 'text-brand-red' : ''}`}>{formatBRL(c.balanceCents)}</td>
                 </tr>
               ))}
               {(cashflow.data ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-3 text-brand-ink/40">
-                    Sem movimentos no período.
-                  </td>
-                </tr>
+                <tr><td colSpan={4} className="py-3 text-brand-ink/40">Sem movimentos no período.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </section>
+
+      {/* Projeção: vencimentos nos próximos 30 dias */}
+      <UpcomingSection data={upcoming.data ?? []} />
     </div>
+  );
+}
+
+function UpcomingSection({ data }: { data: UpcomingExpense[] }) {
+  if (data.length === 0) return null;
+
+  const totalCents = data.reduce((s, e) => s + e.amountCents, 0);
+
+  // Agrupa por semana para facilitar leitura
+  const byWeek = new Map<string, UpcomingExpense[]>();
+  for (const e of data) {
+    const d = new Date(e.dueDate + 'T12:00:00');
+    const mon = new Date(d);
+    mon.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // segunda-feira da semana
+    const key = mon.toISOString().slice(0, 10);
+    const bucket = byWeek.get(key) ?? [];
+    bucket.push(e);
+    byWeek.set(key, bucket);
+  }
+
+  return (
+    <section>
+      <h2 className="section-title">Projeção — próximos 30 dias</h2>
+      <p className="text-sm text-brand-ink/60">
+        Despesas a vencer sem pagamento registrado. Total: <strong>{formatBRL(totalCents)}</strong>
+      </p>
+      <div className="mt-3 space-y-4">
+        {[...byWeek.entries()].map(([weekStart, items]) => {
+          const weekEnd = new Date(weekStart + 'T12:00:00');
+          weekEnd.setDate(weekEnd.getDate() + 6);
+          const label = `${new Date(weekStart + 'T12:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })} – ${weekEnd.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}`;
+          const weekTotal = items.reduce((s, e) => s + e.amountCents, 0);
+          return (
+            <div key={weekStart}>
+              <div className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-brand-ink/50">
+                <span>{label}</span>
+                <span className="text-brand-red">{formatBRL(weekTotal)}</span>
+              </div>
+              <div className="card divide-y divide-brand-cream-dark p-0">
+                {items.map((e) => (
+                  <div key={e.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <div>
+                      <p className="font-medium">{e.description}</p>
+                      <p className="text-xs text-brand-ink/50">
+                        venc. {e.dueDate.slice(0, 10)}
+                        {e.category && <span> · {e.category.name}</span>}
+                        {e.recurring && <span> · fixa</span>}
+                      </p>
+                    </div>
+                    <span className="font-semibold text-brand-red">{formatBRL(e.amountCents)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

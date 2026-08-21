@@ -20,12 +20,38 @@ function isoToday(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** "89,90" ou "89.90" → centavos. */
+function monthRange(offset: number): { from: string; to: string } {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = d.getMonth() + offset;
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+  return {
+    from: first.toISOString().slice(0, 10),
+    to: last.toISOString().slice(0, 10),
+  };
+}
+
+function monthLabel(offset: number): string {
+  const d = new Date();
+  const month = d.getMonth() + offset;
+  return new Date(d.getFullYear(), month, 1).toLocaleDateString('pt-BR', {
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
 function reaisToCents(value: string): number | null {
   const n = Number(value.replace(/\s/g, '').replace(',', '.'));
   if (!Number.isFinite(n) || n < 0) return null;
   return Math.round(n * 100);
 }
+
+function centsToReais(cents: number): string {
+  return (cents / 100).toFixed(2).replace('.', ',');
+}
+
+type PeriodPreset = 'all' | 'this_month' | 'last_month' | 'custom';
 
 export default function DespesasPage() {
   const qc = useQueryClient();
@@ -34,30 +60,41 @@ export default function DespesasPage() {
     qc.invalidateQueries({ queryKey: ['expenses-by-account'] });
   };
 
+  // Filtros
+  const [preset, setPreset] = useState<PeriodPreset>('this_month');
+  const [customFrom, setCustomFrom] = useState(monthRange(0).from);
+  const [customTo, setCustomTo] = useState(isoToday());
   const [statusFilter, setStatusFilter] = useState<'' | 'paid' | 'unpaid'>('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+
+  const { from, to } = (() => {
+    if (preset === 'this_month') return monthRange(0);
+    if (preset === 'last_month') return monthRange(-1);
+    if (preset === 'custom') return { from: customFrom, to: customTo };
+    return { from: undefined, to: undefined };
+  })();
 
   const expenses = useQuery({
-    queryKey: ['expenses', statusFilter],
+    queryKey: ['expenses', from, to, statusFilter, categoryFilter],
     queryFn: () =>
-      api.listExpenses(statusFilter ? { status: statusFilter } : undefined),
+      api.listExpenses({
+        from,
+        to,
+        status: statusFilter || undefined,
+        categoryId: categoryFilter || undefined,
+      }),
   });
-  const accounts = useQuery({
-    queryKey: ['accounts'],
-    queryFn: () => api.listAccounts(),
-  });
-  const categories = useQuery({
-    queryKey: ['expense-categories'],
-    queryFn: () => api.listExpenseCategories(),
-  });
+  const accounts = useQuery({ queryKey: ['accounts'], queryFn: () => api.listAccounts() });
+  const categories = useQuery({ queryKey: ['expense-categories'], queryFn: () => api.listExpenseCategories() });
   const byAccount = useQuery({
-    queryKey: ['expenses-by-account'],
-    queryFn: () => api.expensesByAccount(),
+    queryKey: ['expenses-by-account', from, to],
+    queryFn: () => api.expensesByAccount(from, to),
   });
 
   const activeAccounts = (accounts.data ?? []).filter((a) => a.active);
   const activeCategories = (categories.data ?? []).filter((c) => c.active);
 
-  // Formulário de nova despesa.
+  // Formulário de nova despesa
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [amount, setAmount] = useState('');
@@ -94,9 +131,15 @@ export default function DespesasPage() {
 
   const rows = expenses.data ?? [];
   const totalCents = rows.reduce((s, e) => s + e.amountCents, 0);
-  const unpaidCents = rows
-    .filter((e) => !e.paidAt)
-    .reduce((s, e) => s + e.amountCents, 0);
+  const paidCents = rows.filter((e) => e.paidAt).reduce((s, e) => s + e.amountCents, 0);
+  const unpaidCents = totalCents - paidCents;
+
+  const PRESETS: [PeriodPreset, string][] = [
+    ['all', 'Todas'],
+    ['this_month', monthLabel(0)],
+    ['last_month', monthLabel(-1)],
+    ['custom', 'Período'],
+  ];
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
@@ -112,16 +155,10 @@ export default function DespesasPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-          <select
-            className="input p-2"
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
+          <select className="input p-2" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             <option value="">Categoria (opcional)…</option>
             {activeCategories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
           <input
@@ -143,83 +180,53 @@ export default function DespesasPage() {
             className="input p-2"
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}
-            title="Conta/carteira de onde saiu o pagamento"
           >
             <option value="">Conta (opcional)…</option>
             {activeAccounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
+              <option key={a.id} value={a.id}>{a.name}</option>
             ))}
           </select>
           <div className="flex items-center gap-4 text-sm sm:col-span-2">
             <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                checked={paid}
-                onChange={(e) => setPaid(e.target.checked)}
-              />
+              <input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} />
               Já paga
             </label>
             <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                checked={recurring}
-                onChange={(e) => setRecurring(e.target.checked)}
-              />
+              <input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} />
               Fixa/recorrente
             </label>
           </div>
         </div>
         <div className="mt-3 flex items-center gap-3">
-          <button
-            className="btn-success px-4 py-2"
-            disabled={add.isPending}
-            onClick={() => add.mutate()}
-          >
+          <button className="btn-success px-4 py-2" disabled={add.isPending} onClick={() => add.mutate()}>
             Adicionar
           </button>
           {error && <span className="text-sm text-brand-red">{error}</span>}
         </div>
       </section>
 
-      {/* Categorias (tipos de despesa) */}
       <CategoriesManager
         categories={categories.data ?? []}
-        onChange={() => {
-          qc.invalidateQueries({ queryKey: ['expense-categories'] });
-          invalidate();
-        }}
+        onChange={() => { qc.invalidateQueries({ queryKey: ['expense-categories'] }); invalidate(); }}
       />
 
-      {/* Contas de pagamento */}
       <AccountsManager
         accounts={accounts.data ?? []}
-        onChange={() => {
-          qc.invalidateQueries({ queryKey: ['accounts'] });
-          invalidate();
-        }}
+        onChange={() => { qc.invalidateQueries({ queryKey: ['accounts'] }); invalidate(); }}
       />
 
       {/* Total por conta */}
       {(byAccount.data ?? []).length > 0 && (
         <section className="mt-6">
-          <h2 className="section-title">Total por conta</h2>
+          <h2 className="section-title">Total por conta {from ? `· ${from.slice(0, 7)}` : ''}</h2>
           <div className="card mt-2 divide-y divide-brand-cream-dark p-3">
             {(byAccount.data ?? []).map((a) => (
-              <div
-                key={a.accountId ?? 'none'}
-                className="flex items-center justify-between py-1.5 text-sm"
-              >
+              <div key={a.accountId ?? 'none'} className="flex items-center justify-between py-1.5 text-sm">
                 <span>{a.accountName}</span>
                 <span className="flex gap-3">
-                  <span className="text-brand-red">
-                    pago {formatBRL(a.paidCents)}
-                  </span>
+                  <span className="text-brand-red">pago {formatBRL(a.paidCents)}</span>
                   {a.totalCents > a.paidCents && (
-                    <span className="text-brand-ink/50">
-                      a pagar {formatBRL(a.totalCents - a.paidCents)}
-                    </span>
+                    <span className="text-brand-ink/50">a pagar {formatBRL(a.totalCents - a.paidCents)}</span>
                   )}
                 </span>
               </div>
@@ -228,39 +235,79 @@ export default function DespesasPage() {
         </section>
       )}
 
-      {/* Resumo + filtro */}
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-4 text-sm">
-          <span>
-            Total:{' '}
-            <strong className="text-brand-ink">{formatBRL(totalCents)}</strong>
-          </span>
-          <span>
-            A pagar:{' '}
-            <strong className="text-brand-red">{formatBRL(unpaidCents)}</strong>
-          </span>
-        </div>
-        <div className="flex gap-1 text-sm">
-          {(
-            [
-              ['', 'Todas'],
-              ['unpaid', 'A pagar'],
-              ['paid', 'Pagas'],
-            ] as ['' | 'paid' | 'unpaid', string][]
-          ).map(([key, label]) => (
+      {/* Filtros */}
+      <div className="mt-6 space-y-3">
+        {/* Período */}
+        <div className="flex flex-wrap gap-1.5">
+          {PRESETS.map(([key, label]) => (
             <button
               key={key}
-              onClick={() => setStatusFilter(key)}
+              onClick={() => setPreset(key)}
               className={
-                statusFilter === key
-                  ? 'rounded bg-brand-gold px-2.5 py-1 font-bold text-brand-ink'
-                  : 'rounded px-2.5 py-1 text-brand-ink/60 hover:bg-brand-cream-dark'
+                preset === key
+                  ? 'rounded-full bg-brand-red px-3 py-1 text-sm font-bold text-white'
+                  : 'rounded-full border border-brand-ink/20 px-3 py-1 text-sm text-brand-ink/60 hover:border-brand-red/40'
               }
             >
               {label}
             </button>
           ))}
         </div>
+
+        {preset === 'custom' && (
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <label className="flex items-center gap-1.5">
+              De
+              <input type="date" className="input p-1" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+            </label>
+            <label className="flex items-center gap-1.5">
+              Até
+              <input type="date" className="input p-1" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+            </label>
+          </div>
+        )}
+
+        {/* Categoria + status */}
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            className="input p-1.5 text-sm"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            <option value="">Todas as categorias</option>
+            {activeCategories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <div className="flex gap-1">
+            {(
+              [
+                ['', 'Todas'],
+                ['unpaid', 'A pagar'],
+                ['paid', 'Pagas'],
+              ] as ['' | 'paid' | 'unpaid', string][]
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setStatusFilter(key)}
+                className={
+                  statusFilter === key
+                    ? 'rounded bg-brand-gold px-2.5 py-1 text-sm font-bold text-brand-ink'
+                    : 'rounded px-2.5 py-1 text-sm text-brand-ink/60 hover:bg-brand-cream-dark'
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Resumo */}
+      <div className="mt-3 flex flex-wrap gap-4 text-sm">
+        <span>Total: <strong>{formatBRL(totalCents)}</strong></span>
+        <span className="text-brand-green">Pago: <strong>{formatBRL(paidCents)}</strong></span>
+        <span className="text-brand-red">A pagar: <strong>{formatBRL(unpaidCents)}</strong></span>
       </div>
 
       {/* Lista */}
@@ -274,9 +321,9 @@ export default function DespesasPage() {
             onChange={invalidate}
           />
         ))}
-        {rows.length === 0 && (
+        {rows.length === 0 && !expenses.isLoading && (
           <li className="py-4 text-sm text-brand-ink/40">
-            Nenhuma despesa {statusFilter === 'unpaid' ? 'a pagar' : ''}.
+            Nenhuma despesa encontrada.
           </li>
         )}
       </ul>
@@ -295,37 +342,91 @@ function ExpenseRow({
   categories: ExpenseCategory[];
   onChange: () => void;
 }) {
-  const pay = useMutation({
-    mutationFn: () => api.payExpense(expense.id),
-    onSuccess: onChange,
-  });
-  const remove = useMutation({
-    mutationFn: () => api.deleteExpense(expense.id),
-    onSuccess: onChange,
+  const [editing, setEditing] = useState(false);
+  const [editDesc, setEditDesc] = useState(expense.description);
+  const [editAmount, setEditAmount] = useState(centsToReais(expense.amountCents));
+  const [editDue, setEditDue] = useState(expense.dueDate.slice(0, 10));
+
+  const pay = useMutation({ mutationFn: () => api.payExpense(expense.id), onSuccess: onChange });
+  const remove = useMutation({ mutationFn: () => api.deleteExpense(expense.id), onSuccess: onChange });
+  const save = useMutation({
+    mutationFn: () => {
+      const amountCents = reaisToCents(editAmount);
+      if (!editDesc.trim() || amountCents === null) throw new Error('Dados inválidos');
+      return api.updateExpense(expense.id, {
+        description: editDesc.trim(),
+        amountCents,
+        dueDate: new Date(`${editDue}T12:00:00`).toISOString(),
+      });
+    },
+    onSuccess: () => { setEditing(false); onChange(); },
   });
   const setAccount = useMutation({
-    mutationFn: (id: string | null) =>
-      api.updateExpense(expense.id, { accountId: id }),
+    mutationFn: (id: string | null) => api.updateExpense(expense.id, { accountId: id }),
     onSuccess: onChange,
   });
   const setCategory = useMutation({
-    mutationFn: (id: string | null) =>
-      api.updateExpense(expense.id, { categoryId: id }),
+    mutationFn: (id: string | null) => api.updateExpense(expense.id, { categoryId: id }),
     onSuccess: onChange,
   });
 
-  const due = expense.dueDate.slice(0, 10);
+  if (editing) {
+    return (
+      <li className="space-y-2 py-3">
+        <div className="grid gap-2 sm:grid-cols-[1fr_120px_140px]">
+          <input
+            className="input p-2 text-sm"
+            value={editDesc}
+            onChange={(e) => setEditDesc(e.target.value)}
+            placeholder="Descrição"
+            autoFocus
+          />
+          <input
+            className="input p-2 text-sm"
+            value={editAmount}
+            onChange={(e) => setEditAmount(e.target.value)}
+            placeholder="Valor (R$)"
+          />
+          <input
+            type="date"
+            className="input p-2 text-sm"
+            value={editDue}
+            onChange={(e) => setEditDue(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2">
+          <button
+            className="btn-primary px-3 py-1.5 text-xs"
+            disabled={save.isPending}
+            onClick={() => save.mutate()}
+          >
+            {save.isPending ? 'Salvando…' : 'Salvar'}
+          </button>
+          <button
+            className="btn-outline px-3 py-1.5 text-xs"
+            onClick={() => {
+              setEditing(false);
+              setEditDesc(expense.description);
+              setEditAmount(centsToReais(expense.amountCents));
+              setEditDue(expense.dueDate.slice(0, 10));
+            }}
+          >
+            Cancelar
+          </button>
+          {save.isError && <span className="text-xs text-brand-red">Dados inválidos</span>}
+        </div>
+      </li>
+    );
+  }
 
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
       <div className="min-w-40 flex-1">
         <p className="font-semibold">
           {expense.description}
-          {expense.recurring && (
-            <span className="ml-1 text-xs text-brand-ink/40">(fixa)</span>
-          )}
+          {expense.recurring && <span className="ml-1 text-xs text-brand-ink/40">(fixa)</span>}
         </p>
-        <p className="text-xs text-brand-ink/50">venc. {due}</p>
+        <p className="text-xs text-brand-ink/50">venc. {expense.dueDate.slice(0, 10)}</p>
       </div>
       <select
         className="input p-1 text-xs"
@@ -335,58 +436,46 @@ function ExpenseRow({
         disabled={setCategory.isPending}
       >
         <option value="">Sem categoria</option>
-        {/* Mantém a categoria atual mesmo se estiver inativa. */}
-        {expense.category &&
-          !categories.some((c) => c.id === expense.category?.id) && (
-            <option value={expense.category.id}>{expense.category.name}</option>
-          )}
+        {expense.category && !categories.some((c) => c.id === expense.category?.id) && (
+          <option value={expense.category.id}>{expense.category.name}</option>
+        )}
         {categories.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
+          <option key={c.id} value={c.id}>{c.name}</option>
         ))}
       </select>
       <select
         className="input p-1 text-xs"
-        title="Conta de onde saiu o pagamento"
+        title="Conta"
         value={expense.accountId ?? ''}
         onChange={(e) => setAccount.mutate(e.target.value || null)}
         disabled={setAccount.isPending}
       >
         <option value="">Sem conta</option>
-        {/* Mantém a conta atual na lista mesmo se estiver inativa. */}
-        {expense.account &&
-          !accounts.some((a) => a.id === expense.account?.id) && (
-            <option value={expense.account.id}>{expense.account.name}</option>
-          )}
+        {expense.account && !accounts.some((a) => a.id === expense.account?.id) && (
+          <option value={expense.account.id}>{expense.account.name}</option>
+        )}
         {accounts.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.name}
-          </option>
+          <option key={a.id} value={a.id}>{a.name}</option>
         ))}
       </select>
-      <span className="font-semibold text-brand-red">
-        {formatBRL(expense.amountCents)}
-      </span>
+      <span className="font-semibold text-brand-red">{formatBRL(expense.amountCents)}</span>
       {expense.paidAt ? (
-        <span className="rounded bg-brand-green/15 px-2 py-0.5 text-xs font-medium text-brand-green">
-          Paga
-        </span>
+        <span className="rounded bg-brand-green/15 px-2 py-0.5 text-xs font-medium text-brand-green">Paga</span>
       ) : (
-        <button
-          className="btn-success px-2 py-0.5 text-xs"
-          disabled={pay.isPending}
-          onClick={() => pay.mutate()}
-        >
+        <button className="btn-success px-2 py-0.5 text-xs" disabled={pay.isPending} onClick={() => pay.mutate()}>
           Marcar paga
         </button>
       )}
       <button
+        className="btn-outline px-2 py-0.5 text-xs"
+        onClick={() => setEditing(true)}
+      >
+        Editar
+      </button>
+      <button
         className="btn-danger px-2 py-0.5 text-xs"
         disabled={remove.isPending}
-        onClick={() => {
-          if (confirm(`Excluir "${expense.description}"?`)) remove.mutate();
-        }}
+        onClick={() => { if (confirm(`Excluir "${expense.description}"?`)) remove.mutate(); }}
       >
         Excluir
       </button>
@@ -394,148 +483,60 @@ function ExpenseRow({
   );
 }
 
-/** Cadastro/gestão dos tipos de despesa (categorias). */
-function CategoriesManager({
-  categories,
-  onChange,
-}: {
-  categories: ExpenseCategory[];
-  onChange: () => void;
-}) {
+function CategoriesManager({ categories, onChange }: { categories: ExpenseCategory[]; onChange: () => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
 
-  const add = useMutation({
-    mutationFn: () => api.createExpenseCategory(name.trim()),
-    onSuccess: () => {
-      setName('');
-      onChange();
-    },
-  });
+  const add = useMutation({ mutationFn: () => api.createExpenseCategory(name.trim()), onSuccess: () => { setName(''); onChange(); } });
   const rename = useMutation({
-    mutationFn: ({ id, newName }: { id: string; newName: string }) =>
-      api.updateExpenseCategory(id, { name: newName.trim() }),
-    onSuccess: () => {
-      setEditingId(null);
-      onChange();
-    },
+    mutationFn: ({ id, newName }: { id: string; newName: string }) => api.updateExpenseCategory(id, { name: newName.trim() }),
+    onSuccess: () => { setEditingId(null); onChange(); },
   });
   const toggle = useMutation({
-    mutationFn: (c: ExpenseCategory) =>
-      api.updateExpenseCategory(c.id, { active: !c.active }),
+    mutationFn: (c: ExpenseCategory) => api.updateExpenseCategory(c.id, { active: !c.active }),
     onSuccess: onChange,
   });
-  const remove = useMutation({
-    mutationFn: (id: string) => api.deleteExpenseCategory(id),
-    onSuccess: onChange,
-  });
+  const remove = useMutation({ mutationFn: (id: string) => api.deleteExpenseCategory(id), onSuccess: onChange });
 
   return (
     <section className="mt-6">
-      <button
-        className="section-title flex items-center gap-2"
-        onClick={() => setOpen((v) => !v)}
-      >
-        {open ? '▾' : '▸'} Tipos de despesa (
-        {categories.filter((c) => c.active).length})
+      <button className="section-title flex items-center gap-2" onClick={() => setOpen((v) => !v)}>
+        {open ? '▾' : '▸'} Tipos de despesa ({categories.filter((c) => c.active).length})
       </button>
       {open && (
         <div className="card mt-2 p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <input
-              className="input flex-1 p-1 text-sm"
-              placeholder="Novo tipo (ex: Manutenção)"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <button
-              className="btn-success px-2 py-1 text-xs"
-              disabled={!name.trim() || add.isPending}
-              onClick={() => add.mutate()}
-            >
+            <input className="input flex-1 p-1 text-sm" placeholder="Novo tipo…" value={name} onChange={(e) => setName(e.target.value)} />
+            <button className="btn-success px-2 py-1 text-xs" disabled={!name.trim() || add.isPending} onClick={() => add.mutate()}>
               + tipo
             </button>
           </div>
           <ul className="mt-2 divide-y divide-brand-cream-dark">
             {categories.map((c) => (
-              <li
-                key={c.id}
-                className="flex items-center justify-between gap-2 py-1.5 text-sm"
-              >
+              <li key={c.id} className="flex items-center justify-between gap-2 py-1.5 text-sm">
                 {editingId === c.id ? (
                   <>
-                    <input
-                      className="input flex-1 p-1 text-sm"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      autoFocus
-                    />
+                    <input className="input flex-1 p-1 text-sm" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
                     <span className="flex gap-1">
-                      <button
-                        className="btn-primary px-2 py-0.5 text-xs"
-                        disabled={!editName.trim() || rename.isPending}
-                        onClick={() =>
-                          rename.mutate({ id: c.id, newName: editName })
-                        }
-                      >
-                        Salvar
-                      </button>
-                      <button
-                        className="btn-outline px-2 py-0.5 text-xs"
-                        onClick={() => setEditingId(null)}
-                      >
-                        Cancelar
-                      </button>
+                      <button className="btn-primary px-2 py-0.5 text-xs" disabled={!editName.trim() || rename.isPending} onClick={() => rename.mutate({ id: c.id, newName: editName })}>Salvar</button>
+                      <button className="btn-outline px-2 py-0.5 text-xs" onClick={() => setEditingId(null)}>Cancelar</button>
                     </span>
                   </>
                 ) : (
                   <>
-                    <span
-                      className={c.active ? '' : 'text-brand-ink/40 line-through'}
-                    >
-                      {c.name}
-                    </span>
+                    <span className={c.active ? '' : 'text-brand-ink/40 line-through'}>{c.name}</span>
                     <span className="flex gap-1">
-                      <button
-                        className="btn-outline px-2 py-0.5 text-xs"
-                        onClick={() => {
-                          setEditingId(c.id);
-                          setEditName(c.name);
-                        }}
-                      >
-                        Renomear
-                      </button>
-                      <button
-                        className="btn-outline px-2 py-0.5 text-xs"
-                        onClick={() => toggle.mutate(c)}
-                      >
-                        {c.active ? 'Desativar' : 'Ativar'}
-                      </button>
-                      <button
-                        className="btn-danger px-2 py-0.5 text-xs"
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `Excluir o tipo "${c.name}"? As despesas vinculadas ficam sem categoria.`,
-                            )
-                          )
-                            remove.mutate(c.id);
-                        }}
-                      >
-                        Excluir
-                      </button>
+                      <button className="btn-outline px-2 py-0.5 text-xs" onClick={() => { setEditingId(c.id); setEditName(c.name); }}>Renomear</button>
+                      <button className="btn-outline px-2 py-0.5 text-xs" onClick={() => toggle.mutate(c)}>{c.active ? 'Desativar' : 'Ativar'}</button>
+                      <button className="btn-danger px-2 py-0.5 text-xs" onClick={() => { if (confirm(`Excluir "${c.name}"?`)) remove.mutate(c.id); }}>Excluir</button>
                     </span>
                   </>
                 )}
               </li>
             ))}
-            {categories.length === 0 && (
-              <li className="py-2 text-xs text-brand-ink/40">
-                Nenhum tipo cadastrado ainda.
-              </li>
-            )}
+            {categories.length === 0 && <li className="py-2 text-xs text-brand-ink/40">Nenhum tipo cadastrado.</li>}
           </ul>
         </div>
       )}
@@ -543,108 +544,46 @@ function CategoriesManager({
   );
 }
 
-/** Cadastro/gestão das contas de pagamento (Dinheiro, bancos, carteiras). */
-function AccountsManager({
-  accounts,
-  onChange,
-}: {
-  accounts: PaymentAccount[];
-  onChange: () => void;
-}) {
+function AccountsManager({ accounts, onChange }: { accounts: PaymentAccount[]; onChange: () => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('BANK');
 
-  const add = useMutation({
-    mutationFn: () => api.createAccount({ name: name.trim(), type }),
-    onSuccess: () => {
-      setName('');
-      onChange();
-    },
-  });
-  const toggle = useMutation({
-    mutationFn: (a: PaymentAccount) =>
-      api.updateAccount(a.id, { active: !a.active }),
-    onSuccess: onChange,
-  });
-  const remove = useMutation({
-    mutationFn: (id: string) => api.deleteAccount(id),
-    onSuccess: onChange,
-  });
+  const add = useMutation({ mutationFn: () => api.createAccount({ name: name.trim(), type }), onSuccess: () => { setName(''); onChange(); } });
+  const toggle = useMutation({ mutationFn: (a: PaymentAccount) => api.updateAccount(a.id, { active: !a.active }), onSuccess: onChange });
+  const remove = useMutation({ mutationFn: (id: string) => api.deleteAccount(id), onSuccess: onChange });
 
   return (
     <section className="mt-6">
-      <button
-        className="section-title flex items-center gap-2"
-        onClick={() => setOpen((v) => !v)}
-      >
+      <button className="section-title flex items-center gap-2" onClick={() => setOpen((v) => !v)}>
         {open ? '▾' : '▸'} Contas ({accounts.filter((a) => a.active).length})
       </button>
       {open && (
         <div className="card mt-2 p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <input
-              className="input flex-1 p-1 text-sm"
-              placeholder="Nova conta (ex: Nubank PJ)"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <select
-              className="input p-1 text-sm"
-              value={type}
-              onChange={(e) => setType(e.target.value as AccountType)}
-            >
+            <input className="input flex-1 p-1 text-sm" placeholder="Nova conta…" value={name} onChange={(e) => setName(e.target.value)} />
+            <select className="input p-1 text-sm" value={type} onChange={(e) => setType(e.target.value as AccountType)}>
               <option value="BANK">Banco/Conta</option>
               <option value="CASH">Dinheiro</option>
             </select>
-            <button
-              className="btn-success px-2 py-1 text-xs"
-              disabled={!name.trim() || add.isPending}
-              onClick={() => add.mutate()}
-            >
+            <button className="btn-success px-2 py-1 text-xs" disabled={!name.trim() || add.isPending} onClick={() => add.mutate()}>
               + conta
             </button>
           </div>
           <ul className="mt-2 divide-y divide-brand-cream-dark">
             {accounts.map((a) => (
-              <li
-                key={a.id}
-                className="flex items-center justify-between py-1.5 text-sm"
-              >
+              <li key={a.id} className="flex items-center justify-between py-1.5 text-sm">
                 <span className={a.active ? '' : 'text-brand-ink/40 line-through'}>
                   {a.name}
-                  <span className="ml-1 text-xs text-brand-ink/40">
-                    {ACCOUNT_TYPE_LABEL[a.type]}
-                  </span>
+                  <span className="ml-1 text-xs text-brand-ink/40">{ACCOUNT_TYPE_LABEL[a.type]}</span>
                 </span>
                 <span className="flex gap-1">
-                  <button
-                    className="btn-outline px-2 py-0.5 text-xs"
-                    onClick={() => toggle.mutate(a)}
-                  >
-                    {a.active ? 'Desativar' : 'Ativar'}
-                  </button>
-                  <button
-                    className="btn-danger px-2 py-0.5 text-xs"
-                    onClick={() => {
-                      if (
-                        confirm(
-                          `Excluir a conta "${a.name}"? As despesas vinculadas ficam sem conta.`,
-                        )
-                      )
-                        remove.mutate(a.id);
-                    }}
-                  >
-                    Excluir
-                  </button>
+                  <button className="btn-outline px-2 py-0.5 text-xs" onClick={() => toggle.mutate(a)}>{a.active ? 'Desativar' : 'Ativar'}</button>
+                  <button className="btn-danger px-2 py-0.5 text-xs" onClick={() => { if (confirm(`Excluir "${a.name}"?`)) remove.mutate(a.id); }}>Excluir</button>
                 </span>
               </li>
             ))}
-            {accounts.length === 0 && (
-              <li className="py-2 text-xs text-brand-ink/40">
-                Nenhuma conta cadastrada ainda.
-              </li>
-            )}
+            {accounts.length === 0 && <li className="py-2 text-xs text-brand-ink/40">Nenhuma conta cadastrada.</li>}
           </ul>
         </div>
       )}

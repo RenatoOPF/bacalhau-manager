@@ -14,7 +14,7 @@ import { nextDailyNumber } from '../common/daily-number';
 import { decodeEscPosBase64, toLines } from './escpos';
 import { isIfood, parseIfood } from './ifood.parser';
 import { isNoventa_Nove, parseNoventa_Nove } from './noventa-nove.parser';
-import { ParsedExternalOrder } from './parsed-order';
+import { ParsedExternalOrder, ParsedExternalItem, brlToCents } from './parsed-order';
 import { StockService } from '../stock/stock.service';
 import { PrintConfigService } from '../printing/print-config.service';
 
@@ -32,6 +32,89 @@ function normalize(s: string): string {
     .trim();
 }
 
+/** Nomes normalizados de tamanho/opção — não são complementos autônomos. */
+const SIZE_NAMES = new Set([
+  'meia porcao',
+  'porcao inteira',
+  'porcao',
+  'individual',
+  'inteira',
+  'unico',
+]);
+
+/**
+ * Expande cada item da comanda: extrai os complementos das `notes` (formato
+ * "N Nome | N Nome | Obs: texto") e os transforma em `ParsedExternalItem`
+ * independentes.
+ *
+ * — Segmentos de tamanho ("Meia Porcao", "Porcao Inteira"…) viram `optionName`
+ *   do item principal (não são duplicados como linha separada).
+ * — Demais segmentos numéricos viram itens próprios com a quantidade exata
+ *   da nota (o iFood/99 já envia o total, não por-item) e priceCents = 0
+ *   (o valor já está embutido no item principal).
+ * — Linhas "Obs:" permanecem nas notes do item principal.
+ */
+function expandComplements(items: ParsedExternalItem[]): ParsedExternalItem[] {
+  const result: ParsedExternalItem[] = [];
+
+  for (const item of items) {
+    if (!item.notes) {
+      result.push(item);
+      continue;
+    }
+
+    const obsLines: string[] = [];
+    let optionName: string | undefined;
+    const complements: ParsedExternalItem[] = [];
+
+    for (const seg of item.notes.split(' | ')) {
+      const trimmed = seg.trim();
+      if (!trimmed) continue;
+
+      if (/^obs:/i.test(trimmed)) {
+        obsLines.push(trimmed);
+        continue;
+      }
+
+      // Tenta extrair preço da linha: "N Nome R$XX,XX" (iFood inclui preços nos complementos).
+      const mPriced = trimmed.match(/^(\d+)\s+(.+?)\s+R\$\s*([\d.,]+)\s*$/);
+      const m = mPriced ?? trimmed.match(/^(\d+)\s+(.+)$/);
+      if (!m) {
+        obsLines.push(trimmed);
+        continue;
+      }
+
+      const qty = Number(m[1]);
+      const name = m[2].trim();
+      // O preço impresso é o total da linha; divide pela qty para obter o unitário.
+      const unitCents = mPriced ? Math.round(brlToCents(mPriced[3]) / qty) : 0;
+
+      if (SIZE_NAMES.has(normalize(name))) {
+        // Tamanho do item principal — só guardamos o nome, a qty é irrelevante.
+        optionName = name;
+      } else {
+        complements.push({
+          quantity: qty,
+          name,
+          priceCents: unitCents,
+          optionName: null,
+          notes: null,
+        });
+      }
+    }
+
+    result.push({
+      ...item,
+      optionName: optionName ?? item.optionName ?? null,
+      notes: obsLines.join(' | ') || null,
+    });
+
+    result.push(...complements);
+  }
+
+  return result;
+}
+
 @Injectable()
 export class IntegrationsService {
   private readonly logger = new Logger(IntegrationsService.name);
@@ -44,6 +127,52 @@ export class IntegrationsService {
     @InjectQueue(ORDERS_QUEUE)
     private readonly ordersQueue: Queue<PrintOrderJobData>,
   ) {}
+
+  /**
+   * Constrói um estimador de preço de venda baseado no nosso cardápio.
+   * Usa match exato pelo nome normalizado e, como fallback, match por prefixo
+   * (útil para "Coca Zero Lata - 350ml" → "Coca Zero Lata" no cadastro).
+   * Quando o item tem opções (tamanhos), retorna o priceCents da opção
+   * correspondente; caso contrário usa o priceCents do item.
+   */
+  private async buildPriceEstimator(): Promise<
+    (name: string, optionName: string | null) => number
+  > {
+    const items = await this.prisma.menuItem.findMany({
+      select: {
+        name: true,
+        priceCents: true,
+        options: { select: { name: true, priceCents: true } },
+      },
+    });
+
+    const byName = new Map(items.map((i) => [normalize(i.name), i]));
+
+    const match = (name: string) => {
+      const norm = normalize(name);
+      if (byName.has(norm)) return byName.get(norm)!;
+      let best: (typeof items)[0] | undefined;
+      let bestLen = 0;
+      for (const [menuName, item] of byName) {
+        if (menuName.length > bestLen && norm.startsWith(menuName)) {
+          best = item;
+          bestLen = menuName.length;
+        }
+      }
+      return best;
+    };
+
+    return (name, optionName) => {
+      const item = match(name);
+      if (!item) return 0;
+      if (optionName && item.options.length > 0) {
+        const normOpt = normalize(optionName);
+        const opt = item.options.find((o) => normalize(o.name) === normOpt);
+        if (opt) return opt.priceCents;
+      }
+      return item.priceCents;
+    };
+  }
 
   /** Recebe o base64 de uma impressão capturada, parseia e cria o pedido. */
   async ingestCapture(rawBase64: string): Promise<IngestResult> {
@@ -73,7 +202,16 @@ export class IntegrationsService {
     const channelLabel =
       parsed.channel === OrderChannel.IFOOD ? 'iFood' : '99';
     const dailyNumber = await nextDailyNumber(this.prisma);
-    const costOf = await this.stock.buildCostEstimator();
+    const [costOf, priceOf] = await Promise.all([
+      this.stock.buildCostEstimator(),
+      this.buildPriceEstimator(),
+    ]);
+    const expandedItems = expandComplements(parsed.items);
+    // Sobrescreve os preços com os do nosso cardápio quando há correspondência.
+    for (const it of expandedItems) {
+      const menuPrice = priceOf(it.name, it.optionName ?? null);
+      if (menuPrice > 0) it.priceCents = menuPrice;
+    }
 
     // Tenta vincular o bairro do texto ao cadastro (sem acento, sem case).
     let neighborhoodId: string | null = null;
@@ -126,11 +264,12 @@ export class IntegrationsService {
           ? `${channelLabel} #${parsed.shortNumber}`
           : `${channelLabel} · Loc ${parsed.externalId}`,
         items: {
-          create: parsed.items.map((it) => ({
+          create: expandedItems.map((it) => ({
             menuItemId: null,
             nameSnapshot: it.name,
+            optionNameSnapshot: it.optionName ?? null,
             priceCents: it.priceCents,
-            unitCostCents: costOf(it.name, null, it.notes ?? null),
+            unitCostCents: costOf(it.name, it.optionName ?? null, it.notes ?? null),
             quantity: it.quantity,
             notes: it.notes ?? null,
           })),
@@ -149,7 +288,7 @@ export class IntegrationsService {
 
     this.realtime.emitOrderCreated(order);
     this.logger.log(
-      `Pedido ${parsed.channel} criado (#${order.protocol}, ${parsed.items.length} itens).`,
+      `Pedido ${parsed.channel} criado (#${order.protocol}, ${expandedItems.length} linha(s), ${parsed.items.length} item(ns) original(is)).`,
     );
     return { status: 'created', protocol: order.protocol, channel: parsed.channel };
   }

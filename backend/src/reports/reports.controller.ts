@@ -121,6 +121,12 @@ export class ReportsController {
     return this.reports.topItems(from, to, limit ? Number(limit) : undefined);
   }
 
+  /** Despesas não pagas com vencimento nos próximos N dias. */
+  @Get('upcoming')
+  upcoming(@Query('days') days?: string) {
+    return this.reports.upcomingExpenses(days ? Number(days) : 30);
+  }
+
   /** Exporta as transações do período como CSV (planilha). */
   @Get('export')
   @Header('Content-Type', 'text/csv; charset=utf-8')

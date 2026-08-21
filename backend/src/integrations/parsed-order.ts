@@ -4,6 +4,8 @@ export interface ParsedExternalItem {
   quantity: number;
   name: string;
   priceCents: number;
+  /** Tamanho/opção extraído dos complementos ("Porcao Inteira", "Meia Porcao"…). */
+  optionName?: string | null;
   notes?: string | null;
 }
 

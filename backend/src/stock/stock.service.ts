@@ -467,7 +467,8 @@ export class StockService {
             continue;
           }
           for (const link of compItem.stockLinks) {
-            add(link.stockItemId, link.qtyMilli * compQty * item.quantity);
+            // compQty já é o total enviado pelo iFood (qty_por_item × item.quantity)
+            add(link.stockItemId, link.qtyMilli * compQty);
           }
         }
       }

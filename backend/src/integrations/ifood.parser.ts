@@ -93,7 +93,7 @@ export function parseIfood(lines: string[]): ParsedExternalOrder | null {
       if (!s) continue;
       if (s.startsWith('Obs:')) cur._notes.push(s);
       else if (/^\d+\s+.+R\$/.test(s))
-        cur._notes.push(s.replace(/\s+R\$.*/, '').trim());
+        cur._notes.push(s.trim()); // preserva o preço para extração em expandComplements
       else if (s.startsWith('---') || /Pagamento/i.test(s)) {
         push();
         break;

@@ -2,7 +2,14 @@
 
 import { useRef, useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, formatBRL, type MenuItem, type MenuCategory, type Customer, type Neighborhood } from '@/lib/api';
+import {
+  api,
+  formatBRL,
+  type MenuItem,
+  type MenuCategory,
+  type Customer,
+  type Neighborhood,
+} from '@/lib/api';
 
 interface CartLine {
   menuItemId: string;
@@ -10,6 +17,7 @@ interface CartLine {
   label: string;
   priceCents: number;
   quantity: number;
+  notes?: string;
 }
 
 // ---- Modal de adição de item ----
@@ -20,7 +28,7 @@ function AddItemModal({
   onClose,
 }: {
   item: MenuItem;
-  onConfirm: (optionId: string | undefined, qty: number) => void;
+  onConfirm: (optionId: string | undefined, qty: number, notes: string) => void;
   onClose: () => void;
 }) {
   const hasOptions = (item.options ?? []).length > 0;
@@ -29,12 +37,12 @@ function AddItemModal({
     availableOptions.length === 1 ? availableOptions[0].id : undefined,
   );
   const [qty, setQty] = useState(1);
+  const [itemNotes, setItemNotes] = useState('');
 
   const selectedOption = availableOptions.find((o) => o.id === selectedOptionId);
   const price = selectedOption ? selectedOption.priceCents : item.priceCents;
   const canConfirm = !hasOptions || !!selectedOptionId;
 
-  // Fecha com Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
@@ -51,7 +59,6 @@ function AddItemModal({
       <div className="w-full max-w-sm rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl">
         <h3 className="text-lg font-bold text-brand-ink">{item.name}</h3>
 
-        {/* Opções de tamanho */}
         {hasOptions && (
           <div className="mt-4">
             <p className="mb-2 text-sm font-medium text-brand-ink/60">Tamanho</p>
@@ -76,12 +83,10 @@ function AddItemModal({
           </div>
         )}
 
-        {/* Sem opções: preço direto */}
         {!hasOptions && (
           <p className="mt-2 text-xl font-bold text-brand-red">{formatBRL(item.priceCents)}</p>
         )}
 
-        {/* Quantidade */}
         <div className="mt-5 flex items-center justify-between">
           <span className="text-sm font-medium text-brand-ink/60">Quantidade</span>
           <div className="flex items-center gap-3">
@@ -101,16 +106,24 @@ function AddItemModal({
           </div>
         </div>
 
-        {/* Total parcial */}
+        <div className="mt-4">
+          <textarea
+            className="input w-full p-2 text-sm"
+            placeholder="Observação do item (sem cebola, bem passado…)"
+            rows={2}
+            value={itemNotes}
+            onChange={(e) => setItemNotes(e.target.value)}
+          />
+        </div>
+
         {canConfirm && (
-          <p className="mt-3 text-right text-sm text-brand-ink/50">
+          <p className="mt-2 text-right text-sm text-brand-ink/50">
             Subtotal:{' '}
             <strong className="text-brand-ink">{formatBRL(price * qty)}</strong>
           </p>
         )}
 
-        {/* Ações */}
-        <div className="mt-5 flex gap-3">
+        <div className="mt-4 flex gap-3">
           <button
             onClick={onClose}
             className="flex-1 rounded-xl border border-brand-cream-dark py-2.5 text-sm font-medium text-brand-ink/60 hover:bg-brand-cream"
@@ -119,7 +132,7 @@ function AddItemModal({
           </button>
           <button
             disabled={!canConfirm}
-            onClick={() => { onConfirm(selectedOptionId, qty); onClose(); }}
+            onClick={() => { onConfirm(selectedOptionId, qty, itemNotes.trim()); onClose(); }}
             className="flex-1 rounded-xl bg-brand-red py-2.5 text-sm font-semibold text-white disabled:opacity-40 hover:bg-brand-red/90"
           >
             Adicionar ao pedido
@@ -238,6 +251,15 @@ function AddressSelect({
 
 // ---- Página ----
 
+interface PendingAddressSave {
+  customerId: string;
+  customerName: string;
+  street: string;
+  number: string;
+  neighborhoodId: string | null;
+  neighborhoodName: string | null;
+}
+
 export default function BalcaoPage() {
   const qc = useQueryClient();
   const { data: menu, isLoading } = useQuery({
@@ -259,10 +281,24 @@ export default function BalcaoPage() {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'PIX'>('CASH');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'PIX' | 'CARD'>('CASH');
+  const [trocoInput, setTrocoInput] = useState('');
+  const [discountInput, setDiscountInput] = useState('');
   const [success, setSuccess] = useState<{ dailyNumber: number; protocol: number } | null>(null);
+  const [pendingAddressSave, setPendingAddressSave] = useState<PendingAddressSave | null>(null);
+  const [addressSaved, setAddressSaved] = useState(false);
   const [search, setSearch] = useState('');
   const [modalItem, setModalItem] = useState<MenuItem | null>(null);
+
+  const discountCents = useMemo(() => {
+    const v = parseFloat(discountInput.replace(',', '.'));
+    return isNaN(v) || v < 0 ? 0 : Math.round(v * 100);
+  }, [discountInput]);
+
+  const trocoCents = useMemo(() => {
+    const v = parseFloat(trocoInput.replace(',', '.'));
+    return isNaN(v) || v < 0 ? 0 : Math.round(v * 100);
+  }, [trocoInput]);
 
   const itemsTotalCents = useMemo(
     () => Object.values(cart).reduce((s, l) => s + l.priceCents * l.quantity, 0),
@@ -272,7 +308,8 @@ export default function BalcaoPage() {
     if (deliveryMode !== 'delivery') return 0;
     return neighborhoods.find((n) => n.id === selectedNeighborhoodId)?.customerFeeCents ?? 0;
   }, [deliveryMode, selectedNeighborhoodId, neighborhoods]);
-  const totalCents = itemsTotalCents + deliveryFeeCents;
+  const totalCents = Math.max(0, itemsTotalCents + deliveryFeeCents - discountCents);
+  const changeCents = trocoCents > 0 ? trocoCents - totalCents : 0;
 
   function normalizeStr(s: string) {
     return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -318,7 +355,7 @@ export default function BalcaoPage() {
     applyAddress(addr);
   }
 
-  const addToCart = (item: MenuItem, optionId: string | undefined, qty: number) => {
+  const addToCart = (item: MenuItem, optionId: string | undefined, qty: number, itemNotes: string) => {
     const option = (item.options ?? []).find((o) => o.id === optionId);
     const key = optionId ?? item.id;
     const label = option ? `${item.name} — ${option.name}` : item.name;
@@ -331,6 +368,7 @@ export default function BalcaoPage() {
         label,
         priceCents,
         quantity: (prev[key]?.quantity ?? 0) + qty,
+        notes: itemNotes || prev[key]?.notes,
       },
     }));
   };
@@ -343,9 +381,31 @@ export default function BalcaoPage() {
       return copy;
     });
 
+  const updateItemNotes = (key: string, notes: string) =>
+    setCart((prev) => ({ ...prev, [key]: { ...prev[key], notes } }));
+
   const canSubmit =
     Object.keys(cart).length > 0 &&
-    (deliveryMode === 'coleta' || street.trim().length > 0);
+    (deliveryMode === 'coleta' || street.trim().length > 0) &&
+    (paymentMethod !== 'CASH' || trocoCents === 0 || trocoCents >= totalCents);
+
+  function resetForm() {
+    setCart({});
+    setDeliveryMode('delivery');
+    setCustomerName('');
+    setCustomerPhone('');
+    setNotes('');
+    setSearch('');
+    setStreet('');
+    setAddressNum('');
+    setSelectedCustomer(null);
+    setSelectedAddressId(null);
+    setSelectedNeighborhoodId(null);
+    setDiscountInput('');
+    setTrocoInput('');
+    setPendingAddressSave(null);
+    setAddressSaved(false);
+  }
 
   const createOrder = useMutation({
     mutationFn: () => {
@@ -353,34 +413,54 @@ export default function BalcaoPage() {
         menuItemId: l.menuItemId,
         optionId: l.optionId,
         quantity: l.quantity,
+        notes: l.notes || undefined,
       }));
       const selectedAddress = selectedCustomer?.addresses.find((a) => a.id === selectedAddressId);
-      if (deliveryMode === 'coleta') {
-        return api.createOrder({
-          customerId: selectedCustomer?.id,
-          customerName: customerName.trim() || 'Balcão',
-          customerPhone: customerPhone.trim() || undefined,
-          notes: notes.trim() || undefined,
-          paymentMethod,
-          items,
-        });
-      }
-      return api.createOrder({
+
+      const base = {
         customerId: selectedCustomer?.id,
         customerName: customerName.trim() || 'Balcão',
         customerPhone: customerPhone.trim() || undefined,
+        notes: notes.trim() || undefined,
+        paymentMethod,
+        discountCents: discountCents || undefined,
+        items,
+      };
+
+      if (deliveryMode === 'coleta') {
+        return api.createOrder(base);
+      }
+
+      return api.createOrder({
+        ...base,
         addressStreet: street.trim() || undefined,
         addressNumber: addressNum.trim() || undefined,
         addressNeighborhood: selectedAddress?.neighborhood ?? undefined,
         addressLat: selectedAddress?.lat ?? undefined,
         addressLng: selectedAddress?.lng ?? undefined,
         neighborhoodId: selectedNeighborhoodId ?? undefined,
-        notes: notes.trim() || undefined,
-        paymentMethod,
-        items,
       });
     },
     onSuccess: (order) => {
+      // Captura dados para oferecer salvar o endereço se necessário
+      const isNewAddress =
+        selectedCustomer &&
+        deliveryMode === 'delivery' &&
+        street.trim() &&
+        !selectedAddressId;
+
+      if (isNewAddress) {
+        const nbName = neighborhoods.find((n) => n.id === selectedNeighborhoodId)?.name ?? null;
+        setPendingAddressSave({
+          customerId: selectedCustomer!.id,
+          customerName: selectedCustomer!.name,
+          street: street.trim(),
+          number: addressNum.trim(),
+          neighborhoodId: selectedNeighborhoodId,
+          neighborhoodName: nbName,
+        });
+      }
+
       setSuccess({ dailyNumber: order.dailyNumber, protocol: order.protocol });
       setCart({});
       setDeliveryMode('delivery');
@@ -393,11 +473,39 @@ export default function BalcaoPage() {
       setSelectedCustomer(null);
       setSelectedAddressId(null);
       setSelectedNeighborhoodId(null);
+      setDiscountInput('');
+      setTrocoInput('');
+      setAddressSaved(false);
       qc.invalidateQueries({ queryKey: ['orders'] });
     },
   });
 
-  // Filtra o cardápio pela busca
+  const saveAddress = useMutation({
+    mutationFn: () =>
+      api.addCustomerAddress(pendingAddressSave!.customerId, {
+        street: pendingAddressSave!.street,
+        number: pendingAddressSave!.number || undefined,
+        neighborhood: pendingAddressSave!.neighborhoodName ?? undefined,
+        neighborhoodId: pendingAddressSave!.neighborhoodId ?? undefined,
+      }),
+    onSuccess: () => {
+      setAddressSaved(true);
+      qc.invalidateQueries({ queryKey: ['customers-search'] });
+    },
+  });
+
+  const saveCustomer = useMutation({
+    mutationFn: () =>
+      api.createCustomer({
+        name: customerName.trim(),
+        phone: customerPhone.trim() || undefined,
+      }),
+    onSuccess: (c) => {
+      setSelectedCustomer(c as unknown as Customer);
+      qc.invalidateQueries({ queryKey: ['customers-search'] });
+    },
+  });
+
   const filteredMenu = useMemo(() => {
     if (!menu) return [];
     const q = normalizeStr(search);
@@ -420,11 +528,10 @@ export default function BalcaoPage() {
     <main className="mx-auto max-w-5xl px-4 py-6">
       <h1 className="page-title">Pedido no balcão</h1>
 
-      {/* Modal de confirmação de item */}
       {modalItem && (
         <AddItemModal
           item={modalItem}
-          onConfirm={(optionId, qty) => addToCart(modalItem, optionId, qty)}
+          onConfirm={(optionId, qty, itemNotes) => addToCart(modalItem, optionId, qty, itemNotes)}
           onClose={() => setModalItem(null)}
         />
       )}
@@ -434,8 +541,40 @@ export default function BalcaoPage() {
           <p className="font-bold text-brand-ink">
             Pedido #{success.dailyNumber} criado com sucesso!
           </p>
-          <div className="mt-2 flex gap-3">
-            <button className="btn-primary px-4 py-1.5 text-sm" onClick={() => setSuccess(null)}>
+
+          {pendingAddressSave && !addressSaved && (
+            <div className="mt-3 flex items-center gap-3 rounded-lg bg-white/60 px-3 py-2 text-sm">
+              <span className="flex-1 text-brand-ink/70">
+                Salvar endereço em{' '}
+                <strong>{pendingAddressSave.customerName}</strong>?{' '}
+                <span className="text-brand-ink/50">
+                  {[pendingAddressSave.street, pendingAddressSave.number].filter(Boolean).join(', ')}
+                </span>
+              </span>
+              <button
+                onClick={() => saveAddress.mutate()}
+                disabled={saveAddress.isPending}
+                className="shrink-0 rounded-lg bg-brand-gold px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-gold/90 disabled:opacity-50"
+              >
+                {saveAddress.isPending ? 'Salvando…' : 'Salvar'}
+              </button>
+              <button
+                onClick={() => setPendingAddressSave(null)}
+                className="shrink-0 text-xs text-brand-ink/40 hover:text-brand-red"
+              >
+                Não
+              </button>
+            </div>
+          )}
+          {addressSaved && (
+            <p className="mt-2 text-sm text-brand-ink/60">Endereço salvo no cadastro do cliente.</p>
+          )}
+
+          <div className="mt-3 flex gap-3">
+            <button
+              className="btn-primary px-4 py-1.5 text-sm"
+              onClick={() => { setSuccess(null); resetForm(); }}
+            >
               Novo pedido
             </button>
             <a
@@ -452,7 +591,6 @@ export default function BalcaoPage() {
       <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_340px]">
         {/* Cardápio */}
         <div>
-          {/* Busca */}
           <input
             className="input w-full p-2 text-sm"
             placeholder="Buscar item do cardápio…"
@@ -490,8 +628,9 @@ export default function BalcaoPage() {
           </div>
         </div>
 
-        {/* Carrinho + dados do pedido */}
+        {/* Carrinho + dados */}
         <div className="space-y-4">
+          {/* Carrinho */}
           <div className="card p-4">
             <h2 className="section-title">Carrinho</h2>
             {Object.keys(cart).length === 0 ? (
@@ -499,30 +638,39 @@ export default function BalcaoPage() {
             ) : (
               <ul className="mt-2 divide-y divide-brand-cream-dark">
                 {Object.entries(cart).map(([key, line]) => (
-                  <li key={key} className="flex items-center gap-2 py-2 text-sm">
-                    <span className="flex-1 leading-tight">{line.label}</span>
-                    <span className="font-semibold text-brand-red">
-                      {formatBRL(line.priceCents * line.quantity)}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        className="flex h-6 w-6 items-center justify-center rounded bg-brand-cream-dark text-xs font-bold"
-                        onClick={() => setQty(key, line.quantity - 1)}
-                      >
-                        −
-                      </button>
-                      <span className="w-5 text-center text-xs">{line.quantity}</span>
-                      <button
-                        className="flex h-6 w-6 items-center justify-center rounded bg-brand-cream-dark text-xs font-bold"
-                        onClick={() => setQty(key, line.quantity + 1)}
-                      >
-                        +
-                      </button>
+                  <li key={key} className="py-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="flex-1 leading-tight">{line.label}</span>
+                      <span className="font-semibold text-brand-red">
+                        {formatBRL(line.priceCents * line.quantity)}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          className="flex h-6 w-6 items-center justify-center rounded bg-brand-cream-dark text-xs font-bold"
+                          onClick={() => setQty(key, line.quantity - 1)}
+                        >
+                          −
+                        </button>
+                        <span className="w-5 text-center text-xs">{line.quantity}</span>
+                        <button
+                          className="flex h-6 w-6 items-center justify-center rounded bg-brand-cream-dark text-xs font-bold"
+                          onClick={() => setQty(key, line.quantity + 1)}
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
+                    <input
+                      className="mt-1 w-full rounded border border-brand-cream-dark bg-brand-cream/40 px-2 py-1 text-xs text-brand-ink/60 placeholder:text-brand-ink/30 focus:outline-none focus:ring-1 focus:ring-brand-red/30"
+                      placeholder="Obs. do item…"
+                      value={line.notes ?? ''}
+                      onChange={(e) => updateItemNotes(key, e.target.value)}
+                    />
                   </li>
                 ))}
               </ul>
             )}
+
             {itemsTotalCents > 0 && (
               <div className="mt-3 space-y-1 border-t border-brand-cream-dark pt-2 text-sm">
                 <div className="flex justify-between text-brand-ink/60">
@@ -531,18 +679,31 @@ export default function BalcaoPage() {
                 </div>
                 {deliveryFeeCents > 0 && (
                   <div className="flex justify-between text-brand-ink/60">
-                    <span>Taxa de entrega</span>
+                    <span>Entrega</span>
                     <span>{formatBRL(deliveryFeeCents)}</span>
+                  </div>
+                )}
+                {discountCents > 0 && (
+                  <div className="flex justify-between text-green-700">
+                    <span>Desconto</span>
+                    <span>− {formatBRL(discountCents)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold">
                   <span>Total</span>
                   <span className="text-brand-red">{formatBRL(totalCents)}</span>
                 </div>
+                {paymentMethod === 'CASH' && trocoCents > 0 && (
+                  <div className={`flex justify-between text-xs ${changeCents >= 0 ? 'text-green-700' : 'text-brand-red'}`}>
+                    <span>Troco</span>
+                    <span>{changeCents >= 0 ? formatBRL(changeCents) : 'Valor insuficiente'}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
+          {/* Dados do pedido */}
           <div className="card space-y-3 p-4">
             <h2 className="section-title">Dados do pedido</h2>
 
@@ -581,7 +742,7 @@ export default function BalcaoPage() {
                     className="input flex-1 p-2 text-sm"
                     placeholder="Rua / Av. *"
                     value={street}
-                    onChange={(e) => setStreet(e.target.value)}
+                    onChange={(e) => { setStreet(e.target.value); setSelectedAddressId(null); }}
                   />
                   <input
                     className="input w-24 p-2 text-sm"
@@ -628,31 +789,79 @@ export default function BalcaoPage() {
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
             />
+
+            {/* Botão cadastro rápido */}
+            {!selectedCustomer && customerName.trim().length >= 2 && (
+              <button
+                type="button"
+                onClick={() => saveCustomer.mutate()}
+                disabled={saveCustomer.isPending}
+                className="w-full rounded-lg border border-dashed border-brand-gold py-2 text-xs font-medium text-brand-gold hover:bg-brand-gold/5 disabled:opacity-50"
+              >
+                {saveCustomer.isPending
+                  ? 'Salvando…'
+                  : saveCustomer.isSuccess
+                  ? `Cliente "${customerName.trim()}" salvo`
+                  : `Salvar "${customerName.trim()}" como novo cliente`}
+              </button>
+            )}
+
             <textarea
               className="input w-full p-2 text-sm"
-              placeholder="Observações (opcional)"
+              placeholder="Observações gerais (opcional)"
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
-            <div className="flex gap-2">
-              {(['CASH', 'PIX'] as const).map((m) => (
+
+            {/* Método de pagamento */}
+            <div className="grid grid-cols-3 gap-2">
+              {(['CASH', 'PIX', 'CARD'] as const).map((m) => (
                 <button
                   key={m}
-                  onClick={() => setPaymentMethod(m)}
-                  className={`flex-1 rounded-lg border-2 py-2 text-sm font-semibold transition-colors ${
+                  onClick={() => { setPaymentMethod(m); setTrocoInput(''); }}
+                  className={`rounded-lg border-2 py-2 text-sm font-semibold transition-colors ${
                     paymentMethod === m
                       ? 'border-brand-gold bg-brand-gold/10 text-brand-ink'
                       : 'border-brand-cream-dark text-brand-ink/50'
                   }`}
                 >
-                  {m === 'CASH' ? 'Dinheiro' : 'PIX'}
+                  {m === 'CASH' ? 'Dinheiro' : m === 'PIX' ? 'PIX' : 'Cartão'}
                 </button>
               ))}
             </div>
 
+            {/* Troco — só para dinheiro */}
+            {paymentMethod === 'CASH' && (
+              <div className="flex items-center gap-2">
+                <label className="shrink-0 text-xs text-brand-ink/60">Troco para R$</label>
+                <input
+                  className="input flex-1 p-2 text-sm"
+                  placeholder="0,00"
+                  value={trocoInput}
+                  onChange={(e) => setTrocoInput(e.target.value)}
+                  inputMode="decimal"
+                />
+              </div>
+            )}
+
+            {/* Desconto */}
+            <div className="flex items-center gap-2">
+              <label className="shrink-0 text-xs text-brand-ink/60">Desconto R$</label>
+              <input
+                className="input flex-1 p-2 text-sm"
+                placeholder="0,00"
+                value={discountInput}
+                onChange={(e) => setDiscountInput(e.target.value)}
+                inputMode="decimal"
+              />
+            </div>
+
             {createOrder.isError && (
               <p className="text-sm text-brand-red">Erro ao criar pedido. Tente novamente.</p>
+            )}
+            {paymentMethod === 'CASH' && trocoCents > 0 && changeCents < 0 && (
+              <p className="text-xs text-brand-red">Valor do troco é menor que o total do pedido.</p>
             )}
 
             <button
@@ -696,9 +905,9 @@ function ItemRow({
     <li>
       <button
         onClick={onClick}
-        className="flex w-full items-center gap-3 py-2.5 text-left hover:bg-brand-cream/60 transition-colors rounded-lg px-1"
+        className="flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-brand-cream/60"
       >
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="font-semibold leading-tight text-brand-ink">{item.name}</p>
           <p className="text-sm text-brand-ink/60">
             {hasOptions ? priceRange : formatBRL(item.priceCents)}
@@ -714,7 +923,7 @@ function ItemRow({
             {cartQty}
           </span>
         )}
-        <span className="shrink-0 text-brand-ink/30 text-lg">›</span>
+        <span className="shrink-0 text-lg text-brand-ink/30">›</span>
       </button>
     </li>
   );
