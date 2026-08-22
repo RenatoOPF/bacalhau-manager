@@ -319,7 +319,7 @@ export default function CardapioPage() {
               </select>
               {createOrder.isError && (
                 <p className="text-sm text-brand-red">
-                  Erro ao enviar. Tente novamente.
+                  {(createOrder.error as Error)?.message ?? 'Erro ao enviar. Tente novamente.'}
                 </p>
               )}
             </section>
@@ -401,6 +401,11 @@ export default function CardapioPage() {
         {isLoading && (
           <p className="mt-6 text-center text-brand-ink/60">
             Carregando cardápio...
+          </p>
+        )}
+        {!isLoading && (menu ?? []).length === 0 && (
+          <p className="mt-6 text-center text-brand-ink/40">
+            Cardápio indisponível no momento.
           </p>
         )}
 

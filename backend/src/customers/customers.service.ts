@@ -85,19 +85,21 @@ export class CustomersService {
   }
 
   async create(dto: CreateCustomerDto) {
-    if (dto.phone) await this.assertPhoneAvailable(dto.phone);
+    const phone = dto.phone?.replace(/\D/g, '') || undefined;
+    if (phone) await this.assertPhoneAvailable(phone);
     return this.prisma.customer.create({
-      data: { name: dto.name, phone: dto.phone, notes: dto.notes },
+      data: { name: dto.name, phone, notes: dto.notes },
       select: CUSTOMER_BASE,
     });
   }
 
   async update(id: string, dto: UpdateCustomerDto) {
     await this.findOne(id);
-    if (dto.phone) await this.assertPhoneAvailable(dto.phone, id);
+    const phone = dto.phone?.replace(/\D/g, '') || undefined;
+    if (phone) await this.assertPhoneAvailable(phone, id);
     return this.prisma.customer.update({
       where: { id },
-      data: dto,
+      data: { ...dto, phone },
       select: CUSTOMER_BASE,
     });
   }

@@ -103,13 +103,14 @@ export class OrdersService {
     }
 
     const dailyNumber = await nextDailyNumber(this.prisma);
+    const customerPhone = dto.customerPhone?.replace(/\D/g, '') || undefined;
 
     const order = await this.prisma.order.create({
       data: {
         dailyNumber,
         customerId: dto.customerId ?? null,
         customerName: dto.customerName,
-        customerPhone: dto.customerPhone,
+        customerPhone,
         addressStreet: dto.addressStreet ?? 'Balcão',
         addressNumber: dto.addressNumber,
         addressComplement: dto.addressComplement,
@@ -138,8 +139,8 @@ export class OrdersService {
 
     // Auto-salva o cliente quando o pedido vem da plataforma pública.
     // Condição: telefone presente e nenhum customerId já vinculado.
-    if (!dto.customerId && dto.customerPhone) {
-      await this.autoSaveCustomer(order.id, dto).catch((e) =>
+    if (!dto.customerId && customerPhone) {
+      await this.autoSaveCustomer(order.id, { ...dto, customerPhone }).catch((e) =>
         this.logger.warn(`Auto-save de cliente falhou: ${e?.message}`),
       );
     }

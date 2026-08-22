@@ -43,7 +43,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new ApiError(res.status, `API ${res.status}: ${body}`);
+    let message = `Erro ${res.status}`;
+    try {
+      const json = JSON.parse(body);
+      const raw = json.message;
+      message = Array.isArray(raw) ? raw[0] : (raw ?? message);
+    } catch {}
+    throw new ApiError(res.status, message);
   }
   return res.json() as Promise<T>;
 }
