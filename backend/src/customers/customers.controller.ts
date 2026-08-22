@@ -24,8 +24,9 @@ export class CustomersController {
   constructor(private readonly svc: CustomersService) {}
 
   @Get()
-  list(@Query('search') search?: string) {
-    return search?.trim() ? this.svc.search(search.trim()) : this.svc.list();
+  list(@Query('search') search?: string, @Query('limit') limit?: string) {
+    const take = limit ? Math.min(parseInt(limit, 10) || 20, 50) : 20;
+    return search?.trim() ? this.svc.search(search.trim(), take) : this.svc.list();
   }
 
   @Get(':id')

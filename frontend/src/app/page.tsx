@@ -49,6 +49,7 @@ export default function CardapioPage() {
   const [view, setView] = useState<'menu' | 'checkout'>('menu');
 
   const [mapCoords, setMapCoords] = useState<{ lat: string; lon: string } | null>(null);
+  const [geoError, setGeoError] = useState(false);
 
   function handleAddressChange(addr: AddressValue) {
     setForm((f) => ({ ...f, address: addr }));
@@ -58,6 +59,7 @@ export default function CardapioPage() {
     const { street, number } = form.address;
     if (!street || !number) {
       setMapCoords(null);
+      setGeoError(false);
       return;
     }
     const timer = setTimeout(async () => {
@@ -77,11 +79,14 @@ export default function CardapioPage() {
         const data: { lat: string; lon: string }[] = await res.json();
         if (data[0]) {
           setMapCoords({ lat: data[0].lat, lon: data[0].lon });
+          setGeoError(false);
         } else {
           setMapCoords(null);
+          setGeoError(true);
         }
       } catch {
         setMapCoords(null);
+        setGeoError(true);
       }
     }, 1000);
     return () => clearTimeout(timer);
@@ -176,7 +181,7 @@ export default function CardapioPage() {
         addressNeighborhood: form.address.neighborhood || undefined,
         addressLat: mapCoords ? parseFloat(mapCoords.lat) : undefined,
         addressLng: mapCoords ? parseFloat(mapCoords.lon) : undefined,
-        paymentMethod: (form.paymentMethod || 'PIX') as 'CASH' | 'PIX',
+        paymentMethod: (form.paymentMethod || 'PIX') as 'CASH' | 'PIX' | 'CARD',
         items,
       },
       { onError: () => { submittingRef.current = false; } },
@@ -303,19 +308,25 @@ export default function CardapioPage() {
                 }
               />
               <MapView customerCoords={mapCoords} />
+              {geoError && (
+                <p className="text-xs text-brand-ink/50">
+                  Endereço não localizado no mapa — o pedido será confirmado normalmente.
+                </p>
+              )}
               <select
                 className="input w-full p-2"
                 value={form.paymentMethod}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    paymentMethod: e.target.value as 'CASH' | 'PIX',
+                    paymentMethod: e.target.value as 'CASH' | 'PIX' | 'CARD',
                   })
                 }
               >
                 <option value="" disabled>Selecione a forma de pagamento</option>
                 <option value="PIX">PIX</option>
                 <option value="CASH">Dinheiro</option>
+                <option value="CARD">Cartão</option>
               </select>
               {createOrder.isError && (
                 <p className="text-sm text-brand-red">

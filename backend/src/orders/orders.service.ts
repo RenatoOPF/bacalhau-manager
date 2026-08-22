@@ -239,7 +239,7 @@ export class OrdersService {
   async findOne(id: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },
-      include: { items: true },
+      include: { items: true, courier: { select: { id: true, name: true } } },
     });
     if (!order) throw new NotFoundException('Pedido não encontrado');
     return order;

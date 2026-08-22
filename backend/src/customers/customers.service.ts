@@ -39,7 +39,7 @@ export class CustomersService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Busca por nome ou telefone (insensível a maiúsculas). */
-  search(q: string) {
+  search(q: string, take = 20) {
     return this.prisma.customer.findMany({
       where: {
         OR: [
@@ -49,7 +49,7 @@ export class CustomersService {
       },
       select: CUSTOMER_BASE,
       orderBy: { name: 'asc' },
-      take: 20,
+      take,
     });
   }
 

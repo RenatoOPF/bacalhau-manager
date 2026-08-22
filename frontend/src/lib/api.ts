@@ -1009,8 +1009,8 @@ export const api = {
   },
 
   // ---- Clientes ----
-  listCustomers: (search?: string) =>
-    request<Customer[]>(`/customers${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+  listCustomers: (search?: string, limit = 10) =>
+    request<Customer[]>(`/customers${search ? `?search=${encodeURIComponent(search)}&limit=${limit}` : ''}`),
   getCustomer: (id: string) => request<CustomerDetail>(`/customers/${id}`),
   createCustomer: (payload: CreateCustomerPayload) =>
     request<Customer>('/customers', {
