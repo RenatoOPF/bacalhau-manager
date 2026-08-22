@@ -171,9 +171,8 @@ export default function CardapioPage() {
         customerName: form.customerName,
         customerPhone: form.customerPhone,
         addressStreet: form.address.street,
-        addressNumber: form.addressComplement
-          ? `${form.address.number}, ${form.addressComplement}`
-          : form.address.number,
+        addressNumber: form.address.number,
+        addressComplement: form.addressComplement || undefined,
         addressNeighborhood: form.address.neighborhood || undefined,
         addressLat: mapCoords ? parseFloat(mapCoords.lat) : undefined,
         addressLng: mapCoords ? parseFloat(mapCoords.lon) : undefined,

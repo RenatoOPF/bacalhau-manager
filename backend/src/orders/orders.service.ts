@@ -120,7 +120,7 @@ export class OrdersService {
         neighborhoodId: dto.neighborhoodId || null,
         paymentMethod: dto.paymentMethod,
         notes: dto.notes,
-        totalCents: totalCents + deliveryFeeCents - (dto.discountCents ?? 0),
+        totalCents: Math.max(0, totalCents + deliveryFeeCents - (dto.discountCents ?? 0)),
         deliveryFeeCents,
         discountCents: dto.discountCents ?? 0,
         items: { create: itemsData },
@@ -139,7 +139,7 @@ export class OrdersService {
     // Auto-salva o cliente quando o pedido vem da plataforma pública.
     // Condição: telefone presente e nenhum customerId já vinculado.
     if (!dto.customerId && dto.customerPhone) {
-      this.autoSaveCustomer(order.id, dto).catch((e) =>
+      await this.autoSaveCustomer(order.id, dto).catch((e) =>
         this.logger.warn(`Auto-save de cliente falhou: ${e?.message}`),
       );
     }
