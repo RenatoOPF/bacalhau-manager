@@ -32,15 +32,13 @@ function normalize(s: string): string {
     .trim();
 }
 
-/** Nomes normalizados de tamanho/opção — não são complementos autônomos. */
-const SIZE_NAMES = new Set([
-  'meia porcao',
-  'porcao inteira',
-  'porcao',
-  'individual',
-  'inteira',
-  'unico',
-]);
+/** Substrings que indicam tamanho/opção — complemento que as contiver vira optionName. */
+const SIZE_KEYWORDS = ['meia', 'inteira', 'porcao', 'individual', 'unico'];
+
+function isSizeName(name: string): boolean {
+  const lc = normalize(name);
+  return SIZE_KEYWORDS.some((kw) => lc.includes(kw));
+}
 
 /**
  * Expande cada item da comanda: extrai os complementos das `notes` (formato
@@ -89,7 +87,7 @@ function expandComplements(items: ParsedExternalItem[]): ParsedExternalItem[] {
       // O preço impresso é o total da linha; divide pela qty para obter o unitário.
       const unitCents = mPriced ? Math.round(brlToCents(mPriced[3]) / qty) : 0;
 
-      if (SIZE_NAMES.has(normalize(name))) {
+      if (isSizeName(name)) {
         // Tamanho do item principal — só guardamos o nome, a qty é irrelevante.
         optionName = name;
       } else {
