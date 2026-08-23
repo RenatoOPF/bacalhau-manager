@@ -224,15 +224,31 @@ export class PrintingService {
 
   /** Ticket da cozinha: número + itens + observações. NUNCA inclui endereço. */
   async printKitchenTicket(order: OrderWithItems): Promise<void> {
-    const iface = process.env.PRINTER_KITCHEN_INTERFACE;
-    if (!iface) {
+    const iface1 = process.env.PRINTER_KITCHEN_INTERFACE;
+    if (!iface1) {
       this.logger.warn(
         `[COZINHA] impressão simulada do pedido #${order.protocol} (sem PRINTER_KITCHEN_INTERFACE)`,
       );
       return;
     }
 
-    const p = this.buildPrinter(iface);
+    const interfaces = [iface1, process.env.PRINTER_KITCHEN_INTERFACE_2].filter(Boolean) as string[];
+    const results = await Promise.allSettled(
+      interfaces.map((iface, idx) => {
+        const p = this.buildPrinter(iface);
+        this.applyKitchenContent(p, order);
+        return this.execute(p, idx === 0 ? 'COZINHA' : 'COZINHA-2', order.protocol);
+      }),
+    );
+
+    for (const r of results) {
+      if (r.status === 'rejected') {
+        this.logger.error(`[COZINHA] falha em uma impressora: ${r.reason?.message ?? r.reason}`);
+      }
+    }
+  }
+
+  private applyKitchenContent(p: ThermalPrinter, order: OrderWithItems): void {
     p.alignCenter();
     p.setTextQuadArea();
     for (const line of wrapWords(firstTwoNames(order.customerName).toUpperCase(), Math.floor(this.width / 2))) {
@@ -282,8 +298,6 @@ export class PrintingService {
       p.println(`Obs. geral: ${order.notes}`);
     }
     p.cut();
-
-    await this.execute(p, 'COZINHA', order.protocol);
   }
 
   private async execute(
