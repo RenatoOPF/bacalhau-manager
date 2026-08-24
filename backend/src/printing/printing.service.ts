@@ -139,8 +139,8 @@ export class PrintingService implements OnApplicationBootstrap, OnApplicationShu
   private readonly width = Number(process.env.PRINTER_WIDTH ?? 32);
   private readonly keepaliveTimers: NodeJS.Timeout[] = [];
 
-  // ESC d 0 — avança 0 linhas: comando inerte, só mantém a conexão ativa.
-  private static readonly KEEPALIVE_CMD = Buffer.from([0x1b, 0x64, 0x00]);
+  // DLE EOT 1 — consulta de status em tempo real: não avança papel nem altera estado.
+  private static readonly KEEPALIVE_CMD = Buffer.from([0x10, 0x04, 0x01]);
   private static readonly KEEPALIVE_INTERVAL_MS = 8 * 60 * 1000; // 8 min < 10 min de auto-off
 
   onApplicationBootstrap() {
