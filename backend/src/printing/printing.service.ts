@@ -144,9 +144,10 @@ export class PrintingService implements OnApplicationBootstrap, OnApplicationShu
   private static readonly KEEPALIVE_INTERVAL_MS = 8 * 60 * 1000; // 8 min < 10 min de auto-off
 
   onApplicationBootstrap() {
+    // Keep-alive para impressoras Bluetooth (auto-off em 10 min).
+    // USB não precisa — só Bluetooth desliga sozinha por inatividade.
     const interfaces = [
-      process.env.PRINTER_KITCHEN_INTERFACE,
-      process.env.PRINTER_KITCHEN_INTERFACE_2,
+      process.env.PRINTER_CASHIER_INTERFACE,
     ].filter(Boolean) as string[];
 
     if (interfaces.length === 0) return;
@@ -159,7 +160,7 @@ export class PrintingService implements OnApplicationBootstrap, OnApplicationShu
     }
 
     this.logger.log(
-      `[KEEPALIVE] iniciado para ${interfaces.length} impressora(s) de cozinha (intervalo: 8 min)`,
+      `[KEEPALIVE] iniciado para impressora do caixa (Bluetooth, intervalo: 8 min)`,
     );
   }
 
