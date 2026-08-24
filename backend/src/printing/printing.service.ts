@@ -141,7 +141,7 @@ export class PrintingService implements OnApplicationBootstrap, OnApplicationShu
 
   // DLE EOT 1 — consulta de status em tempo real: não avança papel nem altera estado.
   private static readonly KEEPALIVE_CMD = Buffer.from([0x10, 0x04, 0x01]);
-  private static readonly KEEPALIVE_INTERVAL_MS = 8 * 60 * 1000; // 8 min < 10 min de auto-off
+  private static readonly KEEPALIVE_INTERVAL_MS = 9 * 60 * 1000; // 9 min < 10 min de auto-off
 
   onApplicationBootstrap() {
     // Keep-alive para impressoras Bluetooth (auto-off em 10 min).
