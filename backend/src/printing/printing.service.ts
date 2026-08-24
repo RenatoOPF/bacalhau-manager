@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import {
   printer as ThermalPrinter,
   types as PrinterTypes,
@@ -134,9 +134,49 @@ function formatDateTime(date: Date): string {
  * fica a cargo da fila (BullMQ): lançar erro aqui dispara o retry.
  */
 @Injectable()
-export class PrintingService {
+export class PrintingService implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger = new Logger(PrintingService.name);
   private readonly width = Number(process.env.PRINTER_WIDTH ?? 32);
+  private readonly keepaliveTimers: NodeJS.Timeout[] = [];
+
+  // ESC d 0 — avança 0 linhas: comando inerte, só mantém a conexão ativa.
+  private static readonly KEEPALIVE_CMD = Buffer.from([0x1b, 0x64, 0x00]);
+  private static readonly KEEPALIVE_INTERVAL_MS = 8 * 60 * 1000; // 8 min < 10 min de auto-off
+
+  onApplicationBootstrap() {
+    const interfaces = [
+      process.env.PRINTER_KITCHEN_INTERFACE,
+      process.env.PRINTER_KITCHEN_INTERFACE_2,
+    ].filter(Boolean) as string[];
+
+    if (interfaces.length === 0) return;
+
+    for (const iface of interfaces) {
+      // Aguarda 30s antes do primeiro pulso para a impressora estar pronta.
+      const initial = setTimeout(() => this.sendKeepalive(iface), 30_000);
+      const recurring = setInterval(() => this.sendKeepalive(iface), PrintingService.KEEPALIVE_INTERVAL_MS);
+      this.keepaliveTimers.push(initial, recurring);
+    }
+
+    this.logger.log(
+      `[KEEPALIVE] iniciado para ${interfaces.length} impressora(s) de cozinha (intervalo: 8 min)`,
+    );
+  }
+
+  onApplicationShutdown() {
+    for (const t of this.keepaliveTimers) clearTimeout(t);
+  }
+
+  private async sendKeepalive(iface: string): Promise<void> {
+    try {
+      const p = this.buildPrinter(iface);
+      p.raw(PrintingService.KEEPALIVE_CMD);
+      await p.execute();
+      this.logger.debug(`[KEEPALIVE] pulso enviado para ${iface}`);
+    } catch (e: any) {
+      this.logger.warn(`[KEEPALIVE] falhou para ${iface}: ${e?.message ?? e}`);
+    }
+  }
 
   private buildPrinter(interfaceUrl: string): ThermalPrinter {
     return new ThermalPrinter({
