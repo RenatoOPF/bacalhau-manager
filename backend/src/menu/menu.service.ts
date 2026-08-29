@@ -129,8 +129,9 @@ export class MenuService {
    * Exclui um item (opções em cascata). Pedidos antigos que o referenciavam
    * mantêm os snapshots (nome/preço/opção) e apenas perdem o vínculo (SetNull).
    */
-  deleteItem(id: string) {
-    return this.prisma.menuItem.delete({ where: { id } });
+  async deleteItem(id: string) {
+    await this.prisma.menuItem.delete({ where: { id } });
+    return { id };
   }
 
   async deleteItemImage(id: string) {
@@ -143,10 +144,8 @@ export class MenuService {
       const filePath = path.join(uploadDir, item.imageUrl.replace('/uploads/', ''));
       fs.rmSync(filePath, { force: true });
     }
-    return this.prisma.menuItem.update({
-      where: { id },
-      data: { imageUrl: null },
-    });
+    await this.prisma.menuItem.update({ where: { id }, data: { imageUrl: null } });
+    return { id };
   }
 
   /** Exclui uma categoria vazia. Bloqueia se ainda tiver itens. */
@@ -159,7 +158,8 @@ export class MenuService {
         'A categoria ainda tem itens. Exclua ou mova os itens antes.',
       );
     }
-    return this.prisma.menuCategory.delete({ where: { id } });
+    await this.prisma.menuCategory.delete({ where: { id } });
+    return { id };
   }
 
   // ---- Opções (variações) do item ----
@@ -174,8 +174,9 @@ export class MenuService {
     return this.prisma.menuItemOption.update({ where: { id }, data: dto });
   }
 
-  deleteOption(id: string) {
-    return this.prisma.menuItemOption.delete({ where: { id } });
+  async deleteOption(id: string) {
+    await this.prisma.menuItemOption.delete({ where: { id } });
+    return { id };
   }
 
   /** Reordena as opções de um item a partir de uma lista ordenada de IDs. */

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, formatBRL, type Courier, type CourierOrder, type CourierReportRow, type Neighborhood } from '@/lib/api';
+import { formatPhone } from '@/lib/phone';
 
 function isoToday(): string {
   return new Date().toISOString().slice(0, 10);
@@ -147,7 +148,7 @@ function CourierCard({
                             href={`tel:${order.customerPhone}`}
                             className="text-sm text-brand-red"
                           >
-                            {order.customerPhone}
+                            {formatPhone(order.customerPhone)}
                           </a>
                         )}
                         <p className="mt-1 text-sm text-brand-ink/70">

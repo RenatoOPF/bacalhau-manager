@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, formatBRL, type CourierOrder } from '@/lib/api';
+import { formatPhone } from '@/lib/phone';
 
 type DeliveryStatus = 'OUT_FOR_DELIVERY' | 'DELIVERED';
 type Period = 'today' | 'week' | 'custom';
@@ -88,7 +89,7 @@ function OrderCard({ order }: { order: CourierOrder }) {
               href={`tel:${order.customerPhone}`}
               className="text-sm text-brand-red underline-offset-2 hover:underline"
             >
-              {order.customerPhone}
+              {formatPhone(order.customerPhone)}
             </a>
           )}
         </div>

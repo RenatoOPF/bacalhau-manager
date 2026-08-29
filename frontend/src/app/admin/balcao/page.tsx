@@ -10,6 +10,7 @@ import {
   type Customer,
   type Neighborhood,
 } from '@/lib/api';
+import { maskPhone, formatPhone } from '@/lib/phone';
 
 interface CartLine {
   menuItemId: string;
@@ -209,7 +210,7 @@ function CustomerSearch({ onSelect }: { onSelect: (customer: Customer | null) =>
                 onMouseDown={() => pick(c)}
               >
                 <span className="font-semibold">{c.name}</span>
-                {c.phone && <span className="ml-2 text-brand-ink/50">{c.phone}</span>}
+                {c.phone && <span className="ml-2 text-brand-ink/50">{formatPhone(c.phone)}</span>}
               </button>
             </li>
           ))}
@@ -337,7 +338,7 @@ export default function BalcaoPage() {
     setSelectedCustomer(c);
     if (c) {
       setCustomerName(c.name);
-      setCustomerPhone(c.phone ?? '');
+      setCustomerPhone(formatPhone(c.phone));
       const def = c.addresses.find((a) => a.isDefault) ?? c.addresses[0];
       setSelectedAddressId(def?.id ?? null);
       applyAddress(def);
@@ -786,8 +787,9 @@ export default function BalcaoPage() {
             <input
               className="input w-full p-2 text-sm"
               placeholder="Telefone (opcional)"
+              inputMode="numeric"
               value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
+              onChange={(e) => setCustomerPhone(maskPhone(e.target.value))}
             />
 
             {/* Botão cadastro rápido */}

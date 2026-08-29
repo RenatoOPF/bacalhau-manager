@@ -117,6 +117,11 @@ function expandComplements(items: ParsedExternalItem[]): ParsedExternalItem[] {
 export class IntegrationsService {
   private readonly logger = new Logger(IntegrationsService.name);
 
+  private priceEstimatorCache: {
+    fn: (name: string, optionName: string | null) => number;
+    expiresAt: number;
+  } | null = null;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
@@ -132,10 +137,16 @@ export class IntegrationsService {
    * (útil para "Coca Zero Lata - 350ml" → "Coca Zero Lata" no cadastro).
    * Quando o item tem opções (tamanhos), retorna o priceCents da opção
    * correspondente; caso contrário usa o priceCents do item.
+   * Resultado cacheado por 2 minutos para evitar queries repetidas em pico.
    */
   private async buildPriceEstimator(): Promise<
     (name: string, optionName: string | null) => number
   > {
+    const now = Date.now();
+    if (this.priceEstimatorCache && now < this.priceEstimatorCache.expiresAt) {
+      return this.priceEstimatorCache.fn;
+    }
+
     const items = await this.prisma.menuItem.findMany({
       select: {
         name: true,
@@ -160,7 +171,7 @@ export class IntegrationsService {
       return best;
     };
 
-    return (name, optionName) => {
+    const fn = (name: string, optionName: string | null) => {
       const item = match(name);
       if (!item) return 0;
       if (optionName && item.options.length > 0) {
@@ -170,6 +181,9 @@ export class IntegrationsService {
       }
       return item.priceCents;
     };
+
+    this.priceEstimatorCache = { fn, expiresAt: now + 2 * 60 * 1000 };
+    return fn;
   }
 
   /** Recebe o base64 de uma impressão capturada, parseia e cria o pedido. */

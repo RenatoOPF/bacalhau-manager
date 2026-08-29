@@ -55,9 +55,19 @@ const fromMilli = (milli: number) => milli / 1000;
 // Custo do insumo é guardado em CENTAVOS por unidade; entra/sai da API em reais.
 const toCents = (reais: number) => Math.round(reais * 100);
 
+type CostEstimatorFn = (
+  nameSnapshot: string,
+  optionNameSnapshot: string | null,
+  notes: string | null,
+  menuItemId?: string | null,
+  optionId?: string | null,
+) => number;
+
 @Injectable()
 export class StockService {
   private readonly logger = new Logger(StockService.name);
+
+  private costEstimatorCache: { fn: CostEstimatorFn; expiresAt: number } | null = null;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -609,16 +619,14 @@ export class StockService {
    * do item + IDs opcionais. Quando os IDs são fornecidos (pedidos próprios),
    * usa lookup exato; sem IDs (pedidos externos/legados), cai no match por texto.
    * Retorna 0 quando não há vínculo ou custo cadastrado.
+   * Resultado cacheado por 2 minutos para evitar queries repetidas em pico.
    */
-  async buildCostEstimator(): Promise<
-    (
-      nameSnapshot: string,
-      optionNameSnapshot: string | null,
-      notes: string | null,
-      menuItemId?: string | null,
-      optionId?: string | null,
-    ) => number
-  > {
+  async buildCostEstimator(): Promise<CostEstimatorFn> {
+    const now = Date.now();
+    if (this.costEstimatorCache && now < this.costEstimatorCache.expiresAt) {
+      return this.costEstimatorCache.fn;
+    }
+
     type LinkCost = { qtyMilli: number; stockItem: { costCents: number } };
     type OptionCost = { id: string; name: string; stockLinks: LinkCost[] };
     type ItemCost = {
@@ -648,7 +656,7 @@ export class StockService {
         0,
       );
 
-    return (nameSnapshot, optionNameSnapshot, notes, menuItemId, optionId) => {
+    const fn: CostEstimatorFn = (nameSnapshot, optionNameSnapshot, notes, menuItemId, optionId) => {
       const menuItem = menuItemId
         ? (byId.get(menuItemId) ?? this.matchByText(nameSnapshot, byName))
         : this.matchByText(nameSnapshot, byName);
@@ -671,5 +679,8 @@ export class StockService {
       }
       return linkCost(menuItem.stockLinks, factor) + extra;
     };
+
+    this.costEstimatorCache = { fn, expiresAt: now + 2 * 60 * 1000 };
+    return fn;
   }
 }

@@ -107,7 +107,7 @@ export class CustomersService {
   async remove(id: string) {
     await this.findOne(id);
     await this.prisma.customer.delete({ where: { id } });
-    return { deleted: true };
+    return { id };
   }
 
   async addAddress(customerId: string, dto: CreateAddressDto) {
@@ -132,7 +132,7 @@ export class CustomersService {
   async removeAddress(customerId: string, addressId: string) {
     await this.assertAddressOwner(customerId, addressId);
     await this.prisma.customerAddress.delete({ where: { id: addressId } });
-    return { deleted: true };
+    return { id: addressId };
   }
 
   private async assertPhoneAvailable(phone: string, excludeId?: string) {

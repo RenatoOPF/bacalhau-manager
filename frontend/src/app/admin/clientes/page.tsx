@@ -20,6 +20,7 @@ import {
   type Neighborhood,
   CHANNEL_LABEL,
 } from '@/lib/api';
+import { maskPhone, formatPhone } from '@/lib/phone';
 
 // ---- Helpers ----
 
@@ -47,7 +48,7 @@ function CustomerForm({
   onCancel: () => void;
 }) {
   const [name, setName] = useState(initial?.name ?? '');
-  const [phone, setPhone] = useState(initial?.phone ?? '');
+  const [phone, setPhone] = useState(formatPhone(initial?.phone));
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -78,8 +79,9 @@ function CustomerForm({
       <input
         className="input w-full p-2 text-sm"
         placeholder="Telefone"
+        inputMode="numeric"
         value={phone}
-        onChange={(e) => setPhone(e.target.value)}
+        onChange={(e) => setPhone(maskPhone(e.target.value))}
       />
       <textarea
         className="input w-full p-2 text-sm"
@@ -248,8 +250,9 @@ function NewCustomerForm({
       <input
         className="input w-full p-2 text-sm"
         placeholder="Telefone"
+        inputMode="numeric"
         value={phone}
-        onChange={(e) => setPhone(e.target.value)}
+        onChange={(e) => setPhone(maskPhone(e.target.value))}
       />
       <textarea
         className="input w-full p-2 text-sm"
@@ -445,7 +448,7 @@ function CustomerPanel({
         <div>
           <h2 className="text-xl font-bold text-brand-ink">{customer.name}</h2>
           {customer.phone && (
-            <p className="text-sm text-brand-ink/60">{customer.phone}</p>
+            <p className="text-sm text-brand-ink/60">{formatPhone(customer.phone)}</p>
           )}
         </div>
         <div className="flex gap-2">
@@ -658,7 +661,7 @@ export default function ClientesPage() {
                 >
                   <p className="font-semibold leading-tight">{c.name}</p>
                   {c.phone && (
-                    <p className="text-xs text-brand-ink/50">{c.phone}</p>
+                    <p className="text-xs text-brand-ink/50">{formatPhone(c.phone)}</p>
                   )}
                   {c.addresses.length > 0 && (
                     <p className="mt-0.5 text-xs text-brand-ink/40 truncate">

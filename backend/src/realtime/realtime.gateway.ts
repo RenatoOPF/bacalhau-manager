@@ -22,12 +22,12 @@ export class RealtimeGateway {
   server: Server;
 
   /** Novo pedido criado — atualiza a fila do caixa. */
-  emitOrderCreated(order: unknown) {
-    this.server.emit('order:created', order);
+  emitOrderCreated(order: { protocol: number }) {
+    this.server.emit('order:created', { protocol: order.protocol });
   }
 
   /** Mudança de status — caixa e cliente reagem. */
-  emitOrderStatusChanged(order: unknown) {
-    this.server.emit('order:status', order);
+  emitOrderStatusChanged(order: { protocol: number }) {
+    this.server.emit('order:status', { protocol: order.protocol });
   }
 }

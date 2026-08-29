@@ -12,6 +12,7 @@ import {
 import dynamic from 'next/dynamic';
 import { SiteFooter } from '@/components/site-footer';
 import { UnifiedAddressInput, type AddressValue } from '@/components/UnifiedAddressInput';
+import { maskPhone } from '@/lib/phone';
 
 const MapView = dynamic(
   () => import('@/components/MapView').then((m) => m.MapView),
@@ -42,7 +43,7 @@ export default function CardapioPage() {
     customerPhone: '',
     address: { street: '', number: '', cep: '', neighborhood: '' } as AddressValue,
     addressComplement: '',
-    paymentMethod: '' as 'CASH' | 'PIX' | '',
+    paymentMethod: '' as 'CASH' | 'PIX' | 'CARD' | '',
   });
 
   // Duas telas: cardápio e fechamento do pedido.
@@ -282,18 +283,7 @@ export default function CardapioPage() {
                 placeholder="Telefone (82) 99999-9999"
                 value={form.customerPhone}
                 inputMode="numeric"
-                onChange={(e) => {
-                  const d = e.target.value.replace(/\D/g, '').slice(0, 11);
-                  let phone = d;
-                  if (d.length > 6) {
-                    phone = `(${d.slice(0, 2)}) ${d.slice(2, d.length > 10 ? 7 : 6)}-${d.slice(d.length > 10 ? 7 : 6)}`;
-                  } else if (d.length > 2) {
-                    phone = `(${d.slice(0, 2)}) ${d.slice(2)}`;
-                  } else if (d.length > 0) {
-                    phone = `(${d}`;
-                  }
-                  setForm({ ...form, customerPhone: phone });
-                }}
+                onChange={(e) => setForm({ ...form, customerPhone: maskPhone(e.target.value) })}
               />
               <UnifiedAddressInput
                 value={form.address}
