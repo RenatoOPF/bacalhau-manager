@@ -65,7 +65,7 @@ function formatItemNote(note: string): string[] {
       }
     }
     if (/^Obs:/i.test(trimmed)) return `obs: ${trimmed.slice(4).trim()}`;
-    return `+ ${trimmed}`;
+    return `* ${trimmed}`;
   });
 }
 
