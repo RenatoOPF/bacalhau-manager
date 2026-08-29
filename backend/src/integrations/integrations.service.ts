@@ -213,11 +213,12 @@ export class IntegrationsService {
 
     const channelLabel =
       parsed.channel === OrderChannel.IFOOD ? 'iFood' : '99';
-    const dailyNumber = await nextDailyNumber(this.prisma);
+    // Estimadores primeiro: se o banco cair aqui o número diário não é queimado.
     const [costOf, priceOf] = await Promise.all([
       this.stock.buildCostEstimator(),
       this.buildPriceEstimator(),
     ]);
+    const dailyNumber = await nextDailyNumber(this.prisma);
     const expandedItems = expandComplements(parsed.items);
     // Sobrescreve os preços com os do nosso cardápio quando há correspondência.
     for (const it of expandedItems) {
