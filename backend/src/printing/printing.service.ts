@@ -6,67 +6,14 @@ import {
 } from 'node-thermal-printer';
 import { OrderChannel } from '@prisma/client';
 import type { Order, OrderItem } from '@prisma/client';
+import { toPrintOption, formatItemNote } from './printing-utils';
 
 type OrderWithItems = Order & { items: OrderItem[] };
 
 function formatBRL(cents: number): string {
   return (cents / 100)
     .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-    .replace(/\u00a0/g, ' ');
-}
-
-/**
- * Converte o nome da opção do cardápio para o termo usado na cozinha/impressão:
- * "Meia Porção" → "Individual", "Porção Inteira" → "Inteira" (inclui os peixes,
- * ex.: "Tilápia Meia Porção" → "Tilápia Individual"). O cardápio do cliente
- * mantém o nome original.
- */
-// Aliases de exibição para a cozinha: nome no cardápio → label impresso.
-const KITCHEN_ALIASES: [RegExp, string][] = [
-  [/Dezena Lusitana/gi, '10 bolinhos'],
-];
-
-function toPrintOption(name: string): string {
-  let result = name
-    .replace(/Meia Por[çc][ãa]o/gi, 'Individual')
-    .replace(/Por[çc][ãa]o Inteira/gi, 'Inteira');
-  for (const [pattern, alias] of KITCHEN_ALIASES) {
-    result = result.replace(pattern, alias);
-  }
-  return result;
-}
-
-/**
- * Formata as notes de um item iFood em segmentos prontos para imprimir.
- * O iFood une opção + complementos + obs com " | " (ex.: "1 Porcao Inteira |
- * 1 Chilli | Obs: sem cebola"). Cada segmento vira "(INTEIRA)", "+ ..." (opção
- * livre/complemento) ou "obs: ..." (observação real do cliente) — sem isso,
- * complemento e observação saem ambos como "obs:" e a cozinha não distingue
- * "precisa adicionar" de "pedido do cliente".
- *
- * A etiqueta "(INTEIRA)/(INDIVIDUAL)" só vale pro 1º segmento — é sempre o
- * Tamanho/Especificação do prato em si (1º grupo impresso pelo parser). Um
- * complemento posterior (ex.: sobremesa com sua própria opção "Porção
- * Inteira") viraria a mesma etiqueta genérica e ficaria indistinguível do
- * tamanho do prato principal — por isso só o índice 0 pode virar a etiqueta.
- * Peixes (ex.: "Sirigado - Meia Porção") trazem a proteína antes do tamanho;
- * o prefixo entra na própria etiqueta em vez de cair como "+ ..." solto.
- */
-function formatItemNote(note: string): string[] {
-  return note.split(' | ').map((part, index) => {
-    const trimmed = part.trim();
-    if (index === 0) {
-      const m = toPrintOption(trimmed).match(
-        /^(?:\d+\s+)?(?:(.+?)\s*-\s*)?(Individual|Inteira)$/i,
-      );
-      if (m) {
-        const prefix = m[1] ? `${m[1].toUpperCase()} - ` : '';
-        return `(${prefix}${m[2].toUpperCase()})`;
-      }
-    }
-    if (/^Obs:/i.test(trimmed)) return `obs: ${trimmed.slice(4).trim()}`;
-    return `* ${trimmed}`;
-  });
+    .replace(/ /g, ' ');
 }
 
 /**

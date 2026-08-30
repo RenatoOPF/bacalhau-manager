@@ -636,20 +636,51 @@ function ProdutosTab({ from, to }: { from: string; to: string }) {
 }
 
 function MarginsSection({ margins }: { margins: MarginRow[] }) {
-  const missing = margins.filter((m) => !m.hasCost).length;
+  const [showMissing, setShowMissing] = useState(false);
+  const missingItems = margins.filter((m) => !m.hasCost);
   return (
     <section>
       <h2 className="section-title">Margem de contribuição</h2>
       <p className="text-sm text-brand-ink/60">
         Preço − custo dos ingredientes (por unidade). Custo vem do cadastro de
         estoque.
-        {missing > 0 && (
-          <span className="text-brand-red">
+        {missingItems.length > 0 && (
+          <>
             {' '}
-            {missing} item(ns) sem custo cadastrado.
-          </span>
+            <button
+              onClick={() => setShowMissing((v) => !v)}
+              className="text-brand-red underline underline-offset-2 hover:opacity-75"
+            >
+              {missingItems.length} item(ns) sem custo cadastrado
+            </button>
+            .
+          </>
         )}
       </p>
+      {showMissing && missingItems.length > 0 && (
+        <div className="mt-2 rounded border border-brand-red/30 bg-brand-red/5 p-3 text-sm">
+          <p className="mb-2 font-medium text-brand-red">
+            Itens sem custo —{' '}
+            <a
+              href="/admin/fichas-tecnicas"
+              className="underline underline-offset-2 hover:opacity-75"
+            >
+              cadastrar fichas técnicas
+            </a>
+          </p>
+          <ul className="space-y-0.5 text-brand-ink/70">
+            {missingItems.map((m) => (
+              <li key={`${m.name}|${m.optionName ?? ''}`}>
+                {m.name}
+                {m.optionName && (
+                  <span className="text-brand-ink/40"> · {m.optionName}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mt-2 overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
           <thead>
