@@ -16,6 +16,14 @@ function formatBRL(cents: number): string {
     .replace(/ /g, ' ');
 }
 
+/** Extrai mensagem legível de qualquer tipo de erro lançado pelo node-thermal-printer. */
+function errMsg(e: unknown): string {
+  if (!e) return 'unknown';
+  if (typeof e === 'string') return e;
+  if (e instanceof Error) return e.message || e.toString();
+  return String(e);
+}
+
 /**
  * Quebra o texto em linhas de no máximo `width` colunas SEM cortar palavra no
  * meio: cada palavra fica inteira numa linha; se não couber no que resta, vai
@@ -229,10 +237,13 @@ export class PrintingService implements OnApplicationBootstrap, OnApplicationShu
       }),
     );
 
-    for (const r of results) {
-      if (r.status === 'rejected') {
-        this.logger.error(`[COZINHA] falha em uma impressora: ${r.reason?.message ?? r.reason}`);
-      }
+    const failures = results.filter((r) => r.status === 'rejected') as PromiseRejectedResult[];
+    for (const f of failures) {
+      this.logger.error(`[COZINHA] falha em uma impressora: ${errMsg(f.reason)}`);
+    }
+    // Se TODAS as impressoras falharam, propaga o erro para o BullMQ marcar o job como falho.
+    if (failures.length === results.length) {
+      throw failures[0].reason ?? new Error('[COZINHA] todas as impressoras falharam');
     }
   }
 
@@ -298,7 +309,13 @@ export class PrintingService implements OnApplicationBootstrap, OnApplicationShu
     // para compartilhamentos de impressora — falso negativo mesmo com a
     // impressora acessível. p.execute() já rejeita/lança se a escrita
     // falhar, o que a fila (BullMQ) usa pra disparar o retry.
-    await p.execute();
+    try {
+      await p.execute();
+    } catch (e: unknown) {
+      // node-thermal-printer às vezes lança objetos sem .message; garantimos
+      // uma mensagem legível para que o BullMQ preencha failedReason corretamente.
+      throw new Error(`[${label}] falha na impressora (pedido #${protocol}): ${errMsg(e)}`);
+    }
     this.logger.log(`[${label}] ticket impresso (pedido #${protocol})`);
   }
 }
