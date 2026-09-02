@@ -255,13 +255,18 @@ function OrderCard({
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-2">
+        <span className="flex items-center gap-2 flex-wrap">
           <span className="font-mono text-lg font-bold">
             #{order.dailyNumber}
           </span>
           {order.channel !== 'OWN' && (
             <span className="rounded bg-brand-red/10 px-2 py-0.5 text-xs font-semibold text-brand-red">
               {CHANNEL_LABEL[order.channel]}
+            </span>
+          )}
+          {order.channel !== 'OWN' && order.notes && (
+            <span className="text-xs font-mono text-brand-ink/60">
+              {order.notes}
             </span>
           )}
         </span>

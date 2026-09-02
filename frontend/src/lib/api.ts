@@ -160,6 +160,7 @@ export interface Order {
   paidAt?: string | null;
   createdAt: string;
   items: OrderItem[];
+  notes?: string | null;
   // Entrega (preenchidos quando o pedido é designado a um entregador).
   courierId?: string | null;
   courier?: { id: string; name: string } | null;
