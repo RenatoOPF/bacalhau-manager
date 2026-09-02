@@ -61,27 +61,47 @@ export class CustomersService {
   }
 
   async findOne(id: string) {
-    const c = await this.prisma.customer.findUnique({
-      where: { id },
-      select: {
-        ...CUSTOMER_BASE,
-        orders: {
-          select: {
-            id: true,
-            protocol: true,
-            dailyNumber: true,
-            channel: true,
-            status: true,
-            totalCents: true,
-            createdAt: true,
+    const [c, agg] = await Promise.all([
+      this.prisma.customer.findUnique({
+        where: { id },
+        select: {
+          ...CUSTOMER_BASE,
+          orders: {
+            select: {
+              id: true,
+              protocol: true,
+              dailyNumber: true,
+              channel: true,
+              status: true,
+              totalCents: true,
+              createdAt: true,
+              items: {
+                select: {
+                  id: true,
+                  nameSnapshot: true,
+                  optionNameSnapshot: true,
+                  quantity: true,
+                  priceCents: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 20,
           },
-          orderBy: { createdAt: 'desc' },
-          take: 20,
         },
-      },
-    });
+      }),
+      this.prisma.order.aggregate({
+        where: { customerId: id },
+        _count: { id: true },
+        _sum: { totalCents: true },
+      }),
+    ]);
     if (!c) throw new NotFoundException('Cliente não encontrado');
-    return c;
+    return {
+      ...c,
+      orderCount: agg._count.id,
+      totalSpentCents: agg._sum.totalCents ?? 0,
+    };
   }
 
   async create(dto: CreateCustomerDto) {

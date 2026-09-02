@@ -457,7 +457,17 @@ export interface Customer {
   addresses: CustomerAddress[];
 }
 
+export interface CustomerOrderItem {
+  id: string;
+  nameSnapshot: string;
+  optionNameSnapshot: string | null;
+  quantity: number;
+  priceCents: number;
+}
+
 export interface CustomerDetail extends Customer {
+  orderCount: number;
+  totalSpentCents: number;
   orders: {
     id: string;
     protocol: number;
@@ -466,6 +476,7 @@ export interface CustomerDetail extends Customer {
     status: OrderStatus;
     totalCents: number;
     createdAt: string;
+    items: CustomerOrderItem[];
   }[];
 }
 

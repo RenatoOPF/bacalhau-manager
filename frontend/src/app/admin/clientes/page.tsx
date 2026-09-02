@@ -15,6 +15,7 @@ import {
   type Customer,
   type CustomerAddress,
   type CustomerDetail,
+  type CustomerOrderItem,
   type CreateCustomerPayload,
   type CreateAddressPayload,
   type Neighborhood,
@@ -372,6 +373,66 @@ function AddressForm({
   );
 }
 
+// ---- Status badge ----
+
+const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
+  RECEIVED:   { label: 'Recebido',  cls: 'bg-blue-100 text-blue-700' },
+  PREPARING:  { label: 'Preparo',   cls: 'bg-yellow-100 text-yellow-700' },
+  READY:      { label: 'Pronto',    cls: 'bg-green-100 text-green-700' },
+  OUT:        { label: 'Saiu',      cls: 'bg-orange-100 text-orange-700' },
+  DELIVERED:  { label: 'Entregue',  cls: 'bg-gray-100 text-gray-500' },
+  CANCELLED:  { label: 'Cancelado', cls: 'bg-red-100 text-red-600' },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const s = STATUS_LABEL[status] ?? { label: status, cls: 'bg-gray-100 text-gray-500' };
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${s.cls}`}>
+      {s.label}
+    </span>
+  );
+}
+
+// ---- Linha de pedido expansível ----
+
+function OrderRow({ order }: { order: CustomerDetail['orders'][number] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <li className="border-b border-brand-cream-dark last:border-0">
+      <button
+        className="flex w-full items-center justify-between gap-2 py-2 text-left"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold text-sm">#{order.dailyNumber}</span>
+          <span className="text-xs text-brand-ink/50">{CHANNEL_LABEL[order.channel]}</span>
+          <StatusBadge status={order.status} />
+          <span className="text-xs text-brand-ink/40">
+            {new Date(order.createdAt).toLocaleDateString('pt-BR')}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-sm font-semibold text-brand-red">{formatBRL(order.totalCents)}</span>
+          <span className="text-brand-ink/30 text-xs">{open ? '▲' : '▼'}</span>
+        </div>
+      </button>
+      {open && (
+        <ul className="mb-2 ml-3 space-y-0.5">
+          {order.items.map((item) => (
+            <li key={item.id} className="flex items-baseline justify-between text-xs text-brand-ink/70 gap-2">
+              <span>
+                {item.quantity}x {item.nameSnapshot}
+                {item.optionNameSnapshot ? ` (${item.optionNameSnapshot})` : ''}
+              </span>
+              <span className="shrink-0">{formatBRL(item.priceCents * item.quantity)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
 // ---- Painel de detalhe do cliente ----
 
 function CustomerPanel({
@@ -560,26 +621,42 @@ function CustomerPanel({
         </ul>
       </div>
 
-      {/* Últimos pedidos */}
-      {customer.orders.length > 0 && (
-        <div>
-          <h3 className="section-title">Últimos pedidos</h3>
-          <ul className="mt-2 divide-y divide-brand-cream-dark">
-            {customer.orders.map((o) => (
-              <li key={o.id} className="flex items-center justify-between py-2 text-sm">
-                <div>
-                  <span className="font-semibold">#{o.dailyNumber}</span>
-                  <span className="ml-2 text-brand-ink/50">{CHANNEL_LABEL[o.channel]}</span>
-                  <span className="ml-2 text-brand-ink/50">
-                    {new Date(o.createdAt).toLocaleDateString('pt-BR')}
-                  </span>
-                </div>
-                <span className="font-semibold text-brand-red">{formatBRL(o.totalCents)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/* Histórico de pedidos */}
+      <div>
+        <h3 className="section-title">Histórico de pedidos</h3>
+        {customer.orderCount === 0 ? (
+          <p className="mt-2 text-sm text-brand-ink/40">Nenhum pedido registrado.</p>
+        ) : (
+          <>
+            <div className="mt-2 flex gap-4 rounded-lg bg-brand-cream-dark/50 px-3 py-2 text-sm">
+              <div>
+                <span className="text-brand-ink/50">Pedidos</span>
+                <p className="font-bold text-brand-ink">{customer.orderCount}</p>
+              </div>
+              <div className="border-l border-brand-cream-dark pl-4">
+                <span className="text-brand-ink/50">Total gasto</span>
+                <p className="font-bold text-brand-red">{formatBRL(customer.totalSpentCents)}</p>
+              </div>
+              <div className="border-l border-brand-cream-dark pl-4">
+                <span className="text-brand-ink/50">Ticket médio</span>
+                <p className="font-bold text-brand-ink">
+                  {formatBRL(Math.round(customer.totalSpentCents / customer.orderCount))}
+                </p>
+              </div>
+            </div>
+            {customer.orders.length < customer.orderCount && (
+              <p className="mt-1 text-xs text-brand-ink/40">
+                Exibindo os últimos {customer.orders.length} de {customer.orderCount} pedidos.
+              </p>
+            )}
+            <ul className="mt-2">
+              {customer.orders.map((o) => (
+                <OrderRow key={o.id} order={o} />
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
     </div>
   );
 }
