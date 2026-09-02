@@ -266,7 +266,7 @@ function OrderCard({
           )}
           {order.channel !== 'OWN' && order.notes && (
             <span className="text-xs font-mono text-brand-ink/60">
-              {order.notes}
+              {order.notes.match(/#\S+/)?.[0] ?? order.notes}
             </span>
           )}
         </span>
