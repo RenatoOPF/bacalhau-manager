@@ -5,10 +5,9 @@ const BACKEND_URL =
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
+  { params }: { params: { path: string[] } },
 ) {
-  const { path } = await params;
-  const backendUrl = `${BACKEND_URL}/${path.join('/')}`;
+  const backendUrl = `${BACKEND_URL}/${params.path.join('/')}`;
 
   let response: Response;
   try {
@@ -27,7 +26,7 @@ export async function GET(
   return new NextResponse(response.body, {
     headers: {
       'Content-Type': contentType,
-      'Cache-Control': 'public, max-age=86400',
+      'Cache-Control': 'no-store',
     },
   });
 }
