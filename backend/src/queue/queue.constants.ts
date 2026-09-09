@@ -17,7 +17,8 @@ export const PRINT_ORDER_JOB = 'print-order';
  * o agente local que consome apenas obedece a essa config.
  */
 export const ORDERS_JOB_OPTIONS = {
-  attempts: 1,
+  attempts: 5,
+  backoff: { type: 'fixed', delay: 10_000 }, // 10s entre tentativas — dá tempo da impressora acordar
   removeOnComplete: 1000,
   removeOnFail: false,
 };
