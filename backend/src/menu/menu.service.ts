@@ -15,9 +15,21 @@ import {
 export class MenuService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private publicMenuCache: unknown = null;
+  private publicMenuCacheExpires = 0;
+  private readonly PUBLIC_MENU_TTL = 30_000; // 30 segundos
+
+  private invalidatePublicMenu() {
+    this.publicMenuCache = null;
+    this.publicMenuCacheExpires = 0;
+  }
+
   /** Cardápio público: categorias ativas, itens disponíveis e opções disponíveis. */
-  getPublicMenu() {
-    return this.prisma.menuCategory.findMany({
+  async getPublicMenu() {
+    if (this.publicMenuCache && Date.now() < this.publicMenuCacheExpires) {
+      return this.publicMenuCache;
+    }
+    const data = await this.prisma.menuCategory.findMany({
       where: { active: true },
       orderBy: { sortOrder: 'asc' },
       include: {
@@ -33,6 +45,9 @@ export class MenuService {
         },
       },
     });
+    this.publicMenuCache = data;
+    this.publicMenuCacheExpires = Date.now() + this.PUBLIC_MENU_TTL;
+    return data;
   }
 
   /** Cardápio completo para o admin (inclui itens/opções indisponíveis e os
@@ -55,8 +70,10 @@ export class MenuService {
     });
   }
 
-  createCategory(dto: CreateCategoryDto) {
-    return this.prisma.menuCategory.create({ data: dto });
+  async createCategory(dto: CreateCategoryDto) {
+    const result = await this.prisma.menuCategory.create({ data: dto });
+    this.invalidatePublicMenu();
+    return result;
   }
 
   /**
@@ -85,15 +102,20 @@ export class MenuService {
         }),
       ),
     );
+    this.invalidatePublicMenu();
     return { moved: true };
   }
 
-  updateCategory(id: string, dto: UpdateCategoryDto) {
-    return this.prisma.menuCategory.update({ where: { id }, data: dto });
+  async updateCategory(id: string, dto: UpdateCategoryDto) {
+    const result = await this.prisma.menuCategory.update({ where: { id }, data: dto });
+    this.invalidatePublicMenu();
+    return result;
   }
 
-  createItem(dto: CreateMenuItemDto) {
-    return this.prisma.menuItem.create({ data: dto });
+  async createItem(dto: CreateMenuItemDto) {
+    const result = await this.prisma.menuItem.create({ data: dto });
+    this.invalidatePublicMenu();
+    return result;
   }
 
   /** Move um item uma posição para cima/baixo DENTRO da sua categoria. */
@@ -118,11 +140,14 @@ export class MenuService {
         }),
       ),
     );
+    this.invalidatePublicMenu();
     return { moved: true };
   }
 
-  updateItem(id: string, dto: UpdateMenuItemDto) {
-    return this.prisma.menuItem.update({ where: { id }, data: dto });
+  async updateItem(id: string, dto: UpdateMenuItemDto) {
+    const result = await this.prisma.menuItem.update({ where: { id }, data: dto });
+    this.invalidatePublicMenu();
+    return result;
   }
 
   /**
@@ -131,6 +156,7 @@ export class MenuService {
    */
   async deleteItem(id: string) {
     await this.prisma.menuItem.delete({ where: { id } });
+    this.invalidatePublicMenu();
     return { id };
   }
 
@@ -145,6 +171,7 @@ export class MenuService {
       fs.rmSync(filePath, { force: true });
     }
     await this.prisma.menuItem.update({ where: { id }, data: { imageUrl: null } });
+    this.invalidatePublicMenu();
     return { id };
   }
 
@@ -159,23 +186,29 @@ export class MenuService {
       );
     }
     await this.prisma.menuCategory.delete({ where: { id } });
+    this.invalidatePublicMenu();
     return { id };
   }
 
   // ---- Opções (variações) do item ----
 
-  createOption(menuItemId: string, dto: CreateOptionDto) {
-    return this.prisma.menuItemOption.create({
+  async createOption(menuItemId: string, dto: CreateOptionDto) {
+    const result = await this.prisma.menuItemOption.create({
       data: { menuItemId, ...dto },
     });
+    this.invalidatePublicMenu();
+    return result;
   }
 
-  updateOption(id: string, dto: UpdateOptionDto) {
-    return this.prisma.menuItemOption.update({ where: { id }, data: dto });
+  async updateOption(id: string, dto: UpdateOptionDto) {
+    const result = await this.prisma.menuItemOption.update({ where: { id }, data: dto });
+    this.invalidatePublicMenu();
+    return result;
   }
 
   async deleteOption(id: string) {
     await this.prisma.menuItemOption.delete({ where: { id } });
+    this.invalidatePublicMenu();
     return { id };
   }
 
@@ -200,6 +233,7 @@ export class MenuService {
         }),
       ),
     );
+    this.invalidatePublicMenu();
     return { reordered: true };
   }
 }

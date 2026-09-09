@@ -4,9 +4,11 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as compression from 'compression';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.use(compression());
 
   const uploadDir = process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'uploads');
   fs.mkdirSync(uploadDir, { recursive: true });
