@@ -118,10 +118,9 @@ export interface UpdateItemPayload {
   imageUrl?: string | null;
 }
 
-/** Constrói URL absoluta para recursos de mídia servidos pelo backend. */
+/** Constrói URL para mídia via proxy Next.js (evita interstitial do ngrok free). */
 export function mediaUrl(relativePath: string): string {
-  const base = API_URL.replace(/\/api$/, '');
-  return `${base}${relativePath}`;
+  return `/api/media${relativePath}`;
 }
 
 export type OrderStatus =
