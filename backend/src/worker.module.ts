@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrintingService } from './printing/printing.service';
 import { PrintConfigService } from './printing/print-config.service';
 import { PrintAgentService } from './printing/print-agent.service';
+import { CaptureService } from './capture/capture.service';
 
 /**
  * Módulo do AGENTE DE IMPRESSÃO que roda no PC do caixa.
@@ -14,6 +15,6 @@ import { PrintAgentService } from './printing/print-agent.service';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
   ],
-  providers: [PrintingService, PrintConfigService, PrintAgentService],
+  providers: [PrintingService, PrintConfigService, PrintAgentService, CaptureService],
 })
 export class WorkerModule {}
