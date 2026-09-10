@@ -12,6 +12,7 @@ export async function GET(
   let response: Response;
   try {
     response = await fetch(backendUrl, {
+      cache: 'no-store',
       headers: { 'ngrok-skip-browser-warning': 'true' },
     });
   } catch {
