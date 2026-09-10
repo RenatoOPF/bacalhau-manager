@@ -1,15 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 import { OrderChannel, PaymentMethod, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-import {
-  ORDERS_QUEUE,
-  PRINT_CASHIER_JOB,
-  PRINT_KITCHEN_JOB,
-  PrintOrderJobData,
-} from '../queue/queue.constants';
 import { nextDailyNumber } from '../common/daily-number';
 import { decodeEscPosBase64, toLines } from './escpos';
 import { isIfood, parseIfood } from './ifood.parser';
@@ -127,8 +119,6 @@ export class IntegrationsService {
     private readonly realtime: RealtimeGateway,
     private readonly stock: StockService,
     private readonly printConfig: PrintConfigService,
-    @InjectQueue(ORDERS_QUEUE)
-    private readonly ordersQueue: Queue<PrintOrderJobData>,
   ) {}
 
   /**
@@ -292,8 +282,8 @@ export class IntegrationsService {
     });
 
     if (this.printConfig.isEnabled()) {
-      await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
-      await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
+      this.realtime.emitPrintCashier(order);
+      this.realtime.emitPrintKitchen(order);
     }
 
     // Baixa o estoque casando os itens por texto (nunca lança).

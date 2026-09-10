@@ -4,17 +4,9 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 import { OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-import {
-  ORDERS_QUEUE,
-  PRINT_CASHIER_JOB,
-  PRINT_KITCHEN_JOB,
-  PrintOrderJobData,
-} from '../queue/queue.constants';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { AssignDeliveryDto } from './dto/assign-delivery.dto';
 import { nextDailyNumber } from '../common/daily-number';
@@ -31,8 +23,6 @@ export class OrdersService {
     private readonly realtime: RealtimeGateway,
     private readonly stock: StockService,
     private readonly printConfig: PrintConfigService,
-    @InjectQueue(ORDERS_QUEUE)
-    private readonly ordersQueue: Queue<PrintOrderJobData>,
   ) {}
 
   /** Cria o pedido, enfileira a impressão e notifica o caixa em tempo real. */
@@ -130,8 +120,8 @@ export class OrdersService {
     });
 
     if (this.printConfig.isEnabled()) {
-      await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
-      await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
+      this.realtime.emitPrintCashier(order);
+      this.realtime.emitPrintKitchen(order);
     }
 
     // Baixa o estoque (nunca lança — falha só é registrada no log).
@@ -379,8 +369,8 @@ export class OrdersService {
   async reprint(id: string) {
     const order = await this.findOne(id);
     if (this.printConfig.isEnabled()) {
-      await this.ordersQueue.add(PRINT_CASHIER_JOB, { orderId: order.id });
-      await this.ordersQueue.add(PRINT_KITCHEN_JOB, { orderId: order.id });
+      this.realtime.emitPrintCashier(order);
+      this.realtime.emitPrintKitchen(order);
     }
     return { enqueued: true, protocol: order.protocol };
   }

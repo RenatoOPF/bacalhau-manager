@@ -3,6 +3,9 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
+import type { Order, OrderItem } from '@prisma/client';
+
+type OrderWithItems = Order & { items: OrderItem[] };
 
 function allowedOrigins(): string[] {
   return (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
@@ -15,6 +18,7 @@ function allowedOrigins(): string[] {
  * Emite eventos em tempo real para os clientes conectados.
  * - Cliente do cardápio: acompanha o status do próprio pedido.
  * - Painel do caixa: recebe novos pedidos e mudanças de status.
+ * - Agente de impressão: recebe pedidos completos para imprimir.
  */
 @WebSocketGateway({ cors: { origin: allowedOrigins(), credentials: true } })
 export class RealtimeGateway {
@@ -29,5 +33,15 @@ export class RealtimeGateway {
   /** Mudança de status — caixa e cliente reagem. */
   emitOrderStatusChanged(order: { protocol: number }) {
     this.server.emit('order:status', { protocol: order.protocol });
+  }
+
+  /** Dispara impressão no caixa — agente local recebe e imprime. */
+  emitPrintCashier(order: OrderWithItems) {
+    this.server.emit('print:cashier', order);
+  }
+
+  /** Dispara impressão na cozinha — agente local recebe e imprime. */
+  emitPrintKitchen(order: OrderWithItems) {
+    this.server.emit('print:kitchen', order);
   }
 }

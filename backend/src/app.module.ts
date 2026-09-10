@@ -1,9 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
-import { BullModule } from '@nestjs/bullmq';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { redisConnection } from './redis.config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { EmployeesModule } from './employees/employees.module';
@@ -11,7 +9,6 @@ import { MenuModule } from './menu/menu.module';
 import { OrdersModule } from './orders/orders.module';
 import { CashModule } from './cash/cash.module';
 import { ReportsModule } from './reports/reports.module';
-import { QueueModule } from './queue/queue.module';
 import { PrintingModule } from './printing/printing.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { IntegrationsModule } from './integrations/integrations.module';
@@ -28,14 +25,11 @@ import { CustomersModule } from './customers/customers.module';
     // 200 requisições por minuto por IP — padrão para rotas autenticadas do admin.
     // Rotas públicas sensíveis sobrescrevem com @Throttle() nos seus controllers.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 200 }]),
-    // Conexão única do BullMQ com o Redis, compartilhada por todas as filas.
-    BullModule.forRoot({ connection: redisConnection() }),
     PrismaModule,
     AuthModule,
     EmployeesModule,
     RealtimeModule,
     PrintingModule,
-    QueueModule,
     MenuModule,
     OrdersModule,
     CashModule,
