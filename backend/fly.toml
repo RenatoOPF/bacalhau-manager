@@ -8,6 +8,7 @@ primary_region = "gru"
   PORT = "8080"
   PRINT_WORKER = "off"
   PRINTER_WIDTH = "48"
+  TZ = "America/Maceio"
 
 [[services]]
   protocol = "tcp"
