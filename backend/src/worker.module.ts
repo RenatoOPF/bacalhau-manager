@@ -1,22 +1,19 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { PrintingModule } from './printing/printing.module';
+import { PrintingService } from './printing/printing.service';
+import { PrintConfigService } from './printing/print-config.service';
 import { PrintAgentService } from './printing/print-agent.service';
 
 /**
  * Módulo do AGENTE DE IMPRESSÃO que roda no PC do caixa.
  *
- * Conecta ao backend via Socket.IO e imprime nas térmicas locais ao receber
- * os eventos `print:cashier` e `print:kitchen`. Não sobe servidor HTTP nem
- * consome Redis — só a conexão de saída ao backend na nuvem é necessária.
- *
- * Entrypoint: `src/worker.ts` (build → `dist/worker.js`).
+ * Registra só os serviços necessários (sem controller, sem auth, sem HTTP)
+ * para evitar puxar dependências que não existem neste contexto.
  */
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    PrintingModule,
   ],
-  providers: [PrintAgentService],
+  providers: [PrintingService, PrintConfigService, PrintAgentService],
 })
 export class WorkerModule {}
