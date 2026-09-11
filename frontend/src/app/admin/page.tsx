@@ -89,6 +89,9 @@ export default function CaixaPage() {
   useEffect(() => {
     const socket = io(WS_URL, { transports: ['websocket'] });
     const refresh = () => qc.invalidateQueries({ queryKey: ['orders'] });
+    // Reconexão (queda de rede, timeout) também dispara refetch para
+    // recuperar pedidos que chegaram enquanto o socket estava fora.
+    socket.on('connect', refresh);
     socket.on('order:created', refresh);
     socket.on('order:status', refresh);
     return () => {
