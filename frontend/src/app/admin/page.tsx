@@ -67,6 +67,7 @@ export default function CaixaPage() {
   const { data: orders } = useQuery({
     queryKey: ['orders'],
     queryFn: () => api.listOrders(),
+    refetchInterval: 30_000,
   });
   const { data: couriers } = useQuery({
     queryKey: ['couriers'],
