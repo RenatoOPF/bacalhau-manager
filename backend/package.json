@@ -5,6 +5,7 @@
   "description": "Backend NestJS — Bacalhau & Cia",
   "scripts": {
     "build": "nest build",
+    "build:worker": "tsc -p tsconfig.build.json",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
