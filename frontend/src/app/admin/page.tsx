@@ -228,6 +228,10 @@ function OrderCard({
     mutationFn: (status: OrderStatus) => api.updateStatus(order.id, status),
     onSuccess: onChange,
   });
+  const reopen = useMutation({
+    mutationFn: () => api.updateStatus(order.id, 'READY'),
+    onSuccess: onChange,
+  });
   const reprintCashier = useMutation({ mutationFn: () => api.reprint(order.id, 'cashier') });
   const reprintKitchen = useMutation({ mutationFn: () => api.reprint(order.id, 'kitchen') });
   const remove = useMutation({
@@ -443,6 +447,15 @@ function OrderCard({
               onClick={onNext}
             >
               → {STATUS_LABEL[next]}
+            </button>
+          )}
+          {(order.status === 'OUT_FOR_DELIVERY' || order.status === 'DELIVERED') && (
+            <button
+              className="btn-outline px-3 py-2 text-sm"
+              disabled={reopen.isPending}
+              onClick={() => reopen.mutate()}
+            >
+              {reopen.isPending ? '…' : '↩ Reabrir'}
             </button>
           )}
           <button
