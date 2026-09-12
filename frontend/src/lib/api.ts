@@ -165,6 +165,9 @@ export interface Order {
   courier?: { id: string; name: string } | null;
   courierFeeCents?: number;
   neighborhoodId?: string | null;
+  // Confirmação de impressão (preenchido pelo worker após imprimir com sucesso).
+  cashierPrintedAt?: string | null;
+  kitchenPrintedAt?: string | null;
 }
 
 export interface CourierOrder {
@@ -813,10 +816,11 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
-  reprint: (id: string) =>
-    request<{ enqueued: boolean }>(`/orders/${id}/reprint`, {
-      method: 'POST',
-    }),
+  reprint: (id: string, target?: 'cashier' | 'kitchen') =>
+    request<{ enqueued: boolean }>(
+      `/orders/${id}/reprint${target ? `?target=${target}` : ''}`,
+      { method: 'POST' },
+    ),
   deleteOrder: (id: string) =>
     request<{ deleted: boolean }>(`/orders/${id}`, { method: 'DELETE' }),
 

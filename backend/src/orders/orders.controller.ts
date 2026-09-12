@@ -101,12 +101,15 @@ export class OrdersController {
     return this.orders.assignDelivery(id, dto);
   }
 
-  /** Reimpressão manual dos tickets. */
+  /** Reimpressão manual dos tickets. ?target=cashier|kitchen (padrão: both) */
   @Post(':id/reprint')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.MANAGER)
-  reprint(@Param('id') id: string) {
-    return this.orders.reprint(id);
+  reprint(
+    @Param('id') id: string,
+    @Query('target') target?: 'cashier' | 'kitchen',
+  ) {
+    return this.orders.reprint(id, target ?? 'both');
   }
 
   /** Exclui um pedido (ex.: pedido de teste ou lançado por engano). */

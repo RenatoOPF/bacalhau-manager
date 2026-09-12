@@ -1,9 +1,12 @@
 import {
+  MessageBody,
+  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import type { Order, OrderItem } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 
 type OrderWithItems = Order & { items: OrderItem[] };
 
@@ -24,6 +27,21 @@ function allowedOrigins(): string[] {
 export class RealtimeGateway {
   @WebSocketServer()
   server: Server;
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  /** Worker confirma impressão bem-sucedida → grava timestamp + notifica frontend. */
+  @SubscribeMessage('print:confirmed')
+  async handlePrintConfirmed(
+    @MessageBody() data: { orderId: string; target: 'cashier' | 'kitchen' },
+  ) {
+    const field = data.target === 'cashier' ? 'cashierPrintedAt' : 'kitchenPrintedAt';
+    await this.prisma.order.update({
+      where: { id: data.orderId },
+      data: { [field]: new Date() },
+    });
+    this.server.emit('order:print-confirmed', { orderId: data.orderId, target: data.target });
+  }
 
   /** Novo pedido criado — atualiza a fila do caixa. */
   emitOrderCreated(order: { protocol: number }) {

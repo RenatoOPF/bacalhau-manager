@@ -30,6 +30,7 @@ export class PrintAgentService implements OnModuleInit, OnModuleDestroy {
         if (target === 'cashier') await this.printing.printCashierTicket(order);
         else await this.printing.printKitchenTicket(order);
         this.logger.log(`Pedido #${order.protocol} — ${target} impresso`);
+        this.socket.emit('print:confirmed', { orderId: order.id, target });
         return;
       } catch (err) {
         if (attempt < this.maxRetries) {

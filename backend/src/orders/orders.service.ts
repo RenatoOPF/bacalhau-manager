@@ -365,12 +365,12 @@ export class OrdersService {
     return updated;
   }
 
-  /** Reimpressão manual em caso de falha (ambos os tickets). */
-  async reprint(id: string) {
+  /** Reimpressão manual — target controla qual impressora. */
+  async reprint(id: string, target: 'cashier' | 'kitchen' | 'both' = 'both') {
     const order = await this.findOne(id);
     if (this.printConfig.isEnabled()) {
-      this.realtime.emitPrintCashier(order);
-      this.realtime.emitPrintKitchen(order);
+      if (target !== 'kitchen') this.realtime.emitPrintCashier(order);
+      if (target !== 'cashier') this.realtime.emitPrintKitchen(order);
     }
     return { enqueued: true, protocol: order.protocol };
   }

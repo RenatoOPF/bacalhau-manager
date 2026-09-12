@@ -312,6 +312,9 @@ model Order {
 
   items OrderItem[]
 
+  cashierPrintedAt DateTime?
+  kitchenPrintedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

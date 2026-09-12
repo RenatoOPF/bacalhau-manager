@@ -86,15 +86,22 @@ export default function CaixaPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['print-config'] }),
   });
 
-  // Tempo real: novos pedidos e mudanças de status recarregam a fila.
+  // Tempo real: novos pedidos, mudanças de status e confirmações de impressão.
   useEffect(() => {
     const socket = io(WS_URL, { transports: ['websocket'] });
     const refresh = () => qc.invalidateQueries({ queryKey: ['orders'] });
-    // Reconexão (queda de rede, timeout) também dispara refetch para
-    // recuperar pedidos que chegaram enquanto o socket estava fora.
     socket.on('connect', refresh);
     socket.on('order:created', refresh);
     socket.on('order:status', refresh);
+    socket.on('order:print-confirmed', ({ orderId, target }: { orderId: string; target: 'cashier' | 'kitchen' }) => {
+      qc.setQueryData<Order[]>(['orders'], (prev) =>
+        prev?.map((o) =>
+          o.id === orderId
+            ? { ...o, ...(target === 'cashier' ? { cashierPrintedAt: new Date().toISOString() } : { kitchenPrintedAt: new Date().toISOString() }) }
+            : o,
+        ),
+      );
+    });
     return () => {
       socket.disconnect();
     };
@@ -221,7 +228,8 @@ function OrderCard({
     mutationFn: (status: OrderStatus) => api.updateStatus(order.id, status),
     onSuccess: onChange,
   });
-  const reprint = useMutation({ mutationFn: () => api.reprint(order.id) });
+  const reprintCashier = useMutation({ mutationFn: () => api.reprint(order.id, 'cashier') });
+  const reprintKitchen = useMutation({ mutationFn: () => api.reprint(order.id, 'kitchen') });
   const remove = useMutation({
     mutationFn: () => api.deleteOrder(order.id),
     onSuccess: onChange,
@@ -316,6 +324,16 @@ function OrderCard({
           {order.courierFeeCents ? ` · repasse ${formatBRL(order.courierFeeCents)}` : ''}
         </p>
       )}
+
+      {/* Confirmação de impressão */}
+      <div className="mt-2 flex gap-2">
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${order.cashierPrintedAt ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+          {order.cashierPrintedAt ? '✓' : '○'} Caixa
+        </span>
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${order.kitchenPrintedAt ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+          {order.kitchenPrintedAt ? '✓' : '○'} Cozinha
+        </span>
+      </div>
 
       {picking ? (
         <div className="mt-3 space-y-2 border-t border-brand-cream-dark pt-3">
@@ -428,11 +446,20 @@ function OrderCard({
             </button>
           )}
           <button
-            className="btn-outline px-3 py-2 text-sm"
-            disabled={reprint.isPending}
-            onClick={() => reprint.mutate()}
+            className="btn-outline px-2.5 py-2 text-sm"
+            disabled={reprintCashier.isPending}
+            onClick={() => reprintCashier.mutate()}
+            title="Reimprimir no caixa"
           >
-            {reprint.isPending ? 'Enfileirando…' : 'Reimprimir'}
+            {reprintCashier.isPending ? '…' : '🖨 Caixa'}
+          </button>
+          <button
+            className="btn-outline px-2.5 py-2 text-sm"
+            disabled={reprintKitchen.isPending}
+            onClick={() => reprintKitchen.mutate()}
+            title="Reimprimir na cozinha"
+          >
+            {reprintKitchen.isPending ? '…' : '🖨 Cozinha'}
           </button>
           <button
             className="btn-danger px-3 py-2 text-sm"
