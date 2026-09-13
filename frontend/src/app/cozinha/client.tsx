@@ -25,22 +25,34 @@ export interface KitchenItem {
   notes: string | null;
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  RECEIVED: 'Recebido',
-  IN_PREPARATION: 'Em preparo',
-  READY: 'Pronto',
+const TWO_COLUMNS = [
+  {
+    key: 'pending',
+    label: 'Em Andamento',
+    statuses: ['IN_PREPARATION', 'RECEIVED'] as const,
+    headerBg: 'bg-amber-500',
+    cardBorderReceived: 'border-amber-400',
+    cardBorderPrep: 'border-blue-500',
+  },
+  {
+    key: 'ready',
+    label: 'Pronto ✓',
+    statuses: ['READY'] as const,
+    headerBg: 'bg-green-600',
+    cardBorderReceived: 'border-green-500',
+    cardBorderPrep: 'border-green-500',
+  },
+] as const;
+
+const STATUS_CARD_BORDER: Record<string, string> = {
+  RECEIVED: 'border-amber-400',
+  IN_PREPARATION: 'border-blue-500',
+  READY: 'border-green-500',
 };
 
-const STATUS_STYLE: Record<string, string> = {
-  RECEIVED: 'border-amber-400 bg-amber-50',
-  IN_PREPARATION: 'border-blue-400 bg-blue-50',
-  READY: 'border-green-400 bg-green-50',
-};
-
-const STATUS_BADGE: Record<string, string> = {
-  RECEIVED: 'bg-amber-100 text-amber-800',
-  IN_PREPARATION: 'bg-blue-100 text-blue-800',
-  READY: 'bg-green-100 text-green-800',
+const STATUS_BADGE_STYLE: Record<string, string> = {
+  RECEIVED: 'bg-amber-100 text-amber-700',
+  IN_PREPARATION: 'bg-blue-100 text-blue-700',
 };
 
 const SIZE_KEYWORDS = [
@@ -84,13 +96,6 @@ function parseNotes(notes: string | null) {
   return { sizeTag: sizeTag[0] ?? null, complements, obs };
 }
 
-function elapsed(createdAt: string): string {
-  const mins = Math.floor(
-    (Date.now() - new Date(createdAt).getTime()) / 60_000,
-  );
-  if (mins < 1) return 'agora';
-  return `${mins} min`;
-}
 
 export function CozinhaClient({
   initialOrders,
@@ -131,10 +136,10 @@ export function CozinhaClient({
   }
 
   return (
-    <div className="min-h-screen bg-brand-ink px-4 py-4">
-      <header className="mb-4 flex items-center gap-3">
-        <img src="/logo.jpeg" alt="Logo" className="h-10 w-10 rounded-full" />
-        <h1 className="font-display text-2xl font-extrabold text-brand-gold">
+    <div className="flex min-h-screen flex-col bg-gray-900 px-3 py-3">
+      <header className="mb-3 flex items-center gap-3">
+        <img src="/logo.jpeg" alt="Logo" className="h-9 w-9 rounded-full" />
+        <h1 className="font-display text-xl font-extrabold text-brand-gold">
           Cozinha
         </h1>
         <span className="ml-auto text-sm text-white/40">
@@ -149,12 +154,38 @@ export function CozinhaClient({
           Nenhum pedido em andamento.
         </p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(['RECEIVED', 'IN_PREPARATION', 'READY'] as const).flatMap(
-            (status) => grouped[status].map((order) => (
-              <OrderCard key={order.id} order={order} />
-            )),
-          )}
+        <div className="grid flex-1 grid-cols-3 gap-3">
+          {TWO_COLUMNS.map((col) => {
+            const colOrders = col.statuses.flatMap((s) => grouped[s]);
+            return (
+              <div key={col.key} className={`flex flex-col gap-2 ${col.key === 'pending' ? 'col-span-2' : 'col-span-1'}`}>
+                {/* Column header */}
+                <div className={`${col.headerBg} flex items-center justify-between rounded-lg px-4 py-2.5`}>
+                  <span className="text-lg font-extrabold uppercase tracking-wide text-white">
+                    {col.label}
+                  </span>
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/25 text-sm font-bold text-white">
+                    {colOrders.length}
+                  </span>
+                </div>
+
+                {/* Cards */}
+                {colOrders.length === 0 ? (
+                  <p className="mt-4 text-center text-sm text-white/20">—</p>
+                ) : col.key === 'pending' ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {colOrders.map((order) => (
+                      <OrderCard key={order.id} order={order} />
+                    ))}
+                  </div>
+                ) : (
+                  colOrders.map((order) => (
+                    <OrderCard key={order.id} order={order} />
+                  ))
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -162,13 +193,20 @@ export function CozinhaClient({
 }
 
 function OrderCard({ order }: { order: KitchenOrder }) {
+  const mins = Math.floor(
+    (Date.now() - new Date(order.createdAt).getTime()) / 60_000,
+  );
+  const elapsedLabel = mins < 1 ? 'agora' : `${mins} min`;
+  const timeUrgent = order.status !== 'READY' && mins >= 60;
+
   return (
     <div
-      className={`rounded-xl border-l-4 p-4 shadow-sm ${STATUS_STYLE[order.status]}`}
+      className={`rounded-xl border-l-[6px] bg-white p-3 shadow ${STATUS_CARD_BORDER[order.status]}`}
     >
+      {/* Header row */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="font-display text-2xl font-extrabold text-brand-ink">
+          <span className="font-display text-3xl font-extrabold text-brand-ink">
             #{order.dailyNumber}
           </span>
           {order.channel !== 'OWN' && (
@@ -176,42 +214,46 @@ function OrderCard({ order }: { order: KitchenOrder }) {
               {CHANNEL_LABEL[order.channel]}
             </span>
           )}
+          {STATUS_BADGE_STYLE[order.status] && (
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_BADGE_STYLE[order.status]}`}>
+              {order.status === 'RECEIVED' ? 'Recebido' : 'Em preparo'}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[order.status]}`}
-          >
-            {STATUS_LABEL[order.status]}
-          </span>
-          <span className="text-xs text-brand-ink/50">
-            {elapsed(order.createdAt)}
-          </span>
-        </div>
+        <span
+          className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+            timeUrgent
+              ? 'bg-red-100 text-red-700'
+              : 'bg-gray-100 text-gray-500'
+          }`}
+        >
+          {elapsedLabel}
+        </span>
       </div>
 
       {order.customerName && (
-        <p className="mt-1 text-sm font-semibold text-brand-ink/70">
+        <p className="mt-0.5 text-sm font-semibold text-brand-ink/60">
           {order.customerName}
         </p>
       )}
 
       {order.notes && (
-        <p className="mt-1 text-xs font-medium text-brand-ink/50">
+        <p className="mt-1 rounded bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800">
           {order.notes}
         </p>
       )}
 
-      <ul className="mt-3 space-y-2">
+      <ul className="mt-2 space-y-2 border-t border-gray-100 pt-2">
         {order.items.map((item) => {
           const { sizeTag, complements, obs } = parseNotes(item.notes);
           return (
-            <li key={item.id} className="text-sm">
+            <li key={item.id}>
               <div className="flex flex-wrap items-baseline gap-1.5">
                 <span className="font-display text-base font-extrabold text-brand-ink">
                   {item.quantity}x {item.nameSnapshot.toUpperCase()}
                 </span>
                 {item.optionNameSnapshot && (
-                  <span className="rounded bg-brand-ink/10 px-1.5 py-0.5 text-xs font-bold text-brand-ink/70">
+                  <span className="rounded bg-gray-200 px-1.5 py-0.5 text-xs font-bold text-gray-700">
                     {item.optionNameSnapshot.toUpperCase()}
                   </span>
                 )}
@@ -222,7 +264,7 @@ function OrderCard({ order }: { order: KitchenOrder }) {
                 )}
               </div>
               {complements.length > 0 && (
-                <ul className="mt-1 space-y-0.5 pl-2">
+                <ul className="mt-0.5 space-y-0.5 pl-2">
                   {complements.map((c, i) => (
                     <li key={i} className="text-xs text-brand-ink/70">
                       +{c.qty} {c.name}
@@ -233,9 +275,9 @@ function OrderCard({ order }: { order: KitchenOrder }) {
               {obs.map((o, i) => (
                 <p
                   key={i}
-                  className="mt-0.5 pl-2 text-xs italic text-brand-ink/60"
+                  className="mt-0.5 pl-2 text-xs italic text-red-600"
                 >
-                  Obs: {o}
+                  ⚠ {o}
                 </p>
               ))}
             </li>
