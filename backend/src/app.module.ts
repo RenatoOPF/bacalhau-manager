@@ -18,6 +18,7 @@ import { AccountsModule } from './accounts/accounts.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { RecipeModule } from './recipe/recipe.module';
 import { CustomersModule } from './customers/customers.module';
+import { CouponsModule } from './coupons/coupons.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { CustomersModule } from './customers/customers.module';
     DeliveryModule,
     RecipeModule,
     CustomersModule,
+    CouponsModule,
   ],
   providers: [
     // Guard global: aplica o ThrottlerModule a todas as rotas.

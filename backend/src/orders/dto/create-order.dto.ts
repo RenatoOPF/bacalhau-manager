@@ -90,8 +90,12 @@ export class CreateOrderDto {
   @IsOptional()
   @IsInt()
   @Min(0)
-  @Max(100_000_00) // max R$ 100.000
+  @Max(100_000_00)
   discountCents?: number;
+
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
 
   @IsArray()
   @ArrayMinSize(1)

@@ -13,6 +13,7 @@ import { nextDailyNumber } from '../common/daily-number';
 import { dayRange, localDay, periodFilter } from '../common/date-range';
 import { StockService } from '../stock/stock.service';
 import { PrintConfigService } from '../printing/print-config.service';
+import { CouponsService } from '../coupons/coupons.service';
 
 @Injectable()
 export class OrdersService {
@@ -23,6 +24,7 @@ export class OrdersService {
     private readonly realtime: RealtimeGateway,
     private readonly stock: StockService,
     private readonly printConfig: PrintConfigService,
+    private readonly coupons: CouponsService,
   ) {}
 
   /** Cria o pedido, enfileira a impressão e notifica o caixa em tempo real. */
@@ -95,6 +97,17 @@ export class OrdersService {
     const dailyNumber = await nextDailyNumber(this.prisma);
     const customerPhone = dto.customerPhone?.replace(/\D/g, '') || undefined;
 
+    // Cupom: tem precedência sobre discountCents manual quando informado.
+    let discountCents = dto.discountCents ?? 0;
+    let couponId: string | null = null;
+    let couponCode: string | null = null;
+    if (dto.couponCode) {
+      const result = await this.coupons.validate(dto.couponCode, totalCents);
+      discountCents = result.discountCents;
+      couponId = result.coupon.id;
+      couponCode = result.coupon.code;
+    }
+
     const order = await this.prisma.order.create({
       data: {
         dailyNumber,
@@ -111,13 +124,19 @@ export class OrdersService {
         neighborhoodId: dto.neighborhoodId || null,
         paymentMethod: dto.paymentMethod,
         notes: dto.notes,
-        totalCents: Math.max(0, totalCents + deliveryFeeCents - (dto.discountCents ?? 0)),
+        totalCents: Math.max(0, totalCents + deliveryFeeCents - discountCents),
         deliveryFeeCents,
-        discountCents: dto.discountCents ?? 0,
+        discountCents,
+        couponId,
+        couponCode,
         items: { create: itemsData },
       },
       include: { items: true },
     });
+
+    if (couponId) {
+      await this.coupons.incrementUsed(couponId);
+    }
 
     if (this.printConfig.isEnabled()) {
       this.realtime.emitPrintCashier(order);

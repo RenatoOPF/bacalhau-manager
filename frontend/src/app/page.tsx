@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   api,
@@ -8,11 +8,22 @@ import {
   mediaUrl,
   type CreateOrderPayload,
   type MenuItem,
+  type CouponValidation,
 } from '@/lib/api';
 import dynamic from 'next/dynamic';
 import { SiteFooter } from '@/components/site-footer';
 import { UnifiedAddressInput, type AddressValue } from '@/components/UnifiedAddressInput';
 import { maskPhone } from '@/lib/phone';
+import { useSearchParams } from 'next/navigation';
+
+function CouponFromUrl({ onCode }: { onCode: (code: string) => void }) {
+  const params = useSearchParams();
+  useEffect(() => {
+    const code = params.get('cupom');
+    if (code) onCode(code.toUpperCase());
+  }, [params, onCode]);
+  return null;
+}
 
 const MapView = dynamic(
   () => import('@/components/MapView').then((m) => m.MapView),
@@ -51,6 +62,12 @@ export default function CardapioPage() {
 
   const [mapCoords, setMapCoords] = useState<{ lat: string; lon: string } | null>(null);
   const [geoError, setGeoError] = useState(false);
+
+  // Cupom de desconto
+  const [couponInput, setCouponInput] = useState('');
+  const [couponApplied, setCouponApplied] = useState<CouponValidation | null>(null);
+  const [couponError, setCouponError] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
 
   function handleAddressChange(addr: AddressValue) {
     setForm((f) => ({ ...f, address: addr }));
@@ -105,6 +122,31 @@ export default function CardapioPage() {
       ),
     [cart],
   );
+
+  const discountCents = couponApplied?.discountCents ?? 0;
+  const totalWithDiscount = Math.max(0, totalCents - discountCents);
+
+  const applyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setCouponLoading(true);
+    setCouponError('');
+    setCouponApplied(null);
+    try {
+      const result = await api.validateCoupon(code, totalCents);
+      setCouponApplied(result);
+    } catch (e: any) {
+      setCouponError(e?.message ?? 'Cupom inválido');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setCouponApplied(null);
+    setCouponInput('');
+    setCouponError('');
+  };
 
   const createOrder = useMutation({
     mutationFn: (payload: CreateOrderPayload) => api.createOrder(payload),
@@ -183,6 +225,7 @@ export default function CardapioPage() {
         addressLat: mapCoords ? parseFloat(mapCoords.lat) : undefined,
         addressLng: mapCoords ? parseFloat(mapCoords.lon) : undefined,
         paymentMethod: (form.paymentMethod || 'PIX') as 'CASH' | 'PIX' | 'CARD',
+        couponCode: couponApplied ? couponInput.trim().toUpperCase() : undefined,
         items,
       },
       { onError: () => { submittingRef.current = false; } },
@@ -325,19 +368,67 @@ export default function CardapioPage() {
               )}
             </section>
 
+            {/* Cupom de desconto */}
+            <section className="card mt-4 p-4">
+              <h2 className="section-title mb-3">Cupom de desconto</h2>
+              {couponApplied ? (
+                <div className="flex items-center justify-between rounded-lg bg-green-50 px-3 py-2 text-sm">
+                  <div>
+                    <span className="font-bold text-green-700">{couponInput.toUpperCase()}</span>
+                    {couponApplied.description && (
+                      <span className="ml-2 text-green-600">{couponApplied.description}</span>
+                    )}
+                    <p className="text-green-600">
+                      Desconto: <strong>{formatBRL(discountCents)}</strong>
+                    </p>
+                  </div>
+                  <button onClick={removeCoupon} className="text-xs text-red-500 underline">
+                    Remover
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    className="input flex-1 p-2 uppercase"
+                    placeholder="Código do cupom"
+                    value={couponInput}
+                    onChange={(e) => {
+                      setCouponInput(e.target.value.toUpperCase());
+                      setCouponError('');
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && applyCoupon()}
+                  />
+                  <button
+                    className="btn-primary px-4 py-2"
+                    onClick={applyCoupon}
+                    disabled={couponLoading || !couponInput.trim()}
+                  >
+                    {couponLoading ? '...' : 'Aplicar'}
+                  </button>
+                </div>
+              )}
+              {couponError && <p className="mt-1 text-xs text-brand-red">{couponError}</p>}
+            </section>
+
             {/* Resumo de valores. */}
             <section className="card mt-4 space-y-1 p-4 text-sm">
               <div className="flex justify-between text-brand-ink/70">
                 <span>Itens</span>
                 <span>{formatBRL(totalCents)}</span>
               </div>
+              {discountCents > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Desconto ({couponInput.toUpperCase()})</span>
+                  <span>- {formatBRL(discountCents)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-brand-ink/70">
                 <span>Entrega</span>
                 <span>a confirmar</span>
               </div>
               <div className="flex justify-between font-bold">
                 <span>Total estimado</span>
-                <span className="text-brand-red">{formatBRL(totalCents)}</span>
+                <span className="text-brand-red">{formatBRL(totalWithDiscount)}</span>
               </div>
             </section>
 
@@ -345,7 +436,7 @@ export default function CardapioPage() {
             <div className="fixed inset-x-0 bottom-0 z-20 border-t-2 border-brand-gold bg-brand-red p-3 shadow-lg">
               <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
                 <span className="font-display text-lg font-bold text-white">
-                  {formatBRL(totalCents)}
+                  {formatBRL(totalWithDiscount)}
                 </span>
                 <button
                   className="btn-gold px-5 py-2"
@@ -364,6 +455,9 @@ export default function CardapioPage() {
 
   return (
     <>
+      <Suspense>
+        <CouponFromUrl onCode={(code) => setCouponInput(code)} />
+      </Suspense>
       <main className="mx-auto max-w-2xl px-4 pt-5">
         <header className="flex flex-col items-center text-center">
           <img
@@ -460,7 +554,10 @@ export default function CardapioPage() {
             </span>
             <button
               className="btn-gold px-5 py-2"
-              onClick={() => setView('checkout')}
+              onClick={() => {
+                setView('checkout');
+                if (couponInput && !couponApplied) applyCoupon();
+              }}
             >
               Fechar pedido
             </button>

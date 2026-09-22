@@ -516,12 +516,49 @@ export interface CreateOrderPayload {
   paymentMethod: 'CASH' | 'PIX' | 'CARD';
   notes?: string;
   discountCents?: number;
+  couponCode?: string;
   items: {
     menuItemId: string;
     optionId?: string;
     quantity: number;
     notes?: string;
   }[];
+}
+
+// ---- Cupons ----
+
+export type CouponType = 'PERCENT' | 'FIXED';
+
+export interface Coupon {
+  id: string;
+  code: string;
+  description: string | null;
+  type: CouponType;
+  value: number;
+  minOrderCents: number;
+  maxUses: number | null;
+  usedCount: number;
+  active: boolean;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface CouponValidation {
+  valid: true;
+  discountCents: number;
+  description: string | null;
+  type: CouponType;
+  value: number;
+}
+
+export interface CreateCouponPayload {
+  code: string;
+  description?: string;
+  type: CouponType;
+  value: number;
+  minOrderCents?: number;
+  maxUses?: number;
+  expiresAt?: string;
 }
 
 export interface Neighborhood {
@@ -1074,6 +1111,15 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
+
+  // ---- Cupons ----
+  listCoupons: () => request<Coupon[]>('/coupons'),
+  createCoupon: (payload: CreateCouponPayload) =>
+    request<Coupon>('/coupons', { method: 'POST', body: JSON.stringify(payload) }),
+  toggleCoupon: (id: string) =>
+    request<Coupon>(`/coupons/${id}/toggle`, { method: 'PATCH' }),
+  validateCoupon: (code: string, totalCents: number) =>
+    request<CouponValidation>(`/coupons/validate/${encodeURIComponent(code)}?total=${totalCents}`),
 };
 
 function periodQuery(from?: string, to?: string): string {
