@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import type { Map, Marker, DivIcon } from 'leaflet';
+import * as maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
-const RESTAURANT: [number, number] = [-9.660454, -35.7044501];
+const RESTAURANT: [number, number] = [-35.7044501, -9.660454]; // [lng, lat]
+const STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
 interface Props {
   customerCoords?: { lat: string; lon: string } | null;
@@ -11,59 +13,34 @@ interface Props {
 
 export function MapView({ customerCoords }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<Map | null>(null);
-  const customerMarkerRef = useRef<Marker | null>(null);
-  const restaurantMarkerRef = useRef<Marker | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const customerMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const restaurantMarkerRef = useRef<maplibregl.Marker | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    if (!document.querySelector('link[href*="leaflet"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
-
-    import('leaflet').then((L) => {
-      if (!containerRef.current || mapRef.current) return;
-
-      delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)['_getIconUrl'];
-      L.Icon.Default.mergeOptions({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      });
-
-      const map = L.map(containerRef.current).setView(RESTAURANT, 15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
-      }).addTo(map);
-
-      function makeLogoIcon(zoom: number): DivIcon {
-        const size = Math.round(Math.min(40, 40 * Math.pow(1.5, zoom - 15)));
-        return L.divIcon({
-          html: `<img src="/logo.jpeg" style="width:${size}px;height:${size}px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);object-fit:cover;" />`,
-          className: '',
-          iconSize: [size, size],
-          iconAnchor: [size / 2, size / 2],
-          popupAnchor: [0, -(size / 2 + 2)],
-        });
-      }
-
-      restaurantMarkerRef.current = L.marker(RESTAURANT, { icon: makeLogoIcon(15) })
-        .addTo(map)
-        .bindPopup('Bacalhau & Cia');
-
-      map.on('zoomend', () => {
-        restaurantMarkerRef.current?.setIcon(makeLogoIcon(map.getZoom()));
-      });
-
-      mapRef.current = map;
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: STYLE,
+      center: RESTAURANT,
+      zoom: 15,
     });
 
+    const logoEl = document.createElement('img');
+    logoEl.src = '/logo.jpeg';
+    logoEl.style.cssText =
+      'width:36px;height:36px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);object-fit:cover;cursor:pointer';
+
+    restaurantMarkerRef.current = new maplibregl.Marker({ element: logoEl })
+      .setLngLat(RESTAURANT)
+      .setPopup(new maplibregl.Popup({ offset: 20 }).setText('Bacalhau & Cia'))
+      .addTo(map);
+
+    mapRef.current = map;
+
     return () => {
-      mapRef.current?.remove();
+      map.remove();
       mapRef.current = null;
       customerMarkerRef.current = null;
       restaurantMarkerRef.current = null;
@@ -74,29 +51,25 @@ export function MapView({ customerCoords }: Props) {
     const map = mapRef.current;
     if (!map) return;
 
-    if (customerMarkerRef.current) {
-      customerMarkerRef.current.remove();
-      customerMarkerRef.current = null;
-    }
+    customerMarkerRef.current?.remove();
+    customerMarkerRef.current = null;
 
     if (!customerCoords) {
-      map.setView(RESTAURANT, 15);
+      map.flyTo({ center: RESTAURANT, zoom: 15 });
       return;
     }
 
-    import('leaflet').then((L) => {
-      const pos: [number, number] = [
-        parseFloat(customerCoords.lat),
-        parseFloat(customerCoords.lon),
-      ];
-      customerMarkerRef.current = L.marker(pos)
-        .addTo(mapRef.current!)
-        .bindPopup('Seu endereço');
+    const pos: [number, number] = [
+      parseFloat(customerCoords.lon),
+      parseFloat(customerCoords.lat),
+    ];
 
-      mapRef.current!.fitBounds(L.latLngBounds(RESTAURANT, pos), {
-        padding: [30, 30],
-      });
-    });
+    customerMarkerRef.current = new maplibregl.Marker({ color: '#e53e3e' })
+      .setLngLat(pos)
+      .setPopup(new maplibregl.Popup({ offset: 20 }).setText('Endereço do cliente'))
+      .addTo(map);
+
+    map.fitBounds([RESTAURANT, pos], { padding: 50, maxZoom: 16 });
   }, [customerCoords]);
 
   return (
