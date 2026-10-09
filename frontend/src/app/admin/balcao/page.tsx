@@ -282,7 +282,7 @@ export default function BalcaoPage() {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'PIX' | 'CARD'>('CASH');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'PIX'>('CASH');
   const [trocoInput, setTrocoInput] = useState('');
   const [discountInput, setDiscountInput] = useState('');
   const [success, setSuccess] = useState<{ dailyNumber: number; protocol: number } | null>(null);
@@ -817,8 +817,8 @@ export default function BalcaoPage() {
             />
 
             {/* Método de pagamento */}
-            <div className="grid grid-cols-3 gap-2">
-              {(['CASH', 'PIX', 'CARD'] as const).map((m) => (
+            <div className="grid grid-cols-2 gap-2">
+              {(['CASH', 'PIX'] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => { setPaymentMethod(m); setTrocoInput(''); }}
@@ -828,7 +828,7 @@ export default function BalcaoPage() {
                       : 'border-brand-cream-dark text-brand-ink/50'
                   }`}
                 >
-                  {m === 'CASH' ? 'Dinheiro' : m === 'PIX' ? 'PIX' : 'Cartão'}
+                  {m === 'CASH' ? 'Dinheiro' : 'PIX'}
                 </button>
               ))}
             </div>

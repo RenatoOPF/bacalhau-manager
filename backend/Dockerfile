@@ -18,4 +18,4 @@ COPY --from=build /app/prisma ./prisma
 EXPOSE 8080
 ENV PORT=8080
 
-CMD ["node", "dist/main"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]

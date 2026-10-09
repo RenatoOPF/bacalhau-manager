@@ -513,7 +513,7 @@ export interface CreateOrderPayload {
   addressLat?: number;
   addressLng?: number;
   neighborhoodId?: string;
-  paymentMethod: 'CASH' | 'PIX' | 'CARD';
+  paymentMethod: 'CASH' | 'PIX';
   notes?: string;
   discountCents?: number;
   couponCode?: string;

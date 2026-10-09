@@ -54,7 +54,7 @@ export default function CardapioPage() {
     customerPhone: '',
     address: { street: '', number: '', cep: '', neighborhood: '' } as AddressValue,
     addressComplement: '',
-    paymentMethod: '' as 'CASH' | 'PIX' | 'CARD' | '',
+    paymentMethod: '' as 'CASH' | 'PIX' | '',
   });
 
   // Duas telas: cardápio e fechamento do pedido.
@@ -224,7 +224,7 @@ export default function CardapioPage() {
         addressNeighborhood: form.address.neighborhood || undefined,
         addressLat: mapCoords ? parseFloat(mapCoords.lat) : undefined,
         addressLng: mapCoords ? parseFloat(mapCoords.lon) : undefined,
-        paymentMethod: (form.paymentMethod || 'PIX') as 'CASH' | 'PIX' | 'CARD',
+        paymentMethod: (form.paymentMethod || 'PIX') as 'CASH' | 'PIX',
         couponCode: couponApplied ? couponInput.trim().toUpperCase() : undefined,
         items,
       },
@@ -352,14 +352,13 @@ export default function CardapioPage() {
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    paymentMethod: e.target.value as 'CASH' | 'PIX' | 'CARD',
+                    paymentMethod: e.target.value as 'CASH' | 'PIX',
                   })
                 }
               >
                 <option value="" disabled>Selecione a forma de pagamento</option>
                 <option value="PIX">PIX</option>
                 <option value="CASH">Dinheiro</option>
-                <option value="CARD">Cartão</option>
               </select>
               {createOrder.isError && (
                 <p className="text-sm text-brand-red">

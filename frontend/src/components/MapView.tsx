@@ -4,6 +4,10 @@ import { useEffect, useRef } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
+// worker.mjs has a relative import to shared.mjs that webpack can't bundle;
+// both files are served statically (public/) and kept in sync via postinstall.
+maplibregl.setWorkerUrl('/maplibre-gl-worker.mjs');
+
 const RESTAURANT: [number, number] = [-35.7044501, -9.660454]; // [lng, lat]
 const STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
@@ -31,6 +35,8 @@ export function MapView({ customerCoords }: Props) {
     logoEl.src = '/logo.jpeg';
     logoEl.style.cssText =
       'width:36px;height:36px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);object-fit:cover;cursor:pointer';
+
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
     restaurantMarkerRef.current = new maplibregl.Marker({ element: logoEl })
       .setLngLat(RESTAURANT)
@@ -75,7 +81,7 @@ export function MapView({ customerCoords }: Props) {
   return (
     <div
       ref={containerRef}
-      className="isolate h-48 w-full overflow-hidden rounded border border-gray-200"
+      className="isolate h-48 w-full rounded border border-gray-200"
     />
   );
 }
