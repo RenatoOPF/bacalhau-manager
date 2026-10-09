@@ -4,15 +4,31 @@ import { useEffect, useRef } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-// worker.mjs has a relative import to shared.mjs that webpack can't bundle;
-// both files are served statically (public/) and kept in sync via postinstall.
 maplibregl.setWorkerUrl('/maplibre-gl-worker.mjs');
 
 const RESTAURANT: [number, number] = [-35.7044501, -9.660454]; // [lng, lat]
-const STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+const STYLE = 'https://tiles.openfreemap.org/styles/positron';
 
 interface Props {
   customerCoords?: { lat: string; lon: string } | null;
+}
+
+function makeRestaurantEl(): HTMLElement {
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText =
+    'width:44px;height:44px;border-radius:12px;background:#c8a45a;box-shadow:0 3px 10px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;overflow:hidden';
+  const img = document.createElement('img');
+  img.src = '/logo.jpeg';
+  img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+  wrapper.appendChild(img);
+  return wrapper;
+}
+
+function makeCustomerEl(): HTMLElement {
+  const outer = document.createElement('div');
+  outer.style.cssText =
+    'width:16px;height:16px;border-radius:50%;background:#e53e3e;box-shadow:0 0 0 4px rgba(229,62,62,0.25);border:2px solid #fff';
+  return outer;
 }
 
 export function MapView({ customerCoords }: Props) {
@@ -31,16 +47,12 @@ export function MapView({ customerCoords }: Props) {
       zoom: 15,
     });
 
-    const logoEl = document.createElement('img');
-    logoEl.src = '/logo.jpeg';
-    logoEl.style.cssText =
-      'width:36px;height:36px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);object-fit:cover;cursor:pointer';
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 
-    map.addControl(new maplibregl.NavigationControl(), 'top-right');
-
-    restaurantMarkerRef.current = new maplibregl.Marker({ element: logoEl })
+    restaurantMarkerRef.current = new maplibregl.Marker({ element: makeRestaurantEl() })
       .setLngLat(RESTAURANT)
-      .setPopup(new maplibregl.Popup({ offset: 20 }).setText('Bacalhau & Cia'))
+      .setPopup(new maplibregl.Popup({ offset: 24, closeButton: false })
+        .setText('Bacalhau & Cia'))
       .addTo(map);
 
     mapRef.current = map;
@@ -70,18 +82,19 @@ export function MapView({ customerCoords }: Props) {
       parseFloat(customerCoords.lat),
     ];
 
-    customerMarkerRef.current = new maplibregl.Marker({ color: '#e53e3e' })
+    customerMarkerRef.current = new maplibregl.Marker({ element: makeCustomerEl() })
       .setLngLat(pos)
-      .setPopup(new maplibregl.Popup({ offset: 20 }).setText('Endereço do cliente'))
+      .setPopup(new maplibregl.Popup({ offset: 16, closeButton: false })
+        .setText('Endereço do cliente'))
       .addTo(map);
 
-    map.fitBounds([RESTAURANT, pos], { padding: 50, maxZoom: 16 });
+    map.fitBounds([RESTAURANT, pos], { padding: 60, maxZoom: 16 });
   }, [customerCoords]);
 
   return (
     <div
       ref={containerRef}
-      className="isolate h-48 w-full rounded border border-gray-200"
+      className="isolate h-64 w-full rounded-xl border border-gray-200 shadow-sm"
     />
   );
 }
