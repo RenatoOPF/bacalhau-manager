@@ -13,6 +13,8 @@ export interface AddressValue {
   number: string;
   cep: string;
   neighborhood: string;
+  /** true when user confirmed via suggestion click (not free-typed) */
+  confirmed: boolean;
 }
 
 interface Props {
@@ -25,28 +27,27 @@ export function UnifiedAddressInput({ value, onChange }: Props) {
   const [suggestions, setSuggestions] = useState<ViaCepResult[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const numberRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
-  // Sync query display when street is set externally (e.g. from CEP field)
   useEffect(() => {
     const display = value.street
       ? value.neighborhood
-        ? `${value.street} — ${value.neighborhood}`
+        ? `${value.street}, ${value.neighborhood}`
         : value.street
       : '';
     setQuery(display);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value.street]);
 
-  // Search ViaCEP by street name
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
     const raw = query.trim();
     const cepDigits = raw.replace(/\D/g, '');
 
-    // CEP detection: 8 digits
     if (cepDigits.length === 8 && raw.replace(/[^0-9-]/g, '') === raw) {
       setLoading(true);
       fetch(`https://viacep.com.br/ws/${cepDigits}/json/`)
@@ -56,8 +57,8 @@ export function UnifiedAddressInput({ value, onChange }: Props) {
             const street = data.logradouro ?? '';
             const neighborhood = data.bairro ?? '';
             const cep = data.cep ?? raw;
-            onChange({ ...value, street, neighborhood, cep });
-            setQuery(street && neighborhood ? `${street} — ${neighborhood}` : street);
+            onChange({ ...value, street, neighborhood, cep, confirmed: true });
+            setQuery(street && neighborhood ? `${street}, ${neighborhood}` : street);
             setOpen(false);
             setSuggestions([]);
             setTimeout(() => numberRef.current?.focus(), 50);
@@ -68,7 +69,7 @@ export function UnifiedAddressInput({ value, onChange }: Props) {
       return;
     }
 
-    if (raw.length < 5) {
+    if (raw.length < 4) {
       setSuggestions([]);
       setOpen(false);
       return;
@@ -82,15 +83,17 @@ export function UnifiedAddressInput({ value, onChange }: Props) {
         );
         const data: ViaCepResult[] = await res.json();
         if (Array.isArray(data)) {
-          setSuggestions(data.slice(0, 6));
-          setOpen(data.length > 0);
+          const list = data.slice(0, 8);
+          setSuggestions(list);
+          setOpen(list.length > 0);
+          setActiveIdx(-1);
         }
       } catch {
         setSuggestions([]);
       } finally {
         setLoading(false);
       }
-    }, 500);
+    }, 400);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
@@ -105,28 +108,58 @@ export function UnifiedAddressInput({ value, onChange }: Props) {
   function select(s: ViaCepResult) {
     setOpen(false);
     setSuggestions([]);
-    setQuery(s.bairro ? `${s.logradouro} — ${s.bairro}` : s.logradouro);
-    onChange({ ...value, street: s.logradouro, neighborhood: s.bairro, cep: s.cep });
+    setActiveIdx(-1);
+    const display = s.bairro ? `${s.logradouro}, ${s.bairro}` : s.logradouro;
+    setQuery(display);
+    onChange({ ...value, street: s.logradouro, neighborhood: s.bairro, cep: s.cep, confirmed: true });
     setTimeout(() => numberRef.current?.focus(), 50);
   }
 
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (!open || suggestions.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIdx((i) => Math.max(i - 1, -1));
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      e.preventDefault();
+      select(suggestions[activeIdx]);
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  }
+
+  const isConfirmed = value.confirmed && !!value.street;
+  const isDirty = query !== '' && !isConfirmed;
+
   return (
-    <div ref={containerRef} className="relative">
-      <div className="input flex items-center gap-1 px-2">
+    <div ref={containerRef} className="relative space-y-1.5">
+      <div className={`input flex items-center gap-1 px-2 transition-colors ${isConfirmed ? 'border-green-400 bg-green-50' : ''}`}>
+        {isConfirmed && (
+          <span className="shrink-0 text-green-500" title="Endereço confirmado">✓</span>
+        )}
         <input
           className="min-w-0 flex-1 bg-transparent py-2 outline-none"
-          placeholder="Endereço ou CEP"
+          placeholder="Digite a rua ou o CEP"
           value={query}
           autoComplete="off"
           onChange={(e) => {
-            setQuery(e.target.value);
-            // Clear street data when user edits manually
-            if (!e.target.value) onChange({ street: '', number: value.number, cep: '', neighborhood: '' });
+            const val = e.target.value;
+            setQuery(val);
+            if (!val) {
+              onChange({ street: '', number: value.number, cep: '', neighborhood: '', confirmed: false });
+            } else if (val !== query) {
+              // user is editing → clear confirmed state
+              onChange({ ...value, street: '', neighborhood: '', cep: '', confirmed: false });
+            }
           }}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
+          onKeyDown={handleKeyDown}
         />
         {loading && (
-          <span className="shrink-0 text-xs text-gray-400">…</span>
+          <span className="shrink-0 animate-pulse text-xs text-gray-400">buscando…</span>
         )}
         <span className="shrink-0 select-none text-gray-300">|</span>
         <input
@@ -139,26 +172,41 @@ export function UnifiedAddressInput({ value, onChange }: Props) {
         {value.cep && (
           <>
             <span className="shrink-0 select-none text-gray-300">|</span>
-            <span className="shrink-0 whitespace-nowrap text-xs text-gray-400">
-              {value.cep}
-            </span>
+            <span className="shrink-0 whitespace-nowrap text-xs text-gray-400">{value.cep}</span>
           </>
         )}
       </div>
 
+      {isDirty && !loading && suggestions.length === 0 && query.length >= 4 && (
+        <p className="text-xs text-amber-600">
+          Selecione uma sugestão da lista para confirmar o endereço.
+        </p>
+      )}
+
       {open && suggestions.length > 0 && (
-        <ul className="absolute z-50 mt-1 w-full rounded border border-gray-200 bg-white shadow-lg">
-          {suggestions.map((s) => (
+        <ul
+          ref={listRef}
+          className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl"
+        >
+          <li className="border-b border-gray-100 bg-gray-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            Sugestões de endereço
+          </li>
+          {suggestions.map((s, i) => (
             <li
               key={s.cep}
-              className="cursor-pointer px-3 py-2 text-sm hover:bg-gray-100"
+              className={`cursor-pointer px-3 py-2.5 text-sm transition-colors ${
+                i === activeIdx ? 'bg-brand-gold/10' : 'hover:bg-gray-50'
+              } ${i !== suggestions.length - 1 ? 'border-b border-gray-100' : ''}`}
               onMouseDown={() => select(s)}
+              onMouseEnter={() => setActiveIdx(i)}
             >
-              <span className="font-medium">{s.logradouro}</span>
+              <span className="font-semibold text-brand-ink">{s.logradouro}</span>
               {s.bairro && (
-                <span className="ml-1 text-gray-400">— {s.bairro}</span>
+                <span className="ml-2 inline-block rounded-full bg-brand-gold/20 px-2 py-0.5 text-xs font-medium text-brand-ink/70">
+                  {s.bairro}
+                </span>
               )}
-              <span className="ml-2 text-xs text-gray-400">{s.cep}</span>
+              <span className="ml-2 font-mono text-xs text-gray-400">{s.cep}</span>
             </li>
           ))}
         </ul>

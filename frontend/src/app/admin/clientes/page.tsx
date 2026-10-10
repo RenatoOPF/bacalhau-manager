@@ -199,7 +199,7 @@ function NewCustomerForm({
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
-  const [addr, setAddr] = useState<AddressValue>({ street: '', number: '', cep: '', neighborhood: '' });
+  const [addr, setAddr] = useState<AddressValue>({ street: '', number: '', cep: '', neighborhood: '', confirmed: false });
   const [complement, setComplement] = useState('');
   const [reference, setReference] = useState('');
   const [neighborhoodId, setNeighborhoodId] = useState('');
@@ -303,6 +303,7 @@ function AddressForm({
     number: initial?.number ?? '',
     cep: '',
     neighborhood: initial?.neighborhood ?? '',
+    confirmed: false,
   });
   const [complement, setComplement] = useState(initial?.complement ?? '');
   const [reference, setReference] = useState(initial?.reference ?? '');

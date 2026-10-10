@@ -9,6 +9,7 @@ import {
   type CreateOrderPayload,
   type MenuItem,
   type CouponValidation,
+  type Neighborhood,
 } from '@/lib/api';
 import dynamic from 'next/dynamic';
 import { SiteFooter } from '@/components/site-footer';
@@ -45,6 +46,11 @@ export default function CardapioPage() {
     queryFn: api.getMenu,
   });
 
+  const { data: neighborhoods } = useQuery({
+    queryKey: ['neighborhoods'],
+    queryFn: api.listNeighborhoods,
+  });
+
   // Carrinho: chave (optionId ou menuItemId) -> linha.
   const [cart, setCart] = useState<Record<string, CartLine>>({});
   // Item aberto no painel de detalhes.
@@ -52,10 +58,13 @@ export default function CardapioPage() {
   const [form, setForm] = useState({
     customerName: '',
     customerPhone: '',
-    address: { street: '', number: '', cep: '', neighborhood: '' } as AddressValue,
+    address: { street: '', number: '', cep: '', neighborhood: '', confirmed: false } as AddressValue,
     addressComplement: '',
     paymentMethod: '' as 'CASH' | 'PIX' | '',
   });
+
+  const [selectedNeighborhood, setSelectedNeighborhood] = useState<Neighborhood | null>(null);
+  const [neighborhoodManual, setNeighborhoodManual] = useState(false);
 
   // Duas telas: cardápio e fechamento do pedido.
   const [view, setView] = useState<'menu' | 'checkout'>('menu');
@@ -69,8 +78,24 @@ export default function CardapioPage() {
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
 
+  function normalize(s: string) {
+    return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  }
+
   function handleAddressChange(addr: AddressValue) {
     setForm((f) => ({ ...f, address: addr }));
+    if (addr.confirmed && addr.neighborhood && neighborhoods) {
+      const n = normalize(addr.neighborhood);
+      const match =
+        neighborhoods.find((nb) => normalize(nb.name) === n) ??
+        neighborhoods.find((nb) => normalize(nb.name).includes(n) || n.includes(normalize(nb.name))) ??
+        null;
+      setSelectedNeighborhood(match);
+      setNeighborhoodManual(!match);
+    } else if (!addr.street) {
+      setSelectedNeighborhood(null);
+      setNeighborhoodManual(false);
+    }
   }
 
   useEffect(() => {
@@ -124,7 +149,8 @@ export default function CardapioPage() {
   );
 
   const discountCents = couponApplied?.discountCents ?? 0;
-  const totalWithDiscount = Math.max(0, totalCents - discountCents);
+  const deliveryFeeCents = selectedNeighborhood?.customerFeeCents ?? 0;
+  const totalWithDiscount = Math.max(0, totalCents - discountCents + deliveryFeeCents);
 
   const applyCoupon = async () => {
     const code = couponInput.trim().toUpperCase();
@@ -221,7 +247,8 @@ export default function CardapioPage() {
         addressStreet: form.address.street,
         addressNumber: form.address.number,
         addressComplement: form.addressComplement || undefined,
-        addressNeighborhood: form.address.neighborhood || undefined,
+        addressNeighborhood: (selectedNeighborhood?.name ?? form.address.neighborhood) || undefined,
+        neighborhoodId: selectedNeighborhood?.id,
         addressLat: mapCoords ? parseFloat(mapCoords.lat) : undefined,
         addressLng: mapCoords ? parseFloat(mapCoords.lon) : undefined,
         paymentMethod: (form.paymentMethod || 'PIX') as 'CASH' | 'PIX',
@@ -340,6 +367,54 @@ export default function CardapioPage() {
                   setForm({ ...form, addressComplement: e.target.value })
                 }
               />
+
+              {/* Seletor de bairro / taxa de entrega */}
+              {form.address.street && (
+                <>
+                  {selectedNeighborhood && !neighborhoodManual ? (
+                    <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-2.5">
+                      <div>
+                        <p className="text-xs font-medium text-green-600">Bairro detectado</p>
+                        <p className="font-semibold text-brand-ink">{selectedNeighborhood.name}</p>
+                        <p className="text-sm font-bold text-brand-red">
+                          Taxa de entrega: {formatBRL(selectedNeighborhood.customerFeeCents)}
+                        </p>
+                      </div>
+                      <button
+                        className="text-xs text-gray-400 underline hover:text-gray-600"
+                        onClick={() => setNeighborhoodManual(true)}
+                      >
+                        Alterar
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 space-y-1.5">
+                      <p className="text-xs font-medium text-amber-700">
+                        {neighborhoodManual && selectedNeighborhood
+                          ? 'Alterar bairro'
+                          : 'Bairro não identificado — selecione para calcular a taxa:'}
+                      </p>
+                      <select
+                        className="input w-full p-2"
+                        value={selectedNeighborhood?.id ?? ''}
+                        onChange={(e) => {
+                          const nb = (neighborhoods ?? []).find((n) => n.id === e.target.value) ?? null;
+                          setSelectedNeighborhood(nb);
+                          if (nb) setNeighborhoodManual(false);
+                        }}
+                      >
+                        <option value="">Selecione o bairro…</option>
+                        {(neighborhoods ?? []).map((nb) => (
+                          <option key={nb.id} value={nb.id}>
+                            {nb.name} — {formatBRL(nb.customerFeeCents)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </>
+              )}
+
               <MapView customerCoords={mapCoords} />
               {geoError && (
                 <p className="text-xs text-brand-ink/50">
@@ -423,10 +498,14 @@ export default function CardapioPage() {
               )}
               <div className="flex justify-between text-brand-ink/70">
                 <span>Entrega</span>
-                <span>a confirmar</span>
+                {selectedNeighborhood ? (
+                  <span className="font-medium">{formatBRL(selectedNeighborhood.customerFeeCents)}</span>
+                ) : (
+                  <span className="text-amber-600">selecione o bairro</span>
+                )}
               </div>
               <div className="flex justify-between font-bold">
-                <span>Total estimado</span>
+                <span>{selectedNeighborhood ? 'Total' : 'Total estimado'}</span>
                 <span className="text-brand-red">{formatBRL(totalWithDiscount)}</span>
               </div>
             </section>
@@ -439,10 +518,10 @@ export default function CardapioPage() {
                 </span>
                 <button
                   className="btn-gold px-5 py-2"
-                  disabled={totalCents === 0 || createOrder.isPending}
+                  disabled={totalCents === 0 || createOrder.isPending || (!!form.address.street && !selectedNeighborhood)}
                   onClick={submit}
                 >
-                  {createOrder.isPending ? 'Enviando...' : 'Confirmar pedido'}
+                  {createOrder.isPending ? 'Enviando…' : !form.address.street || selectedNeighborhood ? 'Confirmar pedido' : 'Selecione o bairro'}
                 </button>
               </div>
             </div>
