@@ -461,7 +461,7 @@ function OrderCard({
           <button
             className="btn-outline px-2.5 py-2 text-sm"
             disabled={reprintCashier.isPending}
-            onClick={() => reprintCashier.mutate()}
+            onClick={() => { if (confirm('Reimprimir no caixa?')) reprintCashier.mutate(); }}
             title="Reimprimir no caixa"
           >
             {reprintCashier.isPending ? '…' : '🖨 Caixa'}
@@ -469,7 +469,7 @@ function OrderCard({
           <button
             className="btn-outline px-2.5 py-2 text-sm"
             disabled={reprintKitchen.isPending}
-            onClick={() => reprintKitchen.mutate()}
+            onClick={() => { if (confirm('Reimprimir na cozinha?')) reprintKitchen.mutate(); }}
             title="Reimprimir na cozinha"
           >
             {reprintKitchen.isPending ? '…' : '🖨 Cozinha'}
