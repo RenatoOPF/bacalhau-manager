@@ -33,10 +33,23 @@ export class PrintAgentService implements OnModuleInit, OnModuleDestroy {
         this.socket.emit('print:confirmed', { orderId: order.id, target });
         return;
       } catch (err) {
-        if (attempt < this.maxRetries) {
+        this.logger.warn(
+          `Tentativa ${attempt}/${this.maxRetries} falhou (${target}): ${err instanceof Error ? err.message : err}`,
+        );
+
+        // A impressora ESC/POS via TCP fecha a conexão após imprimir, fazendo
+        // execute() lançar mesmo com o ticket já saindo fisicamente. Para evitar
+        // reimpressões, paramos de retentar após a 1ª tentativa e confirmamos —
+        // o operador pode reimprimir manualmente se necessário.
+        if (target === 'cashier') {
           this.logger.warn(
-            `Tentativa ${attempt}/${this.maxRetries} falhou (${target}). Retry em ${this.retryDelay / 1000}s`,
+            `Pedido #${order.protocol} (caixa): confirmando após erro TCP para evitar reimpressão`,
           );
+          this.socket.emit('print:confirmed', { orderId: order.id, target });
+          return;
+        }
+
+        if (attempt < this.maxRetries) {
           await new Promise((r) => setTimeout(r, this.retryDelay));
         } else {
           this.logger.error(
