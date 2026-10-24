@@ -16,7 +16,7 @@ export class PrintAgentService implements OnModuleInit, OnModuleDestroy {
     this.socket = io(url, { transports: ['websocket'], reconnection: true });
     this.socket.on('connect', () => this.logger.log(`Conectado ao backend (${url})`));
     this.socket.on('disconnect', (reason) => this.logger.warn(`Desconectado: ${reason}`));
-    this.socket.on('print:cashier', (order) => this.handleWithRetry(order, 'cashier'));
+    this.socket.on('print:cashier', (order) => this.handleCashier(order));
     this.socket.on('print:kitchen', (order) => this.handleWithRetry(order, 'kitchen'));
   }
 
@@ -24,11 +24,22 @@ export class PrintAgentService implements OnModuleInit, OnModuleDestroy {
     this.socket?.disconnect();
   }
 
-  private async handleWithRetry(order: any, target: 'cashier' | 'kitchen'): Promise<void> {
+  private async handleCashier(order: any): Promise<void> {
+    try {
+      await this.printing.printCashierTicket(order);
+      this.logger.log(`Pedido #${order.protocol} — caixa impresso`);
+      this.socket.emit('print:confirmed', { orderId: order.id, target: 'cashier' });
+    } catch (err) {
+      this.logger.error(
+        `Falha ao imprimir pedido #${order.protocol} (caixa): ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
+
+  private async handleWithRetry(order: any, target: 'kitchen'): Promise<void> {
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        if (target === 'cashier') await this.printing.printCashierTicket(order);
-        else await this.printing.printKitchenTicket(order);
+        await this.printing.printKitchenTicket(order);
         this.logger.log(`Pedido #${order.protocol} — ${target} impresso`);
         this.socket.emit('print:confirmed', { orderId: order.id, target });
         return;
@@ -36,19 +47,6 @@ export class PrintAgentService implements OnModuleInit, OnModuleDestroy {
         this.logger.warn(
           `Tentativa ${attempt}/${this.maxRetries} falhou (${target}): ${err instanceof Error ? err.message : err}`,
         );
-
-        // A impressora ESC/POS via TCP fecha a conexão após imprimir, fazendo
-        // execute() lançar mesmo com o ticket já saindo fisicamente. Para evitar
-        // reimpressões, paramos de retentar após a 1ª tentativa e confirmamos —
-        // o operador pode reimprimir manualmente se necessário.
-        if (target === 'cashier') {
-          this.logger.warn(
-            `Pedido #${order.protocol} (caixa): confirmando após erro TCP para evitar reimpressão`,
-          );
-          this.socket.emit('print:confirmed', { orderId: order.id, target });
-          return;
-        }
-
         if (attempt < this.maxRetries) {
           await new Promise((r) => setTimeout(r, this.retryDelay));
         } else {
