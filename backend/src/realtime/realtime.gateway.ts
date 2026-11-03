@@ -1,10 +1,12 @@
 import {
+  ConnectedSocket,
   MessageBody,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { Server } from 'socket.io';
+import { Logger } from '@nestjs/common';
+import { Server, Socket } from 'socket.io';
 import type { Order, OrderItem } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -28,7 +30,27 @@ export class RealtimeGateway {
   @WebSocketServer()
   server: Server;
 
+  private readonly logger = new Logger(RealtimeGateway.name);
+
+  // Socket ID do agente de impressão ativo. Eventos de impressão vão APENAS
+  // para este socket — evita que conexões zumbi (PM2 reiniciando) imprimam
+  // quando o servidor ainda não detectou a desconexão (~45 s de timeout).
+  private printerSocketId: string | null = null;
+
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Agente de impressão registra o próprio socket como destino exclusivo dos eventos de impressão. */
+  @SubscribeMessage('printer:register')
+  handlePrinterRegister(@ConnectedSocket() client: Socket) {
+    this.printerSocketId = client.id;
+    this.logger.log(`[PRINTER] agente registrado (socket ${client.id})`);
+    client.once('disconnect', () => {
+      if (this.printerSocketId === client.id) {
+        this.printerSocketId = null;
+        this.logger.warn(`[PRINTER] agente desconectado (socket ${client.id})`);
+      }
+    });
+  }
 
   /** Worker confirma impressão bem-sucedida → grava timestamp + notifica frontend. */
   @SubscribeMessage('print:confirmed')
@@ -53,13 +75,21 @@ export class RealtimeGateway {
     this.server.emit('order:status', { protocol: order.protocol });
   }
 
-  /** Dispara impressão no caixa — agente local recebe e imprime. */
+  /** Dispara impressão no caixa — vai só para o agente registrado. */
   emitPrintCashier(order: OrderWithItems) {
-    this.server.emit('print:cashier', order);
+    if (!this.printerSocketId) {
+      this.logger.warn(`[PRINTER] nenhum agente registrado — print:cashier ignorado (pedido #${order.protocol})`);
+      return;
+    }
+    this.server.to(this.printerSocketId).emit('print:cashier', order);
   }
 
-  /** Dispara impressão na cozinha — agente local recebe e imprime. */
+  /** Dispara impressão na cozinha — vai só para o agente registrado. */
   emitPrintKitchen(order: OrderWithItems) {
-    this.server.emit('print:kitchen', order);
+    if (!this.printerSocketId) {
+      this.logger.warn(`[PRINTER] nenhum agente registrado — print:kitchen ignorado (pedido #${order.protocol})`);
+      return;
+    }
+    this.server.to(this.printerSocketId).emit('print:kitchen', order);
   }
 }

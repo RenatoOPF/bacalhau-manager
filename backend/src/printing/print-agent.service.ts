@@ -14,7 +14,13 @@ export class PrintAgentService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     const url = process.env.BACKEND_URL ?? 'https://api.bacalhaueciamaceio.com.br';
     this.socket = io(url, { transports: ['websocket'], reconnection: true });
-    this.socket.on('connect', () => this.logger.log(`Conectado ao backend (${url})`));
+    this.socket.on('connect', () => {
+      this.logger.log(`Conectado ao backend (${url})`);
+      // Registra este socket como destino exclusivo dos eventos de impressão.
+      // Reenviado a cada reconexão para que o servidor sempre aponte para a
+      // conexão mais recente — evita que sockets zumbi recebam os eventos.
+      this.socket.emit('printer:register');
+    });
     this.socket.on('disconnect', (reason) => this.logger.warn(`Desconectado: ${reason}`));
     this.socket.on('print:cashier', (order) => this.handleCashier(order));
     this.socket.on('print:kitchen', (order) => this.handleWithRetry(order, 'kitchen'));
