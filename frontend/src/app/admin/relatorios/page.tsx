@@ -9,13 +9,20 @@ import {
   type OrderChannel,
   type UpcomingExpense,
 } from '@/lib/api';
-import { BarChart, Heatmap, LineChart } from '@/components/charts';
+import { BarChart, ColumnChart, DonutChart, Heatmap, LineChart, RevenueDayGrid } from '@/components/charts';
 
 const CHANNEL_LABEL: Record<string, string> = {
   OWN: 'Cardápio próprio',
   IFOOD: 'iFood',
   NOVENTA_NOVE: '99Food',
   GAMI: 'Gami',
+};
+
+const CHANNEL_COLORS: Record<string, string> = {
+  OWN: '#D9251D',
+  IFOOD: '#F2B705',
+  NOVENTA_NOVE: '#1F7A3F',
+  GAMI: '#7C3AED',
 };
 
 /* ----------------------------- Date helpers ----------------------------- */
@@ -378,6 +385,27 @@ function VendasTab({
     enabled: !!fromPrev && !!toPrev,
   });
 
+  const [peakChart, setPeakChart] = useState<'heatmap' | 'hourly' | 'weekday'>('heatmap');
+
+  const peakByHour = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const p of (peak.data ?? [])) {
+      map.set(p.hour, (map.get(p.hour) ?? 0) + p.count);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([hour, count]) => ({ label: `${hour}h`, value: count }));
+  }, [peak.data]);
+
+  const peakByWeekday = useMemo(() => {
+    const WD = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const map = new Map<number, number>();
+    for (const p of (peak.data ?? [])) {
+      map.set(p.weekday, (map.get(p.weekday) ?? 0) + p.count);
+    }
+    return WD.map((name, i) => ({ label: name, value: map.get(i) ?? 0 }));
+  }, [peak.data]);
+
   const s = summary.data;
   const sp = summaryPrev.data;
   const comparing = !!fromPrev;
@@ -421,74 +449,87 @@ function VendasTab({
         />
       </div>
 
-      {/* Tendência */}
+      {/* Faturamento por dia */}
       <section>
-        <h2 className="section-title">Tendência de faturamento</h2>
+        <h2 className="section-title">Faturamento por dia</h2>
         <div className="card mt-2 p-3">
-          <LineChart
-            points={(revenue.data?.byDay ?? []).map((d) => ({
-              label: d.date.slice(5),
-              value: d.totalCents,
-            }))}
-            compare={
-              comparing
-                ? (revenuePrev.data?.byDay ?? []).map((d) => ({
-                    value: d.totalCents,
-                  }))
-                : undefined
-            }
-            formatY={(v) => formatBRL(v)}
+          <RevenueDayGrid
+            byDay={revenue.data?.byDay ?? []}
+            from={from}
+            to={to}
+            prevByDay={comparing ? revenuePrev.data?.byDay : undefined}
+            formatValue={(v) => formatBRL(v)}
           />
         </div>
-        {comparing && (
-          <div className="mt-1 flex gap-4 text-xs text-brand-ink/50">
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-4 rounded bg-brand-red" />
-              Período atual
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-4 rounded bg-brand-gold" />
-              Ano anterior
-            </span>
-          </div>
-        )}
       </section>
 
       {/* Por canal */}
       <section>
         <h2 className="section-title">Por canal</h2>
-        <div className="mt-2 grid gap-3 sm:grid-cols-3">
-          {(channels.data ?? []).map((c) => (
-            <div key={c.channel} className="card p-4">
-              <p className="text-sm text-brand-ink/60">
-                {CHANNEL_LABEL[c.channel] ?? c.channel}
-              </p>
-              <p className="font-display text-xl font-bold">
-                {formatBRL(c.totalCents)}
-              </p>
-              <p className="text-sm text-brand-ink/60">{c.count} pedido(s)</p>
+        <div className="card mt-2 p-4">
+          <DonutChart
+            segments={(channels.data ?? []).map((c) => ({
+              label: CHANNEL_LABEL[c.channel] ?? c.channel,
+              value: c.totalCents,
+              color: CHANNEL_COLORS[c.channel] ?? '#292423',
+            }))}
+            formatValue={(v) => formatBRL(v)}
+          />
+          {(channels.data ?? []).length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-4 border-t border-brand-cream-dark pt-3 text-xs text-brand-ink/50">
+              {(channels.data ?? []).map((c) => (
+                <span key={c.channel}>
+                  {CHANNEL_LABEL[c.channel] ?? c.channel}:{' '}
+                  <strong className="text-brand-ink/70">{c.count}</strong> pedido(s)
+                </span>
+              ))}
             </div>
-          ))}
-          {(channels.data ?? []).length === 0 && (
-            <p className="text-sm text-brand-ink/40">Sem dados no período.</p>
           )}
         </div>
       </section>
 
       {/* Horários de pico */}
       <section>
-        <h2 className="section-title">Horários de pico</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="section-title">Horários de pico</h2>
+          <ChartToggle
+            options={[
+              { key: 'heatmap', label: 'Mapa de calor' },
+              { key: 'hourly', label: 'Por hora' },
+              { key: 'weekday', label: 'Por dia' },
+            ]}
+            value={peakChart}
+            onChange={setPeakChart}
+          />
+        </div>
         <p className="text-sm text-brand-ink/60">
-          Nº de pedidos por dia da semana × hora.
+          {peakChart === 'heatmap' && 'Nº de pedidos por dia da semana × hora.'}
+          {peakChart === 'hourly' && 'Total de pedidos por hora do dia (todos os dias somados).'}
+          {peakChart === 'weekday' && 'Total de pedidos por dia da semana (todas as horas somadas).'}
         </p>
         <div className="card mt-2 p-3">
-          <Heatmap
-            cells={(peak.data ?? []).map((p) => ({
-              weekday: p.weekday,
-              hour: p.hour,
-              value: p.count,
-            }))}
-          />
+          {peakChart === 'heatmap' && (
+            <Heatmap
+              cells={(peak.data ?? []).map((p) => ({
+                weekday: p.weekday,
+                hour: p.hour,
+                value: p.count,
+              }))}
+            />
+          )}
+          {peakChart === 'hourly' && (
+            <ColumnChart
+              bars={peakByHour}
+              formatY={(v) => `${v}`}
+              color="#D9251D"
+            />
+          )}
+          {peakChart === 'weekday' && (
+            <BarChart
+              bars={peakByWeekday}
+              formatValue={(v) => `${v} ped.`}
+            />
+          )}
         </div>
       </section>
 
@@ -536,6 +577,18 @@ function ProdutosTab({ from, to }: { from: string; to: string }) {
 
   return (
     <div className="mt-6 space-y-8">
+      {/* Mais vendidos */}
+      <section>
+        <h2 className="section-title">Mais vendidos</h2>
+        <p className="text-sm text-brand-ink/60">Top 10 por faturamento no período.</p>
+        <div className="card mt-2 p-3">
+          <BarChart
+            bars={rows.slice(0, 10).map((r) => ({ label: r.name, value: r.totalCents }))}
+            formatValue={(v) => formatBRL(v)}
+          />
+        </div>
+      </section>
+
       {/* Curva ABC */}
       <section>
         <h2 className="section-title">Curva ABC</h2>
@@ -910,6 +963,26 @@ function FinanceiroTab({
       <section>
         <h2 className="section-title">Fluxo de caixa</h2>
         <div className="card mt-2 p-3">
+          <div className="mb-2 flex gap-4 text-xs text-brand-ink/50">
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2 w-3 rounded bg-[#1F7A3F]" />
+              Entradas
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2 w-3 rounded bg-[#D9251D]" />
+              Saídas
+            </span>
+          </div>
+          <ColumnChart
+            bars={(cashflow.data ?? []).map((c) => ({ label: c.date.slice(5), value: c.outCents }))}
+            series2={(cashflow.data ?? []).map((c) => ({ value: c.inCents }))}
+            color="#D9251D"
+            color2="#1F7A3F"
+            formatY={(v) => formatBRL(v)}
+          />
+        </div>
+        <p className="mt-4 text-sm font-semibold text-brand-ink/60">Saldo acumulado</p>
+        <div className="card mt-1 p-3">
           <LineChart
             points={(cashflow.data ?? []).map((c) => ({ label: c.date.slice(5), value: c.balanceCents }))}
             formatY={(v) => formatBRL(v)}
@@ -1067,6 +1140,34 @@ function CommissionConfig() {
 }
 
 /* ------------------------------ Compartilhado -------------------------- */
+
+function ChartToggle<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { key: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="flex gap-1">
+      {options.map(({ key, label }) => (
+        <button
+          key={key}
+          onClick={() => onChange(key)}
+          className={
+            value === key
+              ? 'rounded px-2 py-0.5 text-xs font-bold bg-brand-red text-white'
+              : 'rounded border border-brand-ink/15 px-2 py-0.5 text-xs font-medium text-brand-ink/50 hover:text-brand-red'
+          }
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function yoyPct(curr?: number, prev?: number): string {
   if (curr == null || prev == null || prev === 0) return '—';
