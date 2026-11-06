@@ -143,7 +143,17 @@ function OrderCard({ order }: { order: CourierOrder }) {
 
       {/* Endereço */}
       <div className="border-t px-4 py-3 text-sm text-brand-ink/80">
-        <p>{buildAddress(order)}</p>
+        <a
+          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(buildAddress(order))}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-start gap-2 hover:text-brand-red"
+        >
+          <svg className="mt-0.5 h-4 w-4 shrink-0 text-brand-red" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+          <span>{buildAddress(order)}</span>
+        </a>
         {order.addressReference && (
           <p className="mt-1 text-brand-ink/60">Ref: {order.addressReference}</p>
         )}
