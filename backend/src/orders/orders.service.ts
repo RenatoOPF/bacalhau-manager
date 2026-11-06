@@ -14,6 +14,7 @@ import { dayRange, localDay, periodFilter } from '../common/date-range';
 import { StockService } from '../stock/stock.service';
 import { PrintConfigService } from '../printing/print-config.service';
 import { CouponsService } from '../coupons/coupons.service';
+import { ConfirmPlatformService } from './confirm-platform.service';
 
 @Injectable()
 export class OrdersService {
@@ -25,6 +26,7 @@ export class OrdersService {
     private readonly stock: StockService,
     private readonly printConfig: PrintConfigService,
     private readonly coupons: CouponsService,
+    private readonly confirmPlatform: ConfirmPlatformService,
   ) {}
 
   /** Cria o pedido, enfileira a impressão e notifica o caixa em tempo real. */
@@ -360,6 +362,8 @@ export class OrdersService {
         courierFeeCents: true,
         notes: true,
         createdAt: true,
+        channel: true,
+        externalId: true,
         neighborhood: { select: { name: true } },
       },
     });
@@ -378,6 +382,39 @@ export class OrdersService {
     const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: { status },
+      include: { items: true },
+    });
+    this.realtime.emitOrderStatusChanged(updated);
+    return updated;
+  }
+
+  /** Entregador confirma entrega na plataforma (iFood/99Food) + marca DELIVERED. */
+  async confirmOnPlatform(
+    orderId: string,
+    courierId: string,
+    customerCode: string,
+  ) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order || order.courierId !== courierId) {
+      throw new NotFoundException('Pedido não encontrado');
+    }
+    if (!order.externalId) {
+      throw new BadRequestException('Este pedido não possui localizador de plataforma');
+    }
+    if (order.channel !== 'IFOOD' && order.channel !== 'NOVENTA_NOVE') {
+      throw new BadRequestException('Confirmação de plataforma disponível apenas para iFood e 99Food');
+    }
+
+    await this.confirmPlatform.confirm(
+      order.channel as 'IFOOD' | 'NOVENTA_NOVE',
+      order.externalId,
+      customerCode,
+    );
+
+    // Confirmação ok na plataforma → marca DELIVERED no nosso sistema
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: { status: OrderStatus.DELIVERED },
       include: { items: true },
     });
     this.realtime.emitOrderStatusChanged(updated);

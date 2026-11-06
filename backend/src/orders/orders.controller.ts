@@ -64,6 +64,18 @@ export class OrdersController {
     return this.orders.updateCourierStatus(id, req.user.sub, dto.status);
   }
 
+  /** Entregador confirma entrega na plataforma (iFood/99Food) com código do cliente. */
+  @Post('courier/:id/confirm-platform')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.DELIVERY)
+  confirmOnPlatform(
+    @Param('id') id: string,
+    @Body() dto: { customerCode: string },
+    @Req() req: Request & { user: { sub: string } },
+  ) {
+    return this.orders.confirmOnPlatform(id, req.user.sub, dto.customerCode);
+  }
+
   /** Fila do caixa (opcionalmente filtrada por status). */
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)

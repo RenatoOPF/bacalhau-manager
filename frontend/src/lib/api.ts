@@ -175,6 +175,7 @@ export interface CourierOrder {
   protocol: number;
   dailyNumber: number;
   status: OrderStatus;
+  channel: OrderChannel;
   customerName: string;
   customerPhone?: string | null;
   addressStreet: string;
@@ -185,6 +186,7 @@ export interface CourierOrder {
   courierFeeCents: number;
   notes?: string | null;
   createdAt: string;
+  externalId?: string | null;
   neighborhood?: { name: string } | null;
 }
 
@@ -1110,6 +1112,11 @@ export const api = {
     request<{ id: string }>(`/orders/courier/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
+    }),
+  confirmPlatform: (id: string, customerCode: string) =>
+    request<{ id: string }>(`/orders/courier/${id}/confirm-platform`, {
+      method: 'POST',
+      body: JSON.stringify({ customerCode }),
     }),
 
   // ---- Cupons ----
