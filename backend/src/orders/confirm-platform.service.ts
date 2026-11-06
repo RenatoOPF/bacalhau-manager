@@ -42,10 +42,11 @@ export class ConfirmPlatformService {
     });
 
     try {
-      const page = await browser.newPage();
-      await page.setUserAgent(
-        'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-      );
+      const context = await browser.newContext({
+        userAgent:
+          'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+      });
+      const page = await context.newPage();
 
       await page.goto('https://confirmacao-entrega-propria.ifood.com.br/', {
         waitUntil: 'networkidle',
@@ -112,10 +113,11 @@ export class ConfirmPlatformService {
     });
 
     try {
-      const page = await browser.newPage();
-      await page.setUserAgent(
-        'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-      );
+      const context = await browser.newContext({
+        userAgent:
+          'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+      });
+      const page = await context.newPage();
 
       await page.goto(
         'https://food-b-h5.99app.com/pt-BR/v2/confirmation-entrega',
