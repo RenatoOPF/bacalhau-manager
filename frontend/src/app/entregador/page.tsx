@@ -56,22 +56,10 @@ const PLATFORM_CHANNELS = new Set(['IFOOD', 'NOVENTA_NOVE']);
 
 function OrderCard({ order }: { order: CourierOrder }) {
   const qc = useQueryClient();
-  const [confirmCode, setConfirmCode] = useState('');
-  const [confirmDone, setConfirmDone] = useState(false);
-
   const update = useMutation({
     mutationFn: (status: DeliveryStatus) =>
       api.updateCourierStatus(order.id, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['courier-orders'] }),
-  });
-
-  const confirmPlatform = useMutation({
-    mutationFn: () => api.confirmPlatform(order.id, confirmCode),
-    onSuccess: () => {
-      setConfirmDone(true);
-      setConfirmCode('');
-      qc.invalidateQueries({ queryKey: ['courier-orders'] });
-    },
   });
 
   const nextStatus: DeliveryStatus | null =
@@ -91,11 +79,8 @@ function OrderCard({ order }: { order: CourierOrder }) {
         : null;
 
   const isPlatformOrder = PLATFORM_CHANNELS.has(order.channel) && !!order.externalId;
-  // Mostra a seção de confirmação quando o pedido está a caminho e é de plataforma
   const showPlatformConfirm =
-    isPlatformOrder &&
-    order.status === 'OUT_FOR_DELIVERY' &&
-    !confirmDone;
+    isPlatformOrder && order.status === 'OUT_FOR_DELIVERY';
 
   return (
     <div className={`rounded-xl border bg-white shadow-sm ${order.status === 'DELIVERED' ? 'opacity-60' : ''}`}>
@@ -162,63 +147,27 @@ function OrderCard({ order }: { order: CourierOrder }) {
         )}
       </div>
 
-      {/* Confirmação de plataforma — iFood (automático) */}
-      {showPlatformConfirm && order.channel === 'IFOOD' && (
+      {/* Confirmação de plataforma — link direto (iFood e 99Food) */}
+      {showPlatformConfirm && (
         <div className="border-t bg-brand-cream/40 px-4 py-3">
-          <p className="mb-2 text-xs font-semibold text-brand-ink/60">
-            Confirmar entrega no iFood
+          <p className="mb-1 text-xs font-semibold text-brand-ink/60">
+            Confirmar entrega no {CHANNEL_LABEL[order.channel]}
           </p>
-          <p className="mb-2 text-xs text-brand-ink/50">
-            Peça o código de confirmação ao cliente e digite abaixo.
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="tel"
-              inputMode="numeric"
-              maxLength={6}
-              placeholder="Código do cliente"
-              value={confirmCode}
-              onChange={(e) => setConfirmCode(e.target.value.replace(/\D/g, ''))}
-              className="w-full rounded-lg border border-brand-cream-dark bg-white px-3 py-2 text-center text-lg font-bold tracking-widest text-brand-ink outline-none focus:border-brand-red"
-            />
-            <button
-              onClick={() => confirmPlatform.mutate()}
-              disabled={confirmCode.length < 4 || confirmPlatform.isPending}
-              className="shrink-0 rounded-lg bg-brand-red px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-            >
-              {confirmPlatform.isPending ? '...' : 'Confirmar'}
-            </button>
-          </div>
-          {confirmPlatform.isError && (
-            <p className="mt-2 text-xs font-medium text-red-600">
-              {(confirmPlatform.error as Error)?.message ?? 'Erro ao confirmar. Tente novamente.'}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Confirmação de plataforma — 99Food (manual via link) */}
-      {showPlatformConfirm && order.channel === 'NOVENTA_NOVE' && (
-        <div className="border-t bg-brand-cream/40 px-4 py-3">
-          <p className="mb-2 text-xs font-semibold text-brand-ink/60">
-            Confirmar entrega no 99Food
+          <p className="mb-2 text-xs text-brand-ink/40">
+            Use o localizador <strong className="text-brand-ink/70">{order.externalId}</strong> no site da plataforma.
           </p>
           <a
-            href={`https://food-b-h5.99app.com/pt-BR/v2/confirmation-entrega`}
+            href={
+              order.channel === 'IFOOD'
+                ? 'https://confirmacao-entrega-propria.ifood.com.br/'
+                : 'https://food-b-h5.99app.com/pt-BR/v2/confirmation-entrega'
+            }
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 rounded-lg bg-brand-ink px-4 py-2.5 text-sm font-semibold text-white"
+            className="flex items-center justify-center gap-2 rounded-lg bg-brand-ink px-4 py-2.5 text-sm font-semibold text-white active:opacity-80"
           >
-            Abrir site do 99Food
-            <span className="text-xs opacity-70">→ localizador: {order.externalId}</span>
+            Abrir confirmação {CHANNEL_LABEL[order.channel]}
           </a>
-        </div>
-      )}
-
-      {/* Confirmação ok */}
-      {confirmDone && (
-        <div className="border-t bg-green-50 px-4 py-2 text-center text-sm font-semibold text-green-700">
-          ✓ Entrega confirmada no {CHANNEL_LABEL[order.channel]}
         </div>
       )}
 
