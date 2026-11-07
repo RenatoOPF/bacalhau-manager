@@ -6,6 +6,18 @@ import {
 
 type Channel = 'IFOOD' | 'NOVENTA_NOVE';
 
+const IFOOD_BASE =
+  'https://merchant-api.ifood.com.br/marketplace-delivery-handshake/order-available/localizers';
+
+const IFOOD_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+  'Accept': 'application/json',
+  'Content-Type': 'application/json',
+  'Origin': 'https://confirmacao-entrega-propria.ifood.com.br',
+  'Referer': 'https://confirmacao-entrega-propria.ifood.com.br/',
+};
+
 @Injectable()
 export class ConfirmPlatformService {
   private readonly logger = new Logger(ConfirmPlatformService.name);
@@ -26,177 +38,60 @@ export class ConfirmPlatformService {
     }
   }
 
-  /* ── iFood ──────────────────────────────────────────────────────────── */
+  /* ── iFood (HTTP direto — sem browser) ───────────────────────────────── */
 
   private async confirmIfood(localizador: string, customerCode: string) {
-    const { chromium } = await import('playwright');
-
-    const browser = await chromium.launch({
-      executablePath: process.env.CHROMIUM_PATH ?? undefined,
-      args: [
-        '--no-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--single-process',
-      ],
+    // Passo 1: validar localizador
+    const step1 = await fetch(`${IFOOD_BASE}/${localizador}`, {
+      headers: IFOOD_HEADERS,
     });
 
-    try {
-      const context = await browser.newContext({
-        userAgent:
-          'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-      });
-      const page = await context.newPage();
-
-      await page.goto('https://confirmacao-entrega-propria.ifood.com.br/', {
-        waitUntil: 'networkidle',
-        timeout: 30_000,
-      });
-
-      // Tela inicial: "Cheguei no local"
-      await page.click('.DeliveryConfirmation__footer-button');
-      await page.waitForURL('**/numero-pedido', { timeout: 10_000 });
-
-      // Passo 1: preencher localizador (8 inputs OTP tipo="tel")
-      await this.fillOtp(page, '.OptInput__input', localizador);
-      await page.click('button:has-text("Continuar")');
-
-      // Aguardar passo 2 ou mensagem de erro
-      await page.waitForSelector(
-        'button:has-text("Confirmar"), .OptInput__input, button:has-text("Tentar novamente")',
-        { timeout: 12_000 },
+    if (step1.status === 404) {
+      throw new BadRequestException(
+        'Localizador não encontrado no iFood. Verifique o número na comanda.',
       );
-
-      const hasRetry = await page.locator('button:has-text("Tentar novamente")').count();
-      if (hasRetry > 0) {
-        throw new BadRequestException(
-          'Localizador não encontrado no iFood. Verifique o número na comanda.',
-        );
-      }
-
-      // Passo 2: preencher código do cliente
-      await this.fillOtp(page, 'input[type="tel"]', customerCode);
-      await page.locator('button:has-text("Confirmar")').first().click();
-
-      // Aguardar resultado
-      await page.waitForSelector(
-        '[class*="success"], [class*="confirmed"], button:has-text("Tentar novamente"), button:has-text("Fechar")',
-        { timeout: 12_000 },
-      );
-
-      const hasError = await page.locator('button:has-text("Tentar novamente")').count();
-      if (hasError > 0) {
-        throw new BadRequestException(
-          'Código de confirmação incorreto. Peça ao cliente para verificar.',
-        );
-      }
-
-      this.logger.log(`[iFood] entrega confirmada — localizador ${localizador}`);
-    } finally {
-      await browser.close();
     }
+    if (!step1.ok) {
+      throw new BadRequestException(
+        `Erro ao consultar o iFood (${step1.status}). Tente novamente.`,
+      );
+    }
+
+    // Passo 2: confirmar com o código do cliente
+    const step2 = await fetch(
+      `${IFOOD_BASE}/${localizador}/confirmation-codes`,
+      {
+        method: 'POST',
+        headers: IFOOD_HEADERS,
+        body: JSON.stringify({ confirmationCode: customerCode }),
+      },
+    );
+
+    if (step2.status === 400 || step2.status === 422) {
+      throw new BadRequestException(
+        'Código de confirmação incorreto. Peça ao cliente para verificar.',
+      );
+    }
+    if (!step2.ok) {
+      const body = await step2.text().catch(() => '');
+      this.logger.warn(`[iFood] step2 falhou — status ${step2.status}: ${body}`);
+      throw new BadRequestException(
+        `Não foi possível confirmar no iFood (${step2.status}). Tente pelo app.`,
+      );
+    }
+
+    this.logger.log(`[iFood] entrega confirmada — localizador ${localizador}`);
   }
 
-  /* ── 99Food ─────────────────────────────────────────────────────────── */
+  /* ── 99Food ──────────────────────────────────────────────────────────── */
 
-  private async confirm99Food(localizador: string, customerCode: string) {
-    const { chromium } = await import('playwright');
-
-    const browser = await chromium.launch({
-      executablePath: process.env.CHROMIUM_PATH ?? undefined,
-      args: [
-        '--no-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--single-process',
-      ],
-    });
-
-    try {
-      const context = await browser.newContext({
-        userAgent:
-          'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-      });
-      const page = await context.newPage();
-
-      await page.goto(
-        'https://food-b-h5.99app.com/pt-BR/v2/confirmation-entrega',
-        { waitUntil: 'networkidle', timeout: 30_000 },
-      );
-
-      // Passo 1: preencher localizador (8 inputs text maxlength=1)
-      await page.waitForSelector('input[type="text"]', { timeout: 10_000 });
-      await this.fillOtp(page, 'input[type="text"]', localizador);
-      await page.click('button:has-text("Verificar e continuar")');
-
-      // Aguardar passo 2 ou erro
-      await page.waitForFunction(
-        () =>
-          document.body.innerText.includes('Etapa 2') ||
-          document.body.innerText.includes('não foi identificado'),
-        { timeout: 12_000 },
-      );
-
-      const bodyText = await page.evaluate(() => document.body.innerText);
-      if (bodyText.includes('não foi identificado')) {
-        throw new BadRequestException(
-          'Localizador não encontrado no 99Food. Verifique o número na comanda.',
-        );
-      }
-
-      // Passo 2: preencher código do cliente (também OTP inputs text)
-      // Aguarda novos inputs aparecerem (os do passo 1 são substituídos ou somem)
-      await page.waitForFunction(
-        () => {
-          const inputs = document.querySelectorAll('input[type="text"]');
-          return inputs.length > 0 && (inputs[0] as HTMLInputElement).value === '';
-        },
-        { timeout: 10_000 },
-      );
-      await this.fillOtp(page, 'input[type="text"]', customerCode);
-
-      // Clicar no botão de confirmação (texto pode variar)
-      const btn = page.locator('button').filter({
-        hasText: /Confirmar|Verificar e continuar|Enviar/i,
-      }).first();
-      await btn.click();
-
-      // Aguardar resultado
-      await page.waitForFunction(
-        () =>
-          document.body.innerText.includes('confirmad') ||
-          document.body.innerText.includes('sucesso') ||
-          document.body.innerText.includes('incorreto') ||
-          document.body.innerText.includes('inválido'),
-        { timeout: 12_000 },
-      );
-
-      const finalText = await page.evaluate(() => document.body.innerText);
-      if (
-        finalText.toLowerCase().includes('incorreto') ||
-        finalText.toLowerCase().includes('inválido') ||
-        finalText.toLowerCase().includes('não identificado')
-      ) {
-        throw new BadRequestException(
-          'Código de confirmação incorreto. Peça ao cliente para verificar.',
-        );
-      }
-
-      this.logger.log(`[99Food] entrega confirmada — localizador ${localizador}`);
-    } finally {
-      await browser.close();
-    }
-  }
-
-  /* ── Helper ─────────────────────────────────────────────────────────── */
-
-  private async fillOtp(page: import('playwright').Page, selector: string, value: string) {
-    const inputs = await page.$$(selector);
-    for (let i = 0; i < value.length && i < inputs.length; i++) {
-      await inputs[i].click();
-      // Playwright fill() substitui todo o conteúdo; type() appenda — usamos fill + delay
-      await inputs[i].fill(value[i]);
-      await page.waitForTimeout(60);
-    }
+  // A API do 99Food exige um token wsgsig gerado por JS client-side, o que
+  // requer browser headless. Fly.io não tem RAM suficiente para Chromium.
+  // Por ora, retorna erro orientando o entregador a confirmar pelo app.
+  private async confirm99Food(_localizador: string, _customerCode: string) {
+    throw new BadRequestException(
+      'Confirmação automática no 99Food ainda não está disponível. ' +
+        'Acesse food-b-h5.99app.com/pt-BR/v2/confirmation-entrega no seu celular.',
+    );
   }
 }

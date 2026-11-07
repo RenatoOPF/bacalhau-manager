@@ -8,19 +8,7 @@ RUN npx prisma generate
 RUN npm run build
 
 FROM node:20-alpine
-# Dependências do sistema para Chromium (usado na confirmação iFood/99Food)
-RUN apk add --no-cache \
-    openssl \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    udev \
-    xvfb
-ENV CHROMIUM_PATH=/usr/bin/chromium-browser
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+RUN apk add --no-cache openssl
 
 WORKDIR /app
 COPY --from=build /app/dist ./dist
