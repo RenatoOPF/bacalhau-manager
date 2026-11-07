@@ -54,6 +54,51 @@ function formatTime(iso: string) {
 
 const PLATFORM_CHANNELS = new Set(['IFOOD', 'NOVENTA_NOVE']);
 
+function LocalizadorBadge({ channel, externalId }: { channel: string; externalId: string }) {
+  const [copied, setCopied] = useState(false);
+
+  function copy() {
+    navigator.clipboard.writeText(externalId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="mx-4 mb-3 flex items-center justify-between gap-3 rounded-lg bg-brand-cream px-3 py-2">
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-ink/40">
+          Localizador {CHANNEL_LABEL[channel]}
+        </p>
+        <p className="text-lg font-bold tracking-widest text-brand-ink">
+          {externalId}
+        </p>
+      </div>
+      <button
+        onClick={copy}
+        className="flex items-center gap-1.5 rounded-lg border border-brand-ink/20 bg-white px-3 py-1.5 text-xs font-medium text-brand-ink transition-colors active:bg-brand-cream"
+      >
+        {copied ? (
+          <>
+            <svg className="h-3.5 w-3.5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-green-600">Copiado</span>
+          </>
+        ) : (
+          <>
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" />
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+            </svg>
+            Copiar
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
+
 function OrderCard({ order }: { order: CourierOrder }) {
   const qc = useQueryClient();
   const update = useMutation({
@@ -114,16 +159,7 @@ function OrderCard({ order }: { order: CourierOrder }) {
 
       {/* Localizador da plataforma */}
       {isPlatformOrder && (
-        <div className="mx-4 mb-3 flex items-center gap-3 rounded-lg bg-brand-cream px-3 py-2">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-ink/40">
-              Localizador {CHANNEL_LABEL[order.channel]}
-            </p>
-            <p className="text-lg font-bold tracking-widest text-brand-ink">
-              {order.externalId}
-            </p>
-          </div>
-        </div>
+        <LocalizadorBadge channel={order.channel} externalId={order.externalId!} />
       )}
 
       {/* Endereço */}
