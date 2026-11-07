@@ -177,7 +177,7 @@ function OrderCard({ order }: { order: CourierOrder }) {
           Repasse:{' '}
           <strong className="text-brand-ink">{formatBRL(order.courierFeeCents)}</strong>
         </span>
-        {nextStatus && nextLabel && !showPlatformConfirm && (
+        {nextStatus && nextLabel && (
           <button
             onClick={() => update.mutate(nextStatus)}
             disabled={update.isPending}
