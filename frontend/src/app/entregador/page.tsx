@@ -162,11 +162,11 @@ function OrderCard({ order }: { order: CourierOrder }) {
         )}
       </div>
 
-      {/* Confirmação de plataforma */}
-      {showPlatformConfirm && (
+      {/* Confirmação de plataforma — iFood (automático) */}
+      {showPlatformConfirm && order.channel === 'IFOOD' && (
         <div className="border-t bg-brand-cream/40 px-4 py-3">
           <p className="mb-2 text-xs font-semibold text-brand-ink/60">
-            Confirmar entrega no {CHANNEL_LABEL[order.channel]}
+            Confirmar entrega no iFood
           </p>
           <p className="mb-2 text-xs text-brand-ink/50">
             Peça o código de confirmação ao cliente e digite abaixo.
@@ -194,6 +194,24 @@ function OrderCard({ order }: { order: CourierOrder }) {
               {(confirmPlatform.error as Error)?.message ?? 'Erro ao confirmar. Tente novamente.'}
             </p>
           )}
+        </div>
+      )}
+
+      {/* Confirmação de plataforma — 99Food (manual via link) */}
+      {showPlatformConfirm && order.channel === 'NOVENTA_NOVE' && (
+        <div className="border-t bg-brand-cream/40 px-4 py-3">
+          <p className="mb-2 text-xs font-semibold text-brand-ink/60">
+            Confirmar entrega no 99Food
+          </p>
+          <a
+            href={`https://food-b-h5.99app.com/pt-BR/v2/confirmation-entrega`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 rounded-lg bg-brand-ink px-4 py-2.5 text-sm font-semibold text-white"
+          >
+            Abrir site do 99Food
+            <span className="text-xs opacity-70">→ localizador: {order.externalId}</span>
+          </a>
         </div>
       )}
 
