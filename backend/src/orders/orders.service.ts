@@ -365,6 +365,15 @@ export class OrdersService {
         channel: true,
         externalId: true,
         neighborhood: { select: { name: true } },
+        items: {
+          select: {
+            id: true,
+            itemName: true,
+            optionName: true,
+            quantity: true,
+            notes: true,
+          },
+        },
       },
     });
   }

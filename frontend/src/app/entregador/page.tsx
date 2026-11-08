@@ -100,6 +100,7 @@ function LocalizadorBadge({ channel, externalId }: { channel: string; externalId
 }
 
 function OrderCard({ order }: { order: CourierOrder }) {
+  const [showItems, setShowItems] = useState(false);
   const qc = useQueryClient();
   const update = useMutation({
     mutationFn: (status: DeliveryStatus) =>
@@ -182,6 +183,38 @@ function OrderCard({ order }: { order: CourierOrder }) {
           <p className="mt-1 italic text-brand-ink/60">Obs: {order.notes}</p>
         )}
       </div>
+
+      {/* Itens do pedido (expandível) */}
+      {order.items.length > 0 && (
+        <div className="border-t">
+          <button
+            onClick={() => setShowItems((v) => !v)}
+            className="flex w-full items-center justify-between px-4 py-2.5 text-sm text-brand-ink/60 hover:text-brand-ink"
+          >
+            <span>{order.items.length} {order.items.length === 1 ? 'item' : 'itens'}</span>
+            <svg
+              className={`h-4 w-4 transition-transform ${showItems ? 'rotate-180' : ''}`}
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {showItems && (
+            <ul className="border-t bg-brand-cream/30 px-4 py-2 text-sm">
+              {order.items.map((item) => (
+                <li key={item.id} className="flex gap-2 py-1">
+                  <span className="font-semibold text-brand-ink">{item.quantity}×</span>
+                  <span className="text-brand-ink">
+                    {item.itemName}
+                    {item.optionName && <span className="text-brand-ink/50"> · {item.optionName}</span>}
+                    {item.notes && <span className="block text-xs italic text-brand-ink/40">{item.notes}</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Confirmação de plataforma — link direto (iFood e 99Food) */}
       {showPlatformConfirm && (

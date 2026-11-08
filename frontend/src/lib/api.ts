@@ -188,6 +188,7 @@ export interface CourierOrder {
   createdAt: string;
   externalId?: string | null;
   neighborhood?: { name: string } | null;
+  items: { id: string; itemName: string; optionName?: string | null; quantity: number; notes?: string | null }[];
 }
 
 export type PaymentMethod = 'CASH' | 'PIX' | 'CARD' | 'ONLINE';
