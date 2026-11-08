@@ -248,6 +248,9 @@ export class PrintingService implements OnApplicationBootstrap, OnApplicationShu
   }
 
   private applyKitchenContent(p: ThermalPrinter, order: OrderWithItems): void {
+    p.println('');
+    p.println('');
+    p.println('');
     p.alignCenter();
     p.setTextQuadArea();
     for (const line of wrapWords(firstTwoNames(order.customerName).toUpperCase(), Math.floor(this.width / 2))) {
