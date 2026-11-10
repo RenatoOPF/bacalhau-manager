@@ -46,6 +46,15 @@ const QUICK: Record<StockUnit, number[]> = {
   un: [-6, -1, 1, 6, 12],
 };
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function exportStock(items: StockItem[]) {
   const active = items.filter((s) => s.active);
   const rows = active
@@ -63,9 +72,9 @@ function exportStock(items: StockItem[]) {
           ? 'background:#fffbeb'
           : '';
       return `<tr style="${rowStyle}">
-        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${s.name}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${escapeHtml(s.name)}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-variant-numeric:tabular-nums">
-          ${fmtQty(s.qty)} ${unitLabel(s.unit, s.qty)}
+          ${fmtQty(s.qty)} ${escapeHtml(unitLabel(s.unit, s.qty))}
         </td>
         <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center">${badge}</td>
       </tr>`;

@@ -60,7 +60,7 @@ export default function CardapioPage() {
     customerPhone: '',
     address: { street: '', number: '', cep: '', neighborhood: '', confirmed: false } as AddressValue,
     addressComplement: '',
-    paymentMethod: '' as 'CASH' | 'PIX' | '',
+    paymentMethod: '' as 'CASH' | 'PIX' | 'CARD' | '',
   });
 
   const [selectedNeighborhood, setSelectedNeighborhood] = useState<Neighborhood | null>(null);
@@ -174,6 +174,33 @@ export default function CardapioPage() {
     setCouponError('');
   };
 
+  // Revalida o cupom automaticamente quando o subtotal de itens muda no carrinho.
+  useEffect(() => {
+    if (!couponApplied) return;
+    if (totalCents === 0) {
+      setCouponApplied(null);
+      return;
+    }
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    let cancelled = false;
+    api
+      .validateCoupon(code, totalCents)
+      .then((res) => {
+        if (!cancelled) setCouponApplied(res);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          setCouponApplied(null);
+          setCouponError(e instanceof Error ? e.message : 'Cupom não aplicável para o novo valor');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCents]);
+
   const createOrder = useMutation({
     mutationFn: (payload: CreateOrderPayload) => api.createOrder(payload),
   });
@@ -231,8 +258,26 @@ export default function CardapioPage() {
 
   const submittingRef = useRef(false);
 
+  const phoneDigits = form.customerPhone.replace(/\D/g, '');
+  const missingCheckoutReason =
+    totalCents === 0
+      ? 'Adicione itens'
+      : !form.customerName.trim()
+        ? 'Informe seu nome'
+        : phoneDigits.length < 10
+          ? 'Informe seu telefone'
+          : !form.address.street.trim() || !form.address.number.trim()
+            ? 'Informe rua e número'
+            : !selectedNeighborhood
+              ? 'Selecione o bairro'
+              : !form.paymentMethod
+                ? 'Escolha o pagamento'
+                : null;
+
+  const canConfirmCheckout = !missingCheckoutReason && !createOrder.isPending;
+
   const submit = () => {
-    if (submittingRef.current) return;
+    if (submittingRef.current || !canConfirmCheckout || !form.paymentMethod) return;
     const items = Object.values(cart).map((line) => ({
       menuItemId: line.menuItemId,
       optionId: line.optionId,
@@ -242,20 +287,28 @@ export default function CardapioPage() {
     submittingRef.current = true;
     createOrder.mutate(
       {
-        customerName: form.customerName,
+        customerName: form.customerName.trim(),
         customerPhone: form.customerPhone,
-        addressStreet: form.address.street,
-        addressNumber: form.address.number,
-        addressComplement: form.addressComplement || undefined,
+        addressStreet: form.address.street.trim(),
+        addressNumber: form.address.number.trim(),
+        addressComplement: form.addressComplement.trim() || undefined,
         addressNeighborhood: (selectedNeighborhood?.name ?? form.address.neighborhood) || undefined,
         neighborhoodId: selectedNeighborhood?.id,
         addressLat: mapCoords ? parseFloat(mapCoords.lat) : undefined,
         addressLng: mapCoords ? parseFloat(mapCoords.lon) : undefined,
-        paymentMethod: (form.paymentMethod || 'PIX') as 'CASH' | 'PIX',
+        paymentMethod: form.paymentMethod,
         couponCode: couponApplied ? couponInput.trim().toUpperCase() : undefined,
         items,
       },
-      { onError: () => { submittingRef.current = false; } },
+      {
+        onSuccess: () => {
+          submittingRef.current = false;
+          setCart({});
+        },
+        onError: () => {
+          submittingRef.current = false;
+        },
+      },
     );
   };
 
@@ -427,12 +480,13 @@ export default function CardapioPage() {
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    paymentMethod: e.target.value as 'CASH' | 'PIX',
+                    paymentMethod: e.target.value as 'CASH' | 'PIX' | 'CARD',
                   })
                 }
               >
                 <option value="" disabled>Selecione a forma de pagamento</option>
                 <option value="PIX">PIX</option>
+                <option value="CARD">Cartão</option>
                 <option value="CASH">Dinheiro</option>
               </select>
               {createOrder.isError && (
@@ -518,10 +572,12 @@ export default function CardapioPage() {
                 </span>
                 <button
                   className="btn-gold px-5 py-2"
-                  disabled={totalCents === 0 || createOrder.isPending || (!!form.address.street && !selectedNeighborhood)}
+                  disabled={!canConfirmCheckout}
                   onClick={submit}
                 >
-                  {createOrder.isPending ? 'Enviando…' : !form.address.street || selectedNeighborhood ? 'Confirmar pedido' : 'Selecione o bairro'}
+                  {createOrder.isPending
+                    ? 'Enviando…'
+                    : (missingCheckoutReason ?? 'Confirmar pedido')}
                 </button>
               </div>
             </div>

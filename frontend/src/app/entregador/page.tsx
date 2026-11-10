@@ -2,7 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { api, formatBRL, type CourierOrder, CHANNEL_LABEL } from '@/lib/api';
+import { api, formatBRL, type CourierOrder, type OrderChannel, CHANNEL_LABEL } from '@/lib/api';
+import { isoToday, isoDaysAgo } from '@/lib/date';
 import { formatPhone } from '@/lib/phone';
 
 type DeliveryStatus = 'OUT_FOR_DELIVERY' | 'DELIVERED';
@@ -26,14 +27,8 @@ const STATUS_COLOR: Record<string, string> = {
 
 const DONE = new Set(['DELIVERED', 'CANCELED']);
 
-function isoToday(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function isoWeekStart(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 6);
-  return d.toISOString().slice(0, 10);
+  return isoDaysAgo(6);
 }
 
 function buildAddress(order: CourierOrder): string {
@@ -54,7 +49,7 @@ function formatTime(iso: string) {
 
 const PLATFORM_CHANNELS = new Set(['IFOOD', 'NOVENTA_NOVE']);
 
-function LocalizadorBadge({ channel, externalId }: { channel: string; externalId: string }) {
+function LocalizadorBadge({ channel, externalId }: { channel: OrderChannel; externalId: string }) {
   const [copied, setCopied] = useState(false);
 
   function copy() {
@@ -205,8 +200,8 @@ function OrderCard({ order }: { order: CourierOrder }) {
                 <li key={item.id} className="flex gap-2 py-1">
                   <span className="font-semibold text-brand-ink">{item.quantity}×</span>
                   <span className="text-brand-ink">
-                    {item.itemName}
-                    {item.optionName && <span className="text-brand-ink/50"> · {item.optionName}</span>}
+                    {item.nameSnapshot}
+                    {item.optionNameSnapshot && <span className="text-brand-ink/50"> · {item.optionNameSnapshot}</span>}
                     {item.notes && <span className="block text-xs italic text-brand-ink/40">{item.notes}</span>}
                   </span>
                 </li>

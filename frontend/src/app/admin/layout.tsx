@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { api, auth, type Employee } from '@/lib/api';
 import { AdminUserProvider } from './user-context';
@@ -47,6 +48,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       });
   }, [router]);
 
+  useEffect(() => {
+    if (ready && user && user.role !== 'ADMIN' && pathname?.startsWith('/admin/funcionarios')) {
+      router.replace('/admin');
+    }
+  }, [ready, user, pathname, router]);
+
   const logout = () => {
     auth.clear();
     router.replace('/login');
@@ -70,7 +77,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-20 border-b-4 border-brand-gold bg-brand-red">
         <div className="mx-auto max-w-5xl px-3 pt-3">
           <div className="flex items-center gap-3">
-            <a href="/admin" className="flex min-w-0 items-center gap-2">
+            <Link href="/admin" className="flex min-w-0 items-center gap-2">
               <img
                 src="/logo.jpeg"
                 alt="Restaurante Bacalhau & Cia"
@@ -79,7 +86,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <span className="truncate font-display text-lg font-bold text-white">
                 Bacalhau &amp; Cia
               </span>
-            </a>
+            </Link>
             <span className="ml-auto hidden text-sm text-brand-cream/80 sm:inline">
               {user.name} ({user.role})
             </span>
@@ -93,17 +100,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           {/* Navegação rolável no celular, igual à barra de categorias. */}
           <nav className="-mx-3 mt-2 flex gap-1 overflow-x-auto px-3 pb-2 text-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {NAV.map((n) => (
-              <a key={n.href} href={n.href} className={navClass(n.href)}>
+              <Link key={n.href} href={n.href} className={navClass(n.href)}>
                 {n.label}
-              </a>
+              </Link>
             ))}
             {user.role === 'ADMIN' && (
-              <a
+              <Link
                 href="/admin/funcionarios"
                 className={navClass('/admin/funcionarios')}
               >
                 Funcionários
-              </a>
+              </Link>
             )}
           </nav>
         </div>

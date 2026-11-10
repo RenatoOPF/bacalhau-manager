@@ -3,19 +3,17 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
-import { api, formatBRL, type PaymentMethod } from '@/lib/api';
+import { api, auth, formatBRL, type PaymentMethod } from '@/lib/api';
+import { isoToday as today } from '@/lib/date';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:3001';
 
 const METHOD_LABEL: Record<string, string> = {
   CASH: 'Dinheiro',
   PIX: 'PIX',
+  CARD: 'Cartão',
   ONLINE: 'Online (app)',
 };
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export default function CaixaFinanceiroPage() {
   const qc = useQueryClient();
@@ -42,7 +40,10 @@ export default function CaixaFinanceiroPage() {
 
   // Novos pedidos / mudanças de status afetam os pendentes e o fechamento.
   useEffect(() => {
-    const socket = io(WS_URL, { transports: ['websocket'] });
+    const socket = io(WS_URL, {
+      transports: ['websocket'],
+      auth: { token: auth.getToken() },
+    });
     socket.on('order:created', refreshAll);
     socket.on('order:status', refreshAll);
     return () => {
@@ -103,6 +104,13 @@ export default function CaixaFinanceiroPage() {
               >
                 Recebi em PIX
               </button>
+              <button
+                className="btn-primary px-3 py-1 text-sm"
+                disabled={pay.isPending}
+                onClick={() => pay.mutate({ id: o.id, method: 'CARD' })}
+              >
+                Recebi em cartão
+              </button>
             </div>
           ))}
           {(pending ?? []).length === 0 && (
@@ -146,7 +154,7 @@ export default function CaixaFinanceiroPage() {
           zerar antes do fim do dia.
         </p>
 
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="card border-l-4 border-l-brand-gold p-4">
             <p className="text-sm text-brand-ink/60">Total recebido</p>
             <p className="font-display text-2xl font-bold text-brand-red">
@@ -156,7 +164,7 @@ export default function CaixaFinanceiroPage() {
               {summary?.count ?? 0} pedido(s)
             </p>
           </div>
-          {(['CASH', 'PIX', 'ONLINE'] as const).map((m) => (
+          {(['CASH', 'PIX', 'CARD', 'ONLINE'] as const).map((m) => (
             <div key={m} className="card p-4">
               <p className="text-sm text-brand-ink/60">{METHOD_LABEL[m]}</p>
               <p className="font-display text-2xl font-bold">

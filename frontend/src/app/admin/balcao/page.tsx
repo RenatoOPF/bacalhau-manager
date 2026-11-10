@@ -148,14 +148,20 @@ function AddItemModal({
 
 function CustomerSearch({ onSelect }: { onSelect: (customer: Customer | null) => void }) {
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Customer | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
   const { data: results = [] } = useQuery<Customer[]>({
-    queryKey: ['customers-search', query],
-    queryFn: () => api.listCustomers(query),
-    enabled: query.trim().length >= 1,
+    queryKey: ['customers-search', debouncedQuery],
+    queryFn: () => api.listCustomers(debouncedQuery),
+    enabled: debouncedQuery.length >= 1,
   });
 
   useEffect(() => {
@@ -282,7 +288,7 @@ export default function BalcaoPage() {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'PIX'>('CASH');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'PIX' | 'CARD'>('CASH');
   const [trocoInput, setTrocoInput] = useState('');
   const [discountInput, setDiscountInput] = useState('');
   const [success, setSuccess] = useState<{ dailyNumber: number; protocol: number } | null>(null);
@@ -502,7 +508,8 @@ export default function BalcaoPage() {
         phone: customerPhone.trim() || undefined,
       }),
     onSuccess: (c) => {
-      setSelectedCustomer(c as unknown as Customer);
+      const cust = c as unknown as Customer;
+      setSelectedCustomer({ ...cust, addresses: cust.addresses ?? [] });
       qc.invalidateQueries({ queryKey: ['customers-search'] });
     },
   });
@@ -817,8 +824,8 @@ export default function BalcaoPage() {
             />
 
             {/* Método de pagamento */}
-            <div className="grid grid-cols-2 gap-2">
-              {(['CASH', 'PIX'] as const).map((m) => (
+            <div className="grid grid-cols-3 gap-2">
+              {(['CASH', 'PIX', 'CARD'] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => { setPaymentMethod(m); setTrocoInput(''); }}
@@ -828,7 +835,7 @@ export default function BalcaoPage() {
                       : 'border-brand-cream-dark text-brand-ink/50'
                   }`}
                 >
-                  {m === 'CASH' ? 'Dinheiro' : 'PIX'}
+                  {m === 'CASH' ? 'Dinheiro' : m === 'PIX' ? 'PIX' : 'Cartão'}
                 </button>
               ))}
             </div>
@@ -894,9 +901,10 @@ function ItemRow({
   const hasOptions = (item.options ?? []).length > 0;
   const priceRange = hasOptions
     ? (() => {
-        const prices = (item.options ?? [])
-          .filter((o) => o.available)
-          .map((o) => o.priceCents);
+        const avail = (item.options ?? []).filter((o) => o.available);
+        const source = avail.length > 0 ? avail : (item.options ?? []);
+        const prices = source.map((o) => o.priceCents);
+        if (prices.length === 0) return formatBRL(item.priceCents);
         const min = Math.min(...prices);
         const max = Math.max(...prices);
         return min === max ? formatBRL(min) : `${formatBRL(min)} – ${formatBRL(max)}`;

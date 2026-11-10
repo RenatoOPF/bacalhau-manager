@@ -33,7 +33,11 @@ export default function AcompanhamentoPage({
 
   // Atualiza em tempo real quando o caixa muda o status deste pedido.
   useEffect(() => {
+    if (!Number.isFinite(protocol)) return;
     const socket = io(WS_URL, { transports: ['websocket'] });
+    socket.on('connect', () => {
+      socket.emit('order:subscribe', { protocol });
+    });
     socket.on('order:status', (order: { protocol: number }) => {
       if (order?.protocol === protocol) {
         qc.invalidateQueries({ queryKey: ['track', protocol] });

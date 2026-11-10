@@ -11,6 +11,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { CouponsService } from './coupons.service';
 import { CreateCouponDto } from './dto/create-coupon.dto';
@@ -21,6 +22,7 @@ export class CouponsController {
 
   /** Valida um cupom e retorna o desconto — endpoint público usado no checkout. */
   @Get('validate/:code')
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   async validate(
     @Param('code') code: string,
     @Query('total') total: string,

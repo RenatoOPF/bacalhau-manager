@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -160,6 +164,26 @@ export class MenuService {
     return { id };
   }
 
+  async updateItemImage(id: string, newFilename: string, imageUrl: string) {
+    const uploadDir =
+      process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'uploads');
+    const item = await this.prisma.menuItem.findUnique({
+      where: { id },
+      select: { imageUrl: true },
+    });
+    if (!item) {
+      fs.rmSync(path.join(uploadDir, 'menu', newFilename), { force: true });
+      throw new NotFoundException('Item não encontrado');
+    }
+    if (item.imageUrl) {
+      const oldClean = item.imageUrl.split('?')[0].replace(/^\/uploads\//, '');
+      if (oldClean && oldClean !== `menu/${newFilename}`) {
+        fs.rmSync(path.join(uploadDir, oldClean), { force: true });
+      }
+    }
+    return this.updateItem(id, { imageUrl });
+  }
+
   async deleteItemImage(id: string) {
     const item = await this.prisma.menuItem.findUnique({
       where: { id },
@@ -167,7 +191,8 @@ export class MenuService {
     });
     if (item?.imageUrl) {
       const uploadDir = process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'uploads');
-      const filePath = path.join(uploadDir, item.imageUrl.replace('/uploads/', ''));
+      const cleanRel = item.imageUrl.split('?')[0].replace(/^\/uploads\//, '');
+      const filePath = path.join(uploadDir, cleanRel);
       fs.rmSync(filePath, { force: true });
     }
     await this.prisma.menuItem.update({ where: { id }, data: { imageUrl: null } });

@@ -64,6 +64,7 @@ function firstTwoNames(name: string): string {
 const PAYMENT_LABEL: Record<string, string> = {
   CASH: 'Dinheiro',
   PIX: 'PIX',
+  CARD: 'Cartão',
   ONLINE: 'Online',
 };
 
@@ -204,6 +205,10 @@ export class PrintingService implements OnApplicationBootstrap, OnApplicationShu
       p.alignLeft();
     }
     p.drawLine();
+    if (order.discountCents > 0) {
+      const code = order.couponCode ? ` (${order.couponCode})` : '';
+      p.println(`Desconto${code}: -${formatBRL(order.discountCents)}`);
+    }
     if (order.deliveryFeeCents > 0) {
       p.println(`Taxa de entrega: ${formatBRL(order.deliveryFeeCents)}`);
     }

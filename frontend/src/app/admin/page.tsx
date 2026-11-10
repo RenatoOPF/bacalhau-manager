@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
+import { formatPhone } from '@/lib/phone';
 import {
   api,
+  auth,
   formatBRL,
   printLabel,
   CHANNEL_LABEL,
@@ -88,7 +91,10 @@ export default function CaixaPage() {
 
   // Tempo real: novos pedidos, mudanças de status e confirmações de impressão.
   useEffect(() => {
-    const socket = io(WS_URL, { transports: ['websocket'] });
+    const socket = io(WS_URL, {
+      transports: ['websocket'],
+      auth: { token: auth.getToken() },
+    });
     const refresh = () => qc.invalidateQueries({ queryKey: ['orders'] });
     socket.on('connect', refresh);
     socket.on('order:created', refresh);
@@ -129,9 +135,9 @@ export default function CaixaPage() {
           >
             {(printConfig?.enabled ?? true) ? 'Impressao: ON' : 'Impressao: OFF'}
           </button>
-          <a href="/admin/balcao" className="btn-primary px-4 py-2 text-sm">
+          <Link href="/admin/balcao" className="btn-primary px-4 py-2 text-sm">
             + Novo pedido
-          </a>
+          </Link>
         </div>
       </div>
 
@@ -291,12 +297,23 @@ function OrderCard({
         </span>
       </div>
 
-      <p className="mt-2 text-sm font-medium">{order.customerName}</p>
+      <p className="mt-2 text-sm font-medium">
+        {order.customerName}
+        {order.customerPhone && (
+          <span className="ml-2 text-xs font-normal text-brand-ink/60">
+            {formatPhone(order.customerPhone)}
+          </span>
+        )}
+      </p>
       <p className="text-sm text-brand-ink/60">
         {order.addressStreet}
         {order.addressNumber ? `, ${order.addressNumber}` : ''}
+        {order.addressComplement ? ` (${order.addressComplement})` : ''}
         {order.addressNeighborhood ? ` — ${order.addressNeighborhood}` : ''}
       </p>
+      {order.addressReference && (
+        <p className="text-xs text-brand-ink/50">Ref: {order.addressReference}</p>
+      )}
 
       <ul className="mt-2 text-sm">
         {order.items.map((it) => (
@@ -321,6 +338,11 @@ function OrderCard({
 
       <p className="mt-2 text-sm font-semibold">
         {formatBRL(order.totalCents)} · {PAYMENT_LABEL[order.paymentMethod]}
+        {(order.discountCents ?? 0) > 0 && (
+          <span className="ml-1.5 text-xs font-normal text-green-700">
+            (desc. -{formatBRL(order.discountCents!)})
+          </span>
+        )}
       </p>
       {order.courier && (
         <p className="text-sm text-brand-ink/60">

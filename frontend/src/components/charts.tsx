@@ -1,5 +1,7 @@
 'use client';
 
+import { localIsoDate } from '@/lib/date';
+
 /**
  * Gráficos leves em SVG puro (sem dependência externa), no visual da marca.
  * Todos recebem valores já agregados e cuidam só do desenho/escala.
@@ -473,7 +475,7 @@ export function RevenueDayGrid({
   const cur = new Date(from + 'T12:00:00');
   const end = new Date(to + 'T12:00:00');
   while (cur <= end) {
-    allDates.push(cur.toISOString().slice(0, 10));
+    allDates.push(localIsoDate(cur));
     cur.setDate(cur.getDate() + 1);
   }
   const totalDays = allDates.length;

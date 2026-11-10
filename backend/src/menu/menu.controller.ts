@@ -31,6 +31,13 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 
+const MIME_TO_EXT: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
+
 @Controller('menu')
 export class MenuController {
   constructor(private readonly menu: MenuService) {}
@@ -92,12 +99,17 @@ export class MenuController {
           cb(null, dir);
         },
         filename: (req, file, cb) => {
-          const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-          cb(null, `${(req as unknown as { params: { id: string } }).params.id}${ext}`);
+          const rawId = (req as unknown as { params: { id: string } }).params.id;
+          if (!/^[\w-]+$/.test(rawId)) {
+            cb(new BadRequestException('ID de item inválido'), '');
+            return;
+          }
+          const ext = MIME_TO_EXT[file.mimetype] ?? '.jpg';
+          cb(null, `${rawId}${ext}`);
         },
       }),
       fileFilter: (_req, file, cb) => {
-        if (/^image\/(jpeg|jpg|png|webp)$/.test(file.mimetype)) {
+        if (file.mimetype in MIME_TO_EXT) {
           cb(null, true);
         } else {
           cb(new BadRequestException('Apenas JPEG, PNG ou WebP'), false);
@@ -111,8 +123,8 @@ export class MenuController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('Nenhum arquivo enviado');
-    const imageUrl = `/uploads/menu/${file.filename}`;
-    return this.menu.updateItem(id, { imageUrl });
+    const imageUrl = `/uploads/menu/${file.filename}?v=${Date.now()}`;
+    return this.menu.updateItemImage(id, file.filename, imageUrl);
   }
 
   @Delete('items/:id/image')

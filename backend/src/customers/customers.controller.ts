@@ -9,7 +9,10 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { CustomersService } from './customers.service';
 import {
   CreateAddressDto,
@@ -18,15 +21,18 @@ import {
   UpdateCustomerDto,
 } from './dto/customer.dto';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN, Role.MANAGER)
 @Controller('customers')
 export class CustomersController {
   constructor(private readonly svc: CustomersService) {}
 
   @Get()
   list(@Query('search') search?: string, @Query('limit') limit?: string) {
-    const take = limit ? Math.min(parseInt(limit, 10) || 20, 50) : 20;
-    return search?.trim() ? this.svc.search(search.trim(), take) : this.svc.list();
+    const take = limit ? Math.min(parseInt(limit, 10) || 20, 100) : 50;
+    return search?.trim()
+      ? this.svc.search(search.trim(), take)
+      : this.svc.list(take);
   }
 
   @Get(':id')

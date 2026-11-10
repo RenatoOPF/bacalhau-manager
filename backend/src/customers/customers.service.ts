@@ -53,10 +53,11 @@ export class CustomersService {
     });
   }
 
-  list() {
+  list(take = 50) {
     return this.prisma.customer.findMany({
       select: CUSTOMER_BASE,
       orderBy: { name: 'asc' },
+      take,
     });
   }
 

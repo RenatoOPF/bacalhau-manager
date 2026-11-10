@@ -1,9 +1,15 @@
 import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import { IsBoolean } from 'class-validator';
 import { Role } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { PrintConfigService } from './print-config.service';
+
+export class SetPrintConfigDto {
+  @IsBoolean()
+  enabled: boolean;
+}
 
 @Controller('config/printing')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -17,7 +23,7 @@ export class PrintConfigController {
   }
 
   @Patch()
-  set(@Body() body: { enabled: boolean }) {
+  set(@Body() body: SetPrintConfigDto) {
     this.config.setEnabled(body.enabled);
     return { enabled: this.config.isEnabled() };
   }

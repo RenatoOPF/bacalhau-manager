@@ -41,8 +41,9 @@ export class ConfirmPlatformService {
   /* ── iFood (HTTP direto — sem browser) ───────────────────────────────── */
 
   private async confirmIfood(localizador: string, customerCode: string) {
+    const safeLoc = encodeURIComponent(localizador.trim());
     // Passo 1: validar localizador
-    const step1 = await fetch(`${IFOOD_BASE}/${localizador}`, {
+    const step1 = await fetch(`${IFOOD_BASE}/${safeLoc}`, {
       headers: IFOOD_HEADERS,
     });
 
@@ -59,7 +60,7 @@ export class ConfirmPlatformService {
 
     // Passo 2: confirmar com o código do cliente
     const step2 = await fetch(
-      `${IFOOD_BASE}/${localizador}/confirmation-codes`,
+      `${IFOOD_BASE}/${safeLoc}/confirmation-codes`,
       {
         method: 'POST',
         headers: IFOOD_HEADERS,

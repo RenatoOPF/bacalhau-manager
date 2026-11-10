@@ -70,6 +70,7 @@ export class CashService {
   transactions(from?: string, to?: string) {
     const where: Prisma.OrderWhereInput = {
       paymentStatus: PaymentStatus.PAID,
+      status: { not: 'CANCELED' },
     };
     const paidAt = periodFilter(from, to);
     if (paidAt) where.paidAt = paidAt;
@@ -95,6 +96,7 @@ export class CashService {
     const paid = await this.prisma.order.findMany({
       where: {
         paymentStatus: PaymentStatus.PAID,
+        status: { not: 'CANCELED' },
         paidAt: { gte: start, lt: end },
       },
       select: { paymentMethod: true, totalCents: true },

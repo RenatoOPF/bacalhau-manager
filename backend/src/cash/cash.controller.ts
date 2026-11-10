@@ -13,6 +13,7 @@ import { PayOrderDto } from './dto/pay-order.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { localDay } from '../common/date-range';
 
 @Controller('cash')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -47,7 +48,7 @@ export class CashController {
   /** Fechamento diário (totais por modalidade). Data padrão: hoje. */
   @Get('summary')
   summary(@Query('date') date?: string) {
-    const day = date ?? new Date().toISOString().slice(0, 10);
+    const day = date ?? localDay(new Date());
     return this.cash.dailySummary(day);
   }
 }

@@ -4,7 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { OrderStatus } from '@prisma/client';
+import { OrderChannel, OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -30,7 +30,8 @@ export class OrdersService {
   ) {}
 
   /** Cria o pedido, enfileira a impressão e notifica o caixa em tempo real. */
-  async create(dto: CreateOrderDto) {
+  async create(dto: CreateOrderDto, opts?: { isStaff?: boolean }) {
+    const isStaff = opts?.isStaff ?? false;
     // Busca os itens do cardápio (com opções) para validar e congelar preços.
     const menuItems = await this.prisma.menuItem.findMany({
       where: { id: { in: dto.items.map((i) => i.menuItemId) } },
@@ -100,44 +101,52 @@ export class OrdersService {
     const customerPhone = dto.customerPhone?.replace(/\D/g, '') || undefined;
 
     // Cupom: tem precedência sobre discountCents manual quando informado.
-    let discountCents = dto.discountCents ?? 0;
+    // Desconto manual (discountCents) e customerId direto só são aceitos quando
+    // enviados por um operador autenticado (ADMIN / MANAGER no balcão).
+    let discountCents = isStaff ? (dto.discountCents ?? 0) : 0;
+    const customerId = isStaff ? (dto.customerId ?? null) : null;
     let couponId: string | null = null;
     let couponCode: string | null = null;
     if (dto.couponCode) {
       const result = await this.coupons.validate(dto.couponCode, totalCents);
+      await this.coupons.claimCoupon(result.coupon.id, result.coupon.maxUses);
       discountCents = result.discountCents;
       couponId = result.coupon.id;
       couponCode = result.coupon.code;
     }
 
-    const order = await this.prisma.order.create({
-      data: {
-        dailyNumber,
-        customerId: dto.customerId ?? null,
-        customerName: dto.customerName,
-        customerPhone,
-        addressStreet: dto.addressStreet ?? 'Balcão',
-        addressNumber: dto.addressNumber,
-        addressComplement: dto.addressComplement,
-        addressNeighborhood: dto.addressNeighborhood ?? neighborhoodName,
-        addressReference: dto.addressReference,
-        addressLat: dto.addressLat ?? null,
-        addressLng: dto.addressLng ?? null,
-        neighborhoodId: dto.neighborhoodId || null,
-        paymentMethod: dto.paymentMethod,
-        notes: dto.notes,
-        totalCents: Math.max(0, totalCents + deliveryFeeCents - discountCents),
-        deliveryFeeCents,
-        discountCents,
-        couponId,
-        couponCode,
-        items: { create: itemsData },
-      },
-      include: { items: true },
-    });
-
-    if (couponId) {
-      await this.coupons.incrementUsed(couponId);
+    let order;
+    try {
+      order = await this.prisma.order.create({
+        data: {
+          dailyNumber,
+          customerId,
+          customerName: dto.customerName,
+          customerPhone,
+          addressStreet: dto.addressStreet ?? 'Balcão',
+          addressNumber: dto.addressNumber,
+          addressComplement: dto.addressComplement,
+          addressNeighborhood: dto.addressNeighborhood ?? neighborhoodName,
+          addressReference: dto.addressReference,
+          addressLat: dto.addressLat ?? null,
+          addressLng: dto.addressLng ?? null,
+          neighborhoodId: dto.neighborhoodId || null,
+          paymentMethod: dto.paymentMethod,
+          notes: dto.notes,
+          totalCents: Math.max(0, totalCents + deliveryFeeCents - discountCents),
+          deliveryFeeCents,
+          discountCents,
+          couponId,
+          couponCode,
+          items: { create: itemsData },
+        },
+        include: { items: true },
+      });
+    } catch (err) {
+      if (couponId) {
+        await this.coupons.releaseCoupon(couponId).catch(() => undefined);
+      }
+      throw err;
     }
 
     if (this.printConfig.isEnabled()) {
@@ -150,7 +159,7 @@ export class OrdersService {
 
     // Auto-salva o cliente quando o pedido vem da plataforma pública.
     // Condição: telefone presente e nenhum customerId já vinculado.
-    if (!dto.customerId && customerPhone) {
+    if (!customerId && customerPhone) {
       await this.autoSaveCustomer(order.id, { ...dto, customerPhone }).catch((e) =>
         this.logger.warn(`Auto-save de cliente falhou: ${e?.message}`),
       );
@@ -280,6 +289,12 @@ export class OrdersService {
 
   /** Atualização de status feita pelo caixa/gerente (não há tela da cozinha no MVP). */
   async updateStatus(id: string, status: OrderStatus) {
+    const prev = await this.prisma.order.findUnique({
+      where: { id },
+      select: { status: true, couponId: true },
+    });
+    if (!prev) throw new NotFoundException('Pedido não encontrado');
+
     const order = await this.prisma.order.update({
       where: { id },
       data: { status },
@@ -290,6 +305,9 @@ export class OrdersService {
         order.id,
         `Estorno — pedido #${order.protocol} cancelado`,
       );
+      if (prev.status !== OrderStatus.CANCELED && prev.couponId) {
+        await this.coupons.releaseCoupon(prev.couponId);
+      }
     }
     this.realtime.emitOrderStatusChanged(order);
     return order;
@@ -311,10 +329,32 @@ export class OrdersService {
       });
       if (n) {
         if (courierFeeCents === undefined) courierFeeCents = n.courierFeeCents;
-        if (deliveryFeeCents === undefined)
+        if (
+          deliveryFeeCents === undefined &&
+          existing.channel === OrderChannel.OWN
+        ) {
           deliveryFeeCents = n.customerFeeCents;
+        }
       }
+    } else if (dto.neighborhoodId === null && dto.courierId === null) {
+      if (courierFeeCents === undefined) courierFeeCents = 0;
+      if (
+        deliveryFeeCents === undefined &&
+        existing.channel === OrderChannel.OWN
+      ) {
+        deliveryFeeCents = 0;
+      }
+    } else if (dto.courierId === null && courierFeeCents === undefined) {
+      courierFeeCents = 0;
     }
+
+    const nextTotalCents =
+      deliveryFeeCents !== undefined
+        ? Math.max(
+            0,
+            existing.totalCents - existing.deliveryFeeCents + deliveryFeeCents,
+          )
+        : undefined;
 
     const order = await this.prisma.order.update({
       where: { id },
@@ -325,6 +365,7 @@ export class OrdersService {
           : {}),
         ...(courierFeeCents !== undefined ? { courierFeeCents } : {}),
         ...(deliveryFeeCents !== undefined ? { deliveryFeeCents } : {}),
+        ...(nextTotalCents !== undefined ? { totalCents: nextTotalCents } : {}),
       },
       include: { items: true },
     });
@@ -368,8 +409,8 @@ export class OrdersService {
         items: {
           select: {
             id: true,
-            itemName: true,
-            optionName: true,
+            nameSnapshot: true,
+            optionNameSnapshot: true,
             quantity: true,
             notes: true,
           },
@@ -448,6 +489,9 @@ export class OrdersService {
       order.id,
       `Estorno — pedido #${order.protocol} excluído`,
     );
+    if (order.status !== OrderStatus.CANCELED && order.couponId) {
+      await this.coupons.releaseCoupon(order.couponId);
+    }
     await this.prisma.order.delete({ where: { id: order.id } });
     return { deleted: true, protocol: order.protocol };
   }

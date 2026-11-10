@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { isoToday, isoDaysAgo, localIsoDate, monthRange, weekRange } from '@/lib/date';
 import {
   api,
   formatBRL,
@@ -27,30 +28,6 @@ const CHANNEL_COLORS: Record<string, string> = {
 
 /* ----------------------------- Date helpers ----------------------------- */
 
-function isoToday(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function isoDaysAgo(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
-}
-
-function weekRange(offset: number): { from: string; to: string } {
-  const d = new Date();
-  const day = d.getDay();
-  const diffToMon = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diffToMon + offset * 7);
-  const mon = new Date(d);
-  const sun = new Date(d);
-  sun.setDate(sun.getDate() + 6);
-  return {
-    from: mon.toISOString().slice(0, 10),
-    to: sun.toISOString().slice(0, 10),
-  };
-}
-
 function weekLabel(offset: number): string {
   const { from, to } = weekRange(offset);
   const fmt = (iso: string) => {
@@ -61,22 +38,10 @@ function weekLabel(offset: number): string {
   return `${fmt(from)} – ${fmt(to)} ${year}`;
 }
 
-function monthRange(offset: number): { from: string; to: string } {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = d.getMonth() + offset;
-  const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-  return {
-    from: first.toISOString().slice(0, 10),
-    to: last.toISOString().slice(0, 10),
-  };
-}
-
 function shiftYear(iso: string, years: number): string {
   const d = new Date(iso + 'T12:00:00');
   d.setFullYear(d.getFullYear() + years);
-  return d.toISOString().slice(0, 10);
+  return localIsoDate(d);
 }
 
 function monthLabel(offset: number): string {
@@ -199,7 +164,7 @@ export default function RelatoriosPage() {
             onClick={() => {
               const d = new Date(dayDate + 'T12:00:00');
               d.setDate(d.getDate() - 1);
-              setDayDate(d.toISOString().slice(0, 10));
+              setDayDate(localIsoDate(d));
             }}
             className="flex h-7 w-7 items-center justify-center rounded-full border border-brand-ink/20 text-sm hover:bg-brand-cream-dark"
           >
@@ -216,7 +181,7 @@ export default function RelatoriosPage() {
             onClick={() => {
               const d = new Date(dayDate + 'T12:00:00');
               d.setDate(d.getDate() + 1);
-              const next = d.toISOString().slice(0, 10);
+              const next = localIsoDate(d);
               if (next <= isoToday()) setDayDate(next);
             }}
             disabled={dayDate >= isoToday()}
@@ -1032,7 +997,7 @@ function UpcomingSection({ data }: { data: UpcomingExpense[] }) {
     const d = new Date(e.dueDate + 'T12:00:00');
     const mon = new Date(d);
     mon.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // segunda-feira da semana
-    const key = mon.toISOString().slice(0, 10);
+    const key = localIsoDate(mon);
     const bucket = byWeek.get(key) ?? [];
     bucket.push(e);
     byWeek.set(key, bucket);

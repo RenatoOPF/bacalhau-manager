@@ -96,25 +96,41 @@ export class CaptureService implements OnModuleInit, OnModuleDestroy {
       );
       return;
     }
-    try {
-      const res = await fetch(`${this.ingestUrl}/integrations/capture`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-integration-key': this.ingestKey,
-        },
-        body: JSON.stringify({ raw: buf.toString('base64') }),
-      });
-      const data = (await res.json().catch(() => ({}))) as Record<
-        string,
-        unknown
-      >;
-      this.logger.log(`Ingestão: HTTP ${res.status} ${JSON.stringify(data)}`);
-    } catch (e) {
-      this.logger.error(
-        `Falha ao enviar captura para ingestão: ${(e as Error).message}`,
-      );
+    const maxAttempts = 5;
+    const payload = JSON.stringify({ raw: buf.toString('base64') });
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const res = await fetch(`${this.ingestUrl}/integrations/capture`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-integration-key': this.ingestKey,
+          },
+          body: payload,
+          signal: AbortSignal.timeout(15_000),
+        });
+        const data = (await res.json().catch(() => ({}))) as Record<
+          string,
+          unknown
+        >;
+        this.logger.log(
+          `Ingestão (tentativa ${attempt}/${maxAttempts}): HTTP ${res.status} ${JSON.stringify(data)}`,
+        );
+        if (res.ok || res.status < 500) {
+          return;
+        }
+      } catch (e) {
+        this.logger.warn(
+          `Tentativa ${attempt}/${maxAttempts} de enviar captura falhou: ${(e as Error).message}`,
+        );
+      }
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, attempt * 5_000));
+      }
     }
+    this.logger.error(
+      `Falha ao enviar captura para ingestão após ${maxAttempts} tentativas.`,
+    );
   }
 
   /**

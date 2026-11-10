@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { isoToday, monthRange } from '@/lib/date';
 import {
   api,
   formatBRL,
@@ -15,22 +16,6 @@ const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = {
   CASH: 'Dinheiro',
   BANK: 'Banco/Conta',
 };
-
-function isoToday(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function monthRange(offset: number): { from: string; to: string } {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = d.getMonth() + offset;
-  const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-  return {
-    from: first.toISOString().slice(0, 10),
-    to: last.toISOString().slice(0, 10),
-  };
-}
 
 function monthLabel(offset: number): string {
   const d = new Date();

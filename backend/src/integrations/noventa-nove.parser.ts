@@ -95,11 +95,8 @@ export function parseNoventa_Nove(lines: string[]): ParsedExternalOrder | null {
 
     let name = m[2].trim();
     const qty = Number(m[1]);
-    let priceCents = brlToCents(m[4]);
+    let priceCents = Math.round(brlToCents(m[4]) / Math.max(1, qty));
     const notes: string[] = [];
-
-    // 2+ espaços antes de R$ = corte em fronteira de palavra → recompor com espaço
-    const wordBoundary = m[3].length > 1;
 
     while (i + 1 < lines.length) {
       const next = lines[i + 1];
@@ -115,8 +112,10 @@ export function parseNoventa_Nove(lines: string[]): ParsedExternalOrder | null {
       const subM = cont.match(/^(\d+)x\s+(.+?)(\s+)R\$\s*([\d.,]+)\s*$/);
       if (subM) {
         let subName = subM[2].trim();
+        const subQty = Number(subM[1]);
         const subWordBoundary = subM[3].length > 1;
-        const subPrice = brlToCents(subM[4]);
+        const subLineCents = brlToCents(subM[4]);
+        const subUnitCents = Math.round(subLineCents / Math.max(1, subQty));
         i++;
 
         // O texto da opção também pode ser quebrado pela impressora
@@ -133,9 +132,15 @@ export function parseNoventa_Nove(lines: string[]): ParsedExternalOrder | null {
           i++;
         }
 
-        notes.push(`${subM[1]} ${subName}`);
         // Preço real vem da opção quando o item base tinha R$0
-        if (priceCents === 0 && subPrice > 0) priceCents = subPrice;
+        if (priceCents === 0 && subUnitCents > 0) {
+          priceCents = subUnitCents;
+          notes.push(`${subM[1]} ${subName}`);
+        } else if (subLineCents > 0) {
+          notes.push(`${subM[1]} ${subName} R$${subM[4]}`);
+        } else {
+          notes.push(`${subM[1]} ${subName}`);
+        }
         continue;
       }
 

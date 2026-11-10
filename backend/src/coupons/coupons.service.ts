@@ -74,11 +74,26 @@ export class CouponsService {
     return { coupon, discountCents };
   }
 
-  /** Incrementa usedCount após uso confirmado. */
-  incrementUsed(id: string) {
-    return this.prisma.coupon.update({
-      where: { id },
+  /** Incrementa usedCount atomicamente respeitando maxUses; lança se esgotado. */
+  async claimCoupon(id: string, maxUses: number | null) {
+    const res = await this.prisma.coupon.updateMany({
+      where: {
+        id,
+        active: true,
+        ...(maxUses !== null ? { usedCount: { lt: maxUses } } : {}),
+      },
       data: { usedCount: { increment: 1 } },
+    });
+    if (res.count === 0) {
+      throw new BadRequestException('Cupom esgotado');
+    }
+  }
+
+  /** Decrementa usedCount ao cancelar ou excluir pedido que usou o cupom. */
+  async releaseCoupon(id: string) {
+    await this.prisma.coupon.updateMany({
+      where: { id, usedCount: { gt: 0 } },
+      data: { usedCount: { decrement: 1 } },
     });
   }
 }

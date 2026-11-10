@@ -8,10 +8,23 @@ import { RolesGuard } from './roles.guard';
 @Global()
 @Module({
   imports: [
-    JwtModule.register({
+    JwtModule.registerAsync({
       global: true,
-      secret: process.env.JWT_SECRET ?? 'dev-secret-change-me',
-      signOptions: { expiresIn: '12h' },
+      useFactory: () => {
+        const secret = process.env.JWT_SECRET;
+        if (
+          process.env.NODE_ENV === 'production' &&
+          (!secret || secret === 'dev-secret-change-me')
+        ) {
+          throw new Error(
+            'JWT_SECRET seguro deve ser configurado em produção',
+          );
+        }
+        return {
+          secret: secret || 'dev-secret-change-me',
+          signOptions: { expiresIn: '12h' },
+        };
+      },
     }),
   ],
   controllers: [AuthController],

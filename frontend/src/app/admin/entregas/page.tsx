@@ -3,17 +3,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, formatBRL, type Courier, type CourierOrder, type CourierReportRow, type Neighborhood } from '@/lib/api';
+import { isoToday, isoDaysAgo } from '@/lib/date';
 import { formatPhone } from '@/lib/phone';
-
-function isoToday(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function isoDaysAgo(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
-}
 
 type Period = 'today' | 'week' | 'custom';
 

@@ -377,12 +377,12 @@ function AddressForm({
 // ---- Status badge ----
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  RECEIVED:   { label: 'Recebido',  cls: 'bg-blue-100 text-blue-700' },
-  PREPARING:  { label: 'Preparo',   cls: 'bg-yellow-100 text-yellow-700' },
-  READY:      { label: 'Pronto',    cls: 'bg-green-100 text-green-700' },
-  OUT:        { label: 'Saiu',      cls: 'bg-orange-100 text-orange-700' },
-  DELIVERED:  { label: 'Entregue',  cls: 'bg-gray-100 text-gray-500' },
-  CANCELLED:  { label: 'Cancelado', cls: 'bg-red-100 text-red-600' },
+  RECEIVED:         { label: 'Recebido',  cls: 'bg-blue-100 text-blue-700' },
+  IN_PREPARATION:   { label: 'Preparo',   cls: 'bg-yellow-100 text-yellow-700' },
+  READY:            { label: 'Pronto',    cls: 'bg-green-100 text-green-700' },
+  OUT_FOR_DELIVERY: { label: 'Saiu',      cls: 'bg-orange-100 text-orange-700' },
+  DELIVERED:        { label: 'Entregue',  cls: 'bg-gray-100 text-gray-500' },
+  CANCELED:         { label: 'Cancelado', cls: 'bg-red-100 text-red-600' },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -667,12 +667,18 @@ function CustomerPanel({
 export default function ClientesPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const { data: customers = [], isLoading } = useQuery<Customer[]>({
-    queryKey: ['customers', search],
-    queryFn: () => api.listCustomers(search || undefined),
+    queryKey: ['customers', debouncedSearch],
+    queryFn: () => api.listCustomers(debouncedSearch || undefined, 50),
   });
 
   async function handleCreate(customerData: CreateCustomerPayload, address?: CreateAddressPayload) {

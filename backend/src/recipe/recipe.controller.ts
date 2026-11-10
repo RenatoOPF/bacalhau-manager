@@ -8,12 +8,16 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { RecipeService } from './recipe.service';
 import { UpsertRecipeSheetDto } from './dto/recipe.dto';
 
 @Controller('recipe-sheets')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN, Role.MANAGER)
 export class RecipeController {
   constructor(private readonly service: RecipeService) {}
 

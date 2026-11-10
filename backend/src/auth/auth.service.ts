@@ -47,7 +47,7 @@ export class AuthService {
   /** Dados do funcionário autenticado. */
   async me(id: string) {
     const e = await this.prisma.employee.findUnique({ where: { id } });
-    if (!e) throw new UnauthorizedException();
+    if (!e || !e.active) throw new UnauthorizedException();
     return { id: e.id, name: e.name, username: e.username, role: e.role };
   }
 }

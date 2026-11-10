@@ -23,6 +23,7 @@ export class ReportsService {
   private paidWhere(from?: string, to?: string): Prisma.OrderWhereInput {
     const where: Prisma.OrderWhereInput = {
       paymentStatus: PaymentStatus.PAID,
+      status: { not: OrderStatus.CANCELED },
     };
     const paidAt = periodFilter(from, to);
     if (paidAt) where.paidAt = paidAt;
@@ -290,16 +291,15 @@ export class ReportsService {
       },
     });
 
-    const [withSnapshot, legacy] = items.reduce<[typeof items, typeof items]>(
-      ([a, b], it) =>
-        it.unitCostCents > 0 ? [[...a, it], b] : [a, [...b, it]],
-      [[], []],
-    );
-
-    const storedCmv = withSnapshot.reduce(
-      (sum, it) => sum + it.unitCostCents * it.quantity,
-      0,
-    );
+    let storedCmv = 0;
+    const legacy: typeof items = [];
+    for (const it of items) {
+      if (it.unitCostCents > 0) {
+        storedCmv += it.unitCostCents * it.quantity;
+      } else {
+        legacy.push(it);
+      }
+    }
     if (legacy.length === 0) return storedCmv;
 
     const costOf = await this.stock.buildCostEstimator();
@@ -374,15 +374,40 @@ export class ReportsService {
         courierFeeCents: true,
         notes: true,
         createdAt: true,
+        channel: true,
+        externalId: true,
         neighborhood: { select: { name: true } },
+        items: {
+          select: {
+            id: true,
+            nameSnapshot: true,
+            optionNameSnapshot: true,
+            quantity: true,
+            notes: true,
+          },
+        },
       },
     });
   }
 
-  /** Soma dos repasses a entregadores no período (pedidos pagos), p/ o DRE. */
+  /**
+   * Soma dos repasses a entregadores no período p/ o DRE.
+   * Mantém ativo o repasse mesmo se o pedido foi cancelado após o entregador
+   * ter saído para o endereço (courierId preenchido).
+   */
   async courierCostCents(from?: string, to?: string): Promise<number> {
+    const createdAt = periodFilter(from, to);
     const agg = await this.prisma.order.aggregate({
-      where: { ...this.paidWhere(from, to), courierId: { not: null } },
+      where: {
+        courierId: { not: null },
+        OR: [
+          this.paidWhere(from, to),
+          {
+            status: OrderStatus.CANCELED,
+            ...(createdAt ? { createdAt } : {}),
+          },
+        ],
+      },
       _sum: { courierFeeCents: true },
     });
     return agg._sum.courierFeeCents ?? 0;

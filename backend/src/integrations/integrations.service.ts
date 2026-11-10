@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { OrderChannel, PaymentMethod, PaymentStatus } from '@prisma/client';
+import { OrderChannel, PaymentMethod, PaymentStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { nextDailyNumber } from '../common/daily-number';
@@ -242,44 +242,64 @@ export class IntegrationsService {
       }
     }
 
-    const order = await this.prisma.order.create({
-      data: {
-        dailyNumber,
-        channel: parsed.channel,
-        externalId: parsed.externalId,
-        customerName: parsed.customerName || 'Cliente',
-        customerPhone: parsed.customerPhone,
-        addressStreet: parsed.addressStreet || '-',
-        addressComplement: parsed.addressComplement,
-        addressNeighborhood: parsed.addressNeighborhood,
-        addressReference: parsed.addressReference,
-        neighborhoodId,
-        paymentMethod: PaymentMethod.ONLINE,
-        paymentStatus: parsed.paidOnline
-          ? PaymentStatus.PAID
-          : PaymentStatus.PENDING,
-        paidAt: parsed.paidOnline ? new Date() : null,
-        totalCents: parsed.totalCents,
-        deliveryFeeCents: parsed.deliveryFeeCents,
-        // Referência exibida na comanda (ex.: "iFood #8156"). O localizador
-        // fica no externalId (dedup), não precisa poluir a nota.
-        notes: parsed.shortNumber
-          ? `${channelLabel} #${parsed.shortNumber}`
-          : `${channelLabel} · Loc ${parsed.externalId}`,
-        items: {
-          create: expandedItems.map((it) => ({
-            menuItemId: null,
-            nameSnapshot: it.name,
-            optionNameSnapshot: it.optionName ?? null,
-            priceCents: it.priceCents,
-            unitCostCents: costOf(it.name, it.optionName ?? null, it.notes ?? null),
-            quantity: it.quantity,
-            notes: it.notes ?? null,
-          })),
+    let order;
+    try {
+      order = await this.prisma.order.create({
+        data: {
+          dailyNumber,
+          channel: parsed.channel,
+          externalId: parsed.externalId,
+          customerName: parsed.customerName || 'Cliente',
+          customerPhone: parsed.customerPhone,
+          addressStreet: parsed.addressStreet || '-',
+          addressComplement: parsed.addressComplement,
+          addressNeighborhood: parsed.addressNeighborhood,
+          addressReference: parsed.addressReference,
+          neighborhoodId,
+          paymentMethod: PaymentMethod.ONLINE,
+          paymentStatus: parsed.paidOnline
+            ? PaymentStatus.PAID
+            : PaymentStatus.PENDING,
+          paidAt: parsed.paidOnline ? new Date() : null,
+          totalCents: parsed.totalCents,
+          deliveryFeeCents: parsed.deliveryFeeCents,
+          // Referência exibida na comanda (ex.: "iFood #8156"). O localizador
+          // fica no externalId (dedup), não precisa poluir a nota.
+          notes: parsed.shortNumber
+            ? `${channelLabel} #${parsed.shortNumber}`
+            : `${channelLabel} · Loc ${parsed.externalId}`,
+          items: {
+            create: expandedItems.map((it) => ({
+              menuItemId: null,
+              nameSnapshot: it.name,
+              optionNameSnapshot: it.optionName ?? null,
+              priceCents: it.priceCents,
+              unitCostCents: costOf(it.name, it.optionName ?? null, it.notes ?? null),
+              quantity: it.quantity,
+              notes: it.notes ?? null,
+            })),
+          },
         },
-      },
-      include: { items: true },
-    });
+        include: { items: true },
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const dup = await this.prisma.order.findFirst({
+          where: { channel: parsed.channel, externalId: parsed.externalId },
+          select: { protocol: true },
+        });
+        if (dup) {
+          this.logger.log(
+            `Pedido ${parsed.channel} ${parsed.externalId} duplicado em corrida (#${dup.protocol}).`,
+          );
+          return { status: 'duplicate', protocol: dup.protocol };
+        }
+      }
+      throw err;
+    }
 
     if (this.printConfig.isEnabled()) {
       this.realtime.emitPrintCashier(order);

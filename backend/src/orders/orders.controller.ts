@@ -13,10 +13,15 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { OrderStatus, Role } from '@prisma/client';
+import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateStatusDto } from './dto/update-status.dto';
+import {
+  ConfirmPlatformDto,
+  UpdateCourierStatusDto,
+  UpdateStatusDto,
+} from './dto/update-status.dto';
 import { AssignDeliveryDto } from './dto/assign-delivery.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -24,13 +29,29 @@ import { Roles } from '../auth/roles.decorator';
 
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly orders: OrdersService) {}
+  constructor(
+    private readonly orders: OrdersService,
+    private readonly jwt: JwtService,
+  ) {}
 
-  /** Cliente cria o pedido pelo cardápio (público). */
+  /** Cliente cria o pedido pelo cardápio (público) ou operador cria pelo balcão (autenticado). */
   @Post()
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
-  create(@Body() dto: CreateOrderDto) {
-    return this.orders.create(dto);
+  async create(@Body() dto: CreateOrderDto, @Req() req: Request) {
+    let isStaff = false;
+    const header = req.headers.authorization;
+    if (header?.startsWith('Bearer ')) {
+      try {
+        const payload = await this.jwt.verifyAsync<{ role?: Role }>(
+          header.slice('Bearer '.length),
+        );
+        isStaff =
+          payload.role === Role.ADMIN || payload.role === Role.MANAGER;
+      } catch {
+        // Token ausente/expirado no cardápio público: segue como cliente comum.
+      }
+    }
+    return this.orders.create(dto, { isStaff });
   }
 
   /** Acompanhamento público do pedido pelo protocolo (sem endereço). */
@@ -58,7 +79,7 @@ export class OrdersController {
   @Roles(Role.DELIVERY)
   updateCourierStatus(
     @Param('id') id: string,
-    @Body() dto: { status: 'OUT_FOR_DELIVERY' | 'DELIVERED' },
+    @Body() dto: UpdateCourierStatusDto,
     @Req() req: Request & { user: { sub: string } },
   ) {
     return this.orders.updateCourierStatus(id, req.user.sub, dto.status);
@@ -70,7 +91,7 @@ export class OrdersController {
   @Roles(Role.DELIVERY)
   confirmOnPlatform(
     @Param('id') id: string,
-    @Body() dto: { customerCode: string },
+    @Body() dto: ConfirmPlatformDto,
     @Req() req: Request & { user: { sub: string } },
   ) {
     return this.orders.confirmOnPlatform(id, req.user.sub, dto.customerCode);

@@ -2,7 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
-  IsEnum,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -80,7 +80,7 @@ export class CreateOrderDto {
   @IsString()
   neighborhoodId?: string;
 
-  @IsEnum(PaymentMethod)
+  @IsIn([PaymentMethod.CASH, PaymentMethod.PIX, PaymentMethod.CARD])
   paymentMethod: PaymentMethod;
 
   @IsOptional()

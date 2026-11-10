@@ -4,6 +4,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { timingSafeEqual } from 'crypto';
 import type { Request } from 'express';
 
 /**
@@ -19,7 +20,12 @@ export class IntegrationKeyGuard implements CanActivate {
       .switchToHttp()
       .getRequest<Request>()
       .header('x-integration-key');
-    if (!expected || provided !== expected) {
+    if (!expected || !provided) {
+      throw new UnauthorizedException('Chave de integração inválida');
+    }
+    const bufA = Buffer.from(provided);
+    const bufB = Buffer.from(expected);
+    if (bufA.length !== bufB.length || !timingSafeEqual(bufA, bufB)) {
       throw new UnauthorizedException('Chave de integração inválida');
     }
     return true;

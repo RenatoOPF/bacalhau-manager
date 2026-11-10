@@ -31,6 +31,17 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+async function parseApiError(res: Response): Promise<ApiError> {
+  const body = await res.text();
+  let message = `Erro ${res.status}`;
+  try {
+    const json = JSON.parse(body);
+    const raw = json.message;
+    message = Array.isArray(raw) ? raw[0] : (raw ?? message);
+  } catch {}
+  return new ApiError(res.status, message);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
@@ -42,16 +53,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
   if (!res.ok) {
-    const body = await res.text();
-    let message = `Erro ${res.status}`;
-    try {
-      const json = JSON.parse(body);
-      const raw = json.message;
-      message = Array.isArray(raw) ? raw[0] : (raw ?? message);
-    } catch {}
-    throw new ApiError(res.status, message);
+    throw await parseApiError(res);
   }
-  return res.json() as Promise<T>;
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  const text = await res.text();
+  if (!text) {
+    return undefined as T;
+  }
+  return JSON.parse(text) as T;
 }
 
 // ---- Tipos compartilhados (espelham o backend) ----
@@ -149,11 +160,16 @@ export interface Order {
   status: OrderStatus;
   channel: OrderChannel;
   customerName: string;
+  customerPhone?: string | null;
   addressStreet: string;
   addressNumber?: string | null;
+  addressComplement?: string | null;
   addressNeighborhood?: string | null;
+  addressReference?: string | null;
   totalCents: number;
   deliveryFeeCents?: number;
+  discountCents?: number;
+  couponCode?: string | null;
   paymentMethod: PaymentMethod;
   paymentStatus: 'PENDING' | 'PAID';
   paidAt?: string | null;
@@ -188,7 +204,7 @@ export interface CourierOrder {
   createdAt: string;
   externalId?: string | null;
   neighborhood?: { name: string } | null;
-  items: { id: string; itemName: string; optionName?: string | null; quantity: number; notes?: string | null }[];
+  items: { id: string; nameSnapshot: string; optionNameSnapshot?: string | null; quantity: number; notes?: string | null }[];
 }
 
 export type PaymentMethod = 'CASH' | 'PIX' | 'CARD' | 'ONLINE';
@@ -516,7 +532,7 @@ export interface CreateOrderPayload {
   addressLat?: number;
   addressLng?: number;
   neighborhoodId?: string;
-  paymentMethod: 'CASH' | 'PIX';
+  paymentMethod: 'CASH' | 'PIX' | 'CARD';
   notes?: string;
   discountCents?: number;
   couponCode?: string;
@@ -730,7 +746,7 @@ export const api = {
       headers: { ...baseHeaders, ...authHeaders() },
       body: form,
     }).then(async (res) => {
-      if (!res.ok) throw new ApiError(res.status, await res.text());
+      if (!res.ok) throw await parseApiError(res);
       return res.json() as Promise<MenuItem>;
     });
   },
