@@ -21,7 +21,7 @@ export class MenuService {
 
   private publicMenuCache: unknown = null;
   private publicMenuCacheExpires = 0;
-  private readonly PUBLIC_MENU_TTL = 30_000; // 30 segundos
+  private readonly PUBLIC_MENU_TTL = 10 * 60_000; // 10 minutos (invalidado em qualquer alteração no cardápio)
 
   private invalidatePublicMenu() {
     this.publicMenuCache = null;
