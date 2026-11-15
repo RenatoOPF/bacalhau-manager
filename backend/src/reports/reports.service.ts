@@ -15,10 +15,27 @@ import { localDay, periodFilter, previousPeriod } from '../common/date-range';
  */
 @Injectable()
 export class ReportsService {
+  private readonly cache = new Map<
+    string,
+    { data: unknown; expiresAt: number }
+  >();
+  private readonly CACHE_TTL_MS = 60_000;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly stock: StockService,
   ) {}
+
+  private async cached<T>(key: string, compute: () => Promise<T>): Promise<T> {
+    const now = Date.now();
+    const hit = this.cache.get(key);
+    if (hit && now < hit.expiresAt) {
+      return hit.data as T;
+    }
+    const data = await compute();
+    this.cache.set(key, { data, expiresAt: now + this.CACHE_TTL_MS });
+    return data;
+  }
 
   private paidWhere(from?: string, to?: string): Prisma.OrderWhereInput {
     const where: Prisma.OrderWhereInput = {
@@ -32,27 +49,29 @@ export class ReportsService {
 
   /** Faturamento do período: total, contagem e quebra por dia. */
   async revenue(from?: string, to?: string) {
-    const orders = await this.prisma.order.findMany({
-      where: this.paidWhere(from, to),
-      select: { totalCents: true, paidAt: true },
+    return this.cached(`revenue:${from ?? ''}:${to ?? ''}`, async () => {
+      const orders = await this.prisma.order.findMany({
+        where: this.paidWhere(from, to),
+        select: { totalCents: true, paidAt: true },
+      });
+
+      const byDayMap = new Map<string, { count: number; totalCents: number }>();
+      let totalCents = 0;
+      for (const o of orders) {
+        totalCents += o.totalCents;
+        const day = o.paidAt ? localDay(o.paidAt) : 'sem-data';
+        const bucket = byDayMap.get(day) ?? { count: 0, totalCents: 0 };
+        bucket.count += 1;
+        bucket.totalCents += o.totalCents;
+        byDayMap.set(day, bucket);
+      }
+
+      const byDay = [...byDayMap.entries()]
+        .map(([date, v]) => ({ date, ...v }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      return { from, to, count: orders.length, totalCents, byDay };
     });
-
-    const byDayMap = new Map<string, { count: number; totalCents: number }>();
-    let totalCents = 0;
-    for (const o of orders) {
-      totalCents += o.totalCents;
-      const day = o.paidAt ? localDay(o.paidAt) : 'sem-data';
-      const bucket = byDayMap.get(day) ?? { count: 0, totalCents: 0 };
-      bucket.count += 1;
-      bucket.totalCents += o.totalCents;
-      byDayMap.set(day, bucket);
-    }
-
-    const byDay = [...byDayMap.entries()]
-      .map(([date, v]) => ({ date, ...v }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-    return { from, to, count: orders.length, totalCents, byDay };
   }
 
   /**
@@ -60,29 +79,33 @@ export class ReportsService {
    * com o período anterior de mesma duração (só quando from+to são passados).
    */
   async summary(from?: string, to?: string) {
-    const orders = await this.prisma.order.findMany({
-      where: this.paidWhere(from, to),
-      select: { totalCents: true },
-    });
-    const totalCents = orders.reduce((s, o) => s + o.totalCents, 0);
-    const count = orders.length;
-    const avgTicketCents = count ? Math.round(totalCents / count) : 0;
-
-    let prev: { totalCents: number; count: number } | null = null;
-    let deltaPct: number | null = null;
-    if (from && to) {
-      const { prevFrom, prevTo } = previousPeriod(from, to);
-      const prevOrders = await this.prisma.order.findMany({
-        where: this.paidWhere(prevFrom, prevTo),
-        select: { totalCents: true },
+    return this.cached(`summary:${from ?? ''}:${to ?? ''}`, async () => {
+      const agg = await this.prisma.order.aggregate({
+        where: this.paidWhere(from, to),
+        _sum: { totalCents: true },
+        _count: { _all: true },
       });
-      const prevTotal = prevOrders.reduce((s, o) => s + o.totalCents, 0);
-      prev = { totalCents: prevTotal, count: prevOrders.length };
-      deltaPct =
-        prevTotal > 0 ? ((totalCents - prevTotal) / prevTotal) * 100 : null;
-    }
+      const totalCents = agg._sum.totalCents ?? 0;
+      const count = agg._count._all;
+      const avgTicketCents = count ? Math.round(totalCents / count) : 0;
 
-    return { from, to, totalCents, count, avgTicketCents, prev, deltaPct };
+      let prev: { totalCents: number; count: number } | null = null;
+      let deltaPct: number | null = null;
+      if (from && to) {
+        const { prevFrom, prevTo } = previousPeriod(from, to);
+        const prevAgg = await this.prisma.order.aggregate({
+          where: this.paidWhere(prevFrom, prevTo),
+          _sum: { totalCents: true },
+          _count: { _all: true },
+        });
+        const prevTotal = prevAgg._sum.totalCents ?? 0;
+        prev = { totalCents: prevTotal, count: prevAgg._count._all };
+        deltaPct =
+          prevTotal > 0 ? ((totalCents - prevTotal) / prevTotal) * 100 : null;
+      }
+
+      return { from, to, totalCents, count, avgTicketCents, prev, deltaPct };
+    });
   }
 
   /**
@@ -90,45 +113,68 @@ export class ReportsService {
    * de horários de pico). Usa `paidAt` (mesma referência do faturamento).
    */
   async peakHours(from?: string, to?: string) {
-    const orders = await this.prisma.order.findMany({
-      where: this.paidWhere(from, to),
-      select: { paidAt: true, totalCents: true },
-    });
+    return this.cached(`peakHours:${from ?? ''}:${to ?? ''}`, async () => {
+      const orders = await this.prisma.order.findMany({
+        where: this.paidWhere(from, to),
+        select: { paidAt: true, totalCents: true },
+      });
 
-    const map = new Map<string, { count: number; totalCents: number }>();
-    for (const o of orders) {
-      if (!o.paidAt) continue;
-      const weekday = o.paidAt.getDay(); // 0 = domingo
-      const hour = o.paidAt.getHours();
-      const key = `${weekday}-${hour}`;
-      const bucket = map.get(key) ?? { count: 0, totalCents: 0 };
-      bucket.count += 1;
-      bucket.totalCents += o.totalCents;
-      map.set(key, bucket);
-    }
+      const map = new Map<string, { count: number; totalCents: number }>();
+      for (const o of orders) {
+        if (!o.paidAt) continue;
+        const weekday = o.paidAt.getDay(); // 0 = domingo
+        const hour = o.paidAt.getHours();
+        const key = `${weekday}-${hour}`;
+        const bucket = map.get(key) ?? { count: 0, totalCents: 0 };
+        bucket.count += 1;
+        bucket.totalCents += o.totalCents;
+        map.set(key, bucket);
+      }
 
-    return [...map.entries()].map(([key, v]) => {
-      const [weekday, hour] = key.split('-').map(Number);
-      return { weekday, hour, ...v };
+      return [...map.entries()].map(([key, v]) => {
+        const [weekday, hour] = key.split('-').map(Number);
+        return { weekday, hour, ...v };
+      });
     });
   }
 
   /** Taxa de cancelamento no período (por data de criação) e valor perdido. */
   async cancellations(from?: string, to?: string) {
-    const where: Prisma.OrderWhereInput = {};
-    const createdAt = periodFilter(from, to);
-    if (createdAt) where.createdAt = createdAt;
+    return this.cached(`cancellations:${from ?? ''}:${to ?? ''}`, async () => {
+      const where: Prisma.OrderWhereInput = {};
+      const createdAt = periodFilter(from, to);
+      if (createdAt) where.createdAt = createdAt;
 
-    const [total, canceled] = await Promise.all([
-      this.prisma.order.count({ where }),
-      this.prisma.order.findMany({
-        where: { ...where, status: OrderStatus.CANCELED },
-        select: { totalCents: true },
+      const [total, canceledAgg] = await Promise.all([
+        this.prisma.order.count({ where }),
+        this.prisma.order.aggregate({
+          where: { ...where, status: OrderStatus.CANCELED },
+          _count: { _all: true },
+          _sum: { totalCents: true },
+        }),
+      ]);
+      const canceledCount = canceledAgg._count._all;
+      const lostCents = canceledAgg._sum.totalCents ?? 0;
+      const ratePct = total > 0 ? (canceledCount / total) * 100 : 0;
+      return { total, canceled: canceledCount, ratePct, lostCents };
+    });
+  }
+
+  /** Agrupa OrderItems pagos por produto/opção/preço/custo direto no banco. */
+  private getGroupedOrderItems(from?: string, to?: string) {
+    return this.cached(`groupedItems:${from ?? ''}:${to ?? ''}`, () =>
+      this.prisma.orderItem.groupBy({
+        by: [
+          'nameSnapshot',
+          'optionNameSnapshot',
+          'notes',
+          'priceCents',
+          'unitCostCents',
+        ],
+        where: { order: this.paidWhere(from, to) },
+        _sum: { quantity: true },
       }),
-    ]);
-    const lostCents = canceled.reduce((s, o) => s + o.totalCents, 0);
-    const ratePct = total > 0 ? (canceled.length / total) * 100 : 0;
-    return { total, canceled: canceled.length, ratePct, lostCents };
+    );
   }
 
   /**
@@ -137,17 +183,15 @@ export class ReportsService {
    * A cauda da lista são os "menos vendidos".
    */
   async products(from?: string, to?: string) {
-    const items = await this.prisma.orderItem.findMany({
-      where: { order: this.paidWhere(from, to) },
-      select: { nameSnapshot: true, quantity: true, priceCents: true },
-    });
+    const groups = await this.getGroupedOrderItems(from, to);
 
     const map = new Map<string, { quantity: number; totalCents: number }>();
-    for (const it of items) {
-      const bucket = map.get(it.nameSnapshot) ?? { quantity: 0, totalCents: 0 };
-      bucket.quantity += it.quantity;
-      bucket.totalCents += it.priceCents * it.quantity;
-      map.set(it.nameSnapshot, bucket);
+    for (const g of groups) {
+      const qty = g._sum.quantity ?? 0;
+      const bucket = map.get(g.nameSnapshot) ?? { quantity: 0, totalCents: 0 };
+      bucket.quantity += qty;
+      bucket.totalCents += g.priceCents * qty;
+      map.set(g.nameSnapshot, bucket);
     }
 
     const rows = [...map.entries()]
@@ -169,32 +213,34 @@ export class ReportsService {
    * de pares de itens distintos no mesmo pedido pago. Só pares com 2+ pedidos.
    */
   async basket(from?: string, to?: string, limit = 10) {
-    const orders = await this.prisma.order.findMany({
-      where: this.paidWhere(from, to),
-      select: { items: { select: { nameSnapshot: true } } },
-    });
+    return this.cached(`basket:${from ?? ''}:${to ?? ''}:${limit}`, async () => {
+      const orders = await this.prisma.order.findMany({
+        where: this.paidWhere(from, to),
+        select: { items: { select: { nameSnapshot: true } } },
+      });
 
-    // Guarda o par direto no valor (evita separador ambíguo, já que os nomes
-    // contêm espaços e traços). A chave só agrupa; a e b vêm do próprio par.
-    const pairs = new Map<string, { a: string; b: string; count: number }>();
-    for (const o of orders) {
-      const names = [...new Set(o.items.map((i) => i.nameSnapshot))].sort();
-      for (let i = 0; i < names.length; i++) {
-        for (let j = i + 1; j < names.length; j++) {
-          const a = names[i];
-          const b = names[j];
-          const key = `${a}|${b}`;
-          const entry = pairs.get(key) ?? { a, b, count: 0 };
-          entry.count += 1;
-          pairs.set(key, entry);
+      // Guarda o par direto no valor (evita separador ambíguo, já que os nomes
+      // contêm espaços e traços). A chave só agrupa; a e b vêm do próprio par.
+      const pairs = new Map<string, { a: string; b: string; count: number }>();
+      for (const o of orders) {
+        const names = [...new Set(o.items.map((i) => i.nameSnapshot))].sort();
+        for (let i = 0; i < names.length; i++) {
+          for (let j = i + 1; j < names.length; j++) {
+            const a = names[i];
+            const b = names[j];
+            const key = `${a}|${b}`;
+            const entry = pairs.get(key) ?? { a, b, count: 0 };
+            entry.count += 1;
+            pairs.set(key, entry);
+          }
         }
       }
-    }
 
-    return [...pairs.values()]
-      .filter((p) => p.count > 1)
-      .sort((x, y) => y.count - x.count)
-      .slice(0, limit);
+      return [...pairs.values()]
+        .filter((p) => p.count > 1)
+        .sort((x, y) => y.count - x.count)
+        .slice(0, limit);
+    });
   }
 
   /**
@@ -206,20 +252,10 @@ export class ReportsService {
    * exibidos são médias ponderadas pela quantidade.
    */
   async margins(from?: string, to?: string) {
-    const items = await this.prisma.orderItem.findMany({
-      where: { order: this.paidWhere(from, to) },
-      select: {
-        nameSnapshot: true,
-        optionNameSnapshot: true,
-        notes: true,
-        priceCents: true,
-        unitCostCents: true,
-        quantity: true,
-      },
-    });
+    const groups = await this.getGroupedOrderItems(from, to);
 
     // Carrega o estimador apenas quando há itens legados sem snapshot.
-    const needsEstimator = items.some((it) => it.unitCostCents === 0);
+    const needsEstimator = groups.some((g) => g.unitCostCents === 0);
     const costOf = needsEstimator ? await this.stock.buildCostEstimator() : null;
 
     const map = new Map<
@@ -233,23 +269,25 @@ export class ReportsService {
         hasAnyCost: boolean;
       }
     >();
-    for (const it of items) {
+    for (const g of groups) {
+      const qty = g._sum.quantity ?? 0;
+      if (qty <= 0) continue;
       const cost =
-        it.unitCostCents > 0
-          ? it.unitCostCents
-          : (costOf?.(it.nameSnapshot, it.optionNameSnapshot, it.notes) ?? 0);
-      const key = `${it.nameSnapshot}|${it.optionNameSnapshot ?? ''}`;
+        g.unitCostCents > 0
+          ? g.unitCostCents
+          : (costOf?.(g.nameSnapshot, g.optionNameSnapshot, g.notes) ?? 0);
+      const key = `${g.nameSnapshot}|${g.optionNameSnapshot ?? ''}`;
       const entry = map.get(key) ?? {
-        name: it.nameSnapshot,
-        optionName: it.optionNameSnapshot,
+        name: g.nameSnapshot,
+        optionName: g.optionNameSnapshot,
         totalRevenueCents: 0,
         totalCostCents: 0,
         quantity: 0,
         hasAnyCost: false,
       };
-      entry.totalRevenueCents += it.priceCents * it.quantity;
-      entry.totalCostCents += cost * it.quantity;
-      entry.quantity += it.quantity;
+      entry.totalRevenueCents += g.priceCents * qty;
+      entry.totalCostCents += cost * qty;
+      entry.quantity += qty;
       if (cost > 0) entry.hasAnyCost = true;
       map.set(key, entry);
     }
@@ -280,32 +318,27 @@ export class ReportsService {
 
   /** CMV total do período (custo de ingredientes dos itens pagos). */
   async cmvCents(from?: string, to?: string): Promise<number> {
-    const items = await this.prisma.orderItem.findMany({
-      where: { order: this.paidWhere(from, to) },
-      select: {
-        nameSnapshot: true,
-        optionNameSnapshot: true,
-        notes: true,
-        unitCostCents: true,
-        quantity: true,
-      },
-    });
+    const groups = await this.getGroupedOrderItems(from, to);
 
     let storedCmv = 0;
-    const legacy: typeof items = [];
-    for (const it of items) {
-      if (it.unitCostCents > 0) {
-        storedCmv += it.unitCostCents * it.quantity;
+    const legacy: typeof groups = [];
+    for (const g of groups) {
+      const qty = g._sum.quantity ?? 0;
+      if (qty <= 0) continue;
+      if (g.unitCostCents > 0) {
+        storedCmv += g.unitCostCents * qty;
       } else {
-        legacy.push(it);
+        legacy.push(g);
       }
     }
     if (legacy.length === 0) return storedCmv;
 
     const costOf = await this.stock.buildCostEstimator();
     const legacyCmv = legacy.reduce(
-      (sum, it) =>
-        sum + costOf(it.nameSnapshot, it.optionNameSnapshot, it.notes) * it.quantity,
+      (sum, g) =>
+        sum +
+        costOf(g.nameSnapshot, g.optionNameSnapshot, g.notes) *
+          (g._sum.quantity ?? 0),
       0,
     );
     return storedCmv + legacyCmv;
@@ -321,33 +354,33 @@ export class ReportsService {
     const createdAt = periodFilter(from, to);
     if (createdAt) where.createdAt = createdAt;
 
-    const orders = await this.prisma.order.findMany({
+    const grouped = await this.prisma.order.groupBy({
+      by: ['courierId'],
       where,
-      select: {
-        courierId: true,
-        courierFeeCents: true,
-        courier: { select: { name: true } },
-      },
+      _count: { _all: true },
+      _sum: { courierFeeCents: true },
     });
 
-    const map = new Map<
-      string,
-      { courierId: string; courierName: string; deliveries: number; totalCents: number }
-    >();
-    for (const o of orders) {
-      if (!o.courierId) continue;
-      const bucket = map.get(o.courierId) ?? {
-        courierId: o.courierId,
-        courierName: o.courier?.name ?? '—',
-        deliveries: 0,
-        totalCents: 0,
-      };
-      bucket.deliveries += 1;
-      bucket.totalCents += o.courierFeeCents;
-      map.set(o.courierId, bucket);
-    }
+    const courierIds = grouped
+      .map((g) => g.courierId)
+      .filter((id): id is string => !!id);
+    const employees = courierIds.length
+      ? await this.prisma.employee.findMany({
+          where: { id: { in: courierIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const nameById = new Map(employees.map((e) => [e.id, e.name]));
 
-    return [...map.values()].sort((a, b) => b.totalCents - a.totalCents);
+    return grouped
+      .filter((g): g is typeof g & { courierId: string } => !!g.courierId)
+      .map((g) => ({
+        courierId: g.courierId,
+        courierName: nameById.get(g.courierId) ?? '—',
+        deliveries: g._count._all,
+        totalCents: g._sum.courierFeeCents ?? 0,
+      }))
+      .sort((a, b) => b.totalCents - a.totalCents);
   }
 
   /** Pedidos detalhados de um entregador específico no período (visão admin). */
@@ -415,33 +448,33 @@ export class ReportsService {
 
   /** Pedidos e faturamento por canal (próprio/iFood/Gami). */
   async byChannel(from?: string, to?: string) {
-    const grouped = await this.prisma.order.groupBy({
-      by: ['channel'],
-      where: this.paidWhere(from, to),
-      _count: { _all: true },
-      _sum: { totalCents: true },
-    });
+    return this.cached(`byChannel:${from ?? ''}:${to ?? ''}`, async () => {
+      const grouped = await this.prisma.order.groupBy({
+        by: ['channel'],
+        where: this.paidWhere(from, to),
+        _count: { _all: true },
+        _sum: { totalCents: true },
+      });
 
-    return grouped.map((g) => ({
-      channel: g.channel,
-      count: g._count._all,
-      totalCents: g._sum.totalCents ?? 0,
-    }));
+      return grouped.map((g) => ({
+        channel: g.channel,
+        count: g._count._all,
+        totalCents: g._sum.totalCents ?? 0,
+      }));
+    });
   }
 
   /** Itens mais vendidos no período (por quantidade). */
   async topItems(from?: string, to?: string, limit = 10) {
-    const items = await this.prisma.orderItem.findMany({
-      where: { order: this.paidWhere(from, to) },
-      select: { nameSnapshot: true, quantity: true, priceCents: true },
-    });
+    const groups = await this.getGroupedOrderItems(from, to);
 
     const map = new Map<string, { quantity: number; totalCents: number }>();
-    for (const it of items) {
-      const bucket = map.get(it.nameSnapshot) ?? { quantity: 0, totalCents: 0 };
-      bucket.quantity += it.quantity;
-      bucket.totalCents += it.priceCents * it.quantity;
-      map.set(it.nameSnapshot, bucket);
+    for (const g of groups) {
+      const qty = g._sum.quantity ?? 0;
+      const bucket = map.get(g.nameSnapshot) ?? { quantity: 0, totalCents: 0 };
+      bucket.quantity += qty;
+      bucket.totalCents += g.priceCents * qty;
+      map.set(g.nameSnapshot, bucket);
     }
 
     return [...map.entries()]

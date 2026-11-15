@@ -79,6 +79,12 @@ export class RealtimeGateway implements OnGatewayConnection {
     }
   }
 
+  /** Tela pública da cozinha inscreve o socket para receber eventos de pedidos. */
+  @SubscribeMessage('kitchen:subscribe')
+  handleKitchenSubscribe(@ConnectedSocket() client: Socket) {
+    client.join('kitchen');
+  }
+
   /** Agente de impressão registra o próprio socket como destino exclusivo dos eventos de impressão. */
   @SubscribeMessage('printer:register')
   handlePrinterRegister(
@@ -194,15 +200,19 @@ export class RealtimeGateway implements OnGatewayConnection {
     }
   }
 
-  /** Novo pedido criado — atualiza a fila do caixa. */
+  /** Novo pedido criado — atualiza a fila do caixa e da cozinha. */
   emitOrderCreated(order: { protocol: number }) {
-    this.server.to('staff').emit('order:created', { protocol: order.protocol });
+    this.server
+      .to('staff')
+      .to('kitchen')
+      .emit('order:created', { protocol: order.protocol });
   }
 
-  /** Mudança de status — caixa e cliente daquele protocolo reagem. */
+  /** Mudança de status — caixa, cozinha e cliente daquele protocolo reagem. */
   emitOrderStatusChanged(order: { protocol: number }) {
     this.server
       .to('staff')
+      .to('kitchen')
       .to(`order:${order.protocol}`)
       .emit('order:status', { protocol: order.protocol });
   }

@@ -93,28 +93,31 @@ export class CashService {
   async dailySummary(date: string) {
     const { start, end } = dayRange(date);
 
-    const paid = await this.prisma.order.findMany({
+    const grouped = await this.prisma.order.groupBy({
+      by: ['paymentMethod'],
       where: {
         paymentStatus: PaymentStatus.PAID,
         status: { not: 'CANCELED' },
         paidAt: { gte: start, lt: end },
       },
-      select: { paymentMethod: true, totalCents: true },
+      _count: { _all: true },
+      _sum: { totalCents: true },
     });
 
     const byMethod: Record<string, { count: number; totalCents: number }> = {};
     let totalCents = 0;
-    for (const o of paid) {
-      const m = o.paymentMethod;
-      byMethod[m] ??= { count: 0, totalCents: 0 };
-      byMethod[m].count += 1;
-      byMethod[m].totalCents += o.totalCents;
-      totalCents += o.totalCents;
+    let count = 0;
+    for (const g of grouped) {
+      const c = g._count._all;
+      const sum = g._sum.totalCents ?? 0;
+      byMethod[g.paymentMethod] = { count: c, totalCents: sum };
+      count += c;
+      totalCents += sum;
     }
 
     return {
       date,
-      count: paid.length,
+      count,
       totalCents,
       byMethod,
     };

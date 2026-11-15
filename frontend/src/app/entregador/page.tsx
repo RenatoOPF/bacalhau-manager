@@ -1,10 +1,13 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { api, formatBRL, type CourierOrder, type OrderChannel, CHANNEL_LABEL } from '@/lib/api';
+import { useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
+import { api, auth, formatBRL, type CourierOrder, type OrderChannel, CHANNEL_LABEL } from '@/lib/api';
 import { isoToday, isoDaysAgo } from '@/lib/date';
 import { formatPhone } from '@/lib/phone';
+
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:3001';
 
 type DeliveryStatus = 'OUT_FOR_DELIVERY' | 'DELIVERED';
 type Period = 'today' | 'week' | 'custom';
@@ -260,14 +263,29 @@ function OrderCard({ order }: { order: CourierOrder }) {
 }
 
 export default function CourierPage() {
+  const qc = useQueryClient();
   const today = isoToday();
 
   // Pedidos ativos: sempre hoje.
   const { data: todayOrders = [], isLoading: loadingActive } = useQuery({
     queryKey: ['courier-orders', 'today'],
     queryFn: () => api.getCourierOrders(today, today),
-    refetchInterval: 30_000,
+    refetchInterval: 180_000,
   });
+
+  useEffect(() => {
+    const socket = io(WS_URL, {
+      transports: ['websocket'],
+      auth: { token: auth.getToken() },
+    });
+    const refresh = () => qc.invalidateQueries({ queryKey: ['courier-orders'] });
+    socket.on('connect', refresh);
+    socket.on('order:created', refresh);
+    socket.on('order:status', refresh);
+    return () => {
+      socket.disconnect();
+    };
+  }, [qc]);
 
   // Período para histórico de entregues.
   const [period, setPeriod] = useState<Period>('today');

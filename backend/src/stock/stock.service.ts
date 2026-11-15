@@ -68,6 +68,12 @@ export class StockService {
   private readonly logger = new Logger(StockService.name);
 
   private costEstimatorCache: { fn: CostEstimatorFn; expiresAt: number } | null = null;
+  private menuLinksCache: { items: MenuItemFull[]; expiresAt: number } | null = null;
+
+  private invalidateCaches() {
+    this.costEstimatorCache = null;
+    this.menuLinksCache = null;
+  }
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -293,7 +299,7 @@ export class StockService {
         'Informe exatamente um de menuItemId/optionId.',
       );
     }
-    return this.prisma.stockLink.create({
+    const created = await this.prisma.stockLink.create({
       data: {
         stockItemId: dto.stockItemId,
         menuItemId: dto.menuItemId ?? null,
@@ -301,17 +307,22 @@ export class StockService {
         qtyMilli: toMilli(dto.qty ?? 1),
       },
     });
+    this.invalidateCaches();
+    return created;
   }
 
   async updateLink(id: string, dto: UpdateStockLinkDto) {
-    return this.prisma.stockLink.update({
+    const updated = await this.prisma.stockLink.update({
       where: { id },
       data: { qtyMilli: toMilli(dto.qty) },
     });
+    this.invalidateCaches();
+    return updated;
   }
 
   async removeLink(id: string) {
     await this.prisma.stockLink.delete({ where: { id } });
+    this.invalidateCaches();
     return { id };
   }
 
@@ -404,12 +415,19 @@ export class StockService {
   private async resolveOrderConsumption(
     items: OrderItem[],
   ): Promise<Map<string, number>> {
-    const menuItems = (await this.prisma.menuItem.findMany({
-      include: {
-        options: { include: { stockLinks: true } },
-        stockLinks: true,
-      },
-    })) as MenuItemFull[];
+    const now = Date.now();
+    let menuItems: MenuItemFull[];
+    if (this.menuLinksCache && now < this.menuLinksCache.expiresAt) {
+      menuItems = this.menuLinksCache.items;
+    } else {
+      menuItems = (await this.prisma.menuItem.findMany({
+        include: {
+          options: { include: { stockLinks: true } },
+          stockLinks: true,
+        },
+      })) as MenuItemFull[];
+      this.menuLinksCache = { items: menuItems, expiresAt: now + 2 * 60 * 1000 };
+    }
     const byId = new Map(menuItems.map((m) => [m.id, m]));
     const byName = new Map(menuItems.map((m) => [normalize(m.name), m]));
 

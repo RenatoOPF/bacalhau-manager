@@ -345,8 +345,11 @@ model Order {
   @@index([customerId])
   @@index([status])
   @@index([createdAt])
+  @@index([createdAt, status])
   @@index([paidAt])
+  @@index([paymentStatus, paidAt])
   @@index([courierId])
+  @@index([courierId, createdAt])
 }
 
 model OrderItem {

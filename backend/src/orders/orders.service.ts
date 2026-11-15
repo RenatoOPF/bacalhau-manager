@@ -493,6 +493,7 @@ export class OrdersService {
       await this.coupons.releaseCoupon(order.couponId);
     }
     await this.prisma.order.delete({ where: { id: order.id } });
+    this.realtime.emitOrderStatusChanged(order);
     return { deleted: true, protocol: order.protocol };
   }
 }

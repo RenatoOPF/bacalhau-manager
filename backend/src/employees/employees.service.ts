@@ -6,6 +6,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateEmployeeDto, UpdateEmployeeDto } from './dto/employee.dto';
 
 // Nunca devolve passwordHash.
@@ -48,7 +49,7 @@ export class EmployeesService {
 
   async update(id: string, dto: UpdateEmployeeDto) {
     await this.ensureExists(id);
-    return this.prisma.employee.update({
+    const updated = await this.prisma.employee.update({
       where: { id },
       data: {
         name: dto.name,
@@ -60,6 +61,8 @@ export class EmployeesService {
       },
       select: publicSelect,
     });
+    JwtAuthGuard.invalidate(id);
+    return updated;
   }
 
   private async ensureExists(id: string) {

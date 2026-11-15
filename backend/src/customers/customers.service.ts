@@ -40,13 +40,24 @@ export class CustomersService {
 
   /** Busca por nome ou telefone (insensível a maiúsculas). */
   search(q: string, take = 20) {
+    const trimmed = q.trim();
+    const digits = trimmed.replace(/\D/g, '');
+    const hasLetters = /[a-zA-ZÀ-ÿ]/.test(trimmed);
+
+    const orConditions: Array<
+      | { name: { contains: string; mode: 'insensitive' } }
+      | { phone: { contains: string } }
+    > = [];
+    if (hasLetters || !digits) {
+      orConditions.push({ name: { contains: trimmed, mode: 'insensitive' } });
+    }
+    if (digits.length >= 2) {
+      orConditions.push({ phone: { contains: digits } });
+    }
+
     return this.prisma.customer.findMany({
-      where: {
-        OR: [
-          { name: { contains: q, mode: 'insensitive' } },
-          { phone: { contains: q, mode: 'insensitive' } },
-        ],
-      },
+      where:
+        orConditions.length === 1 ? orConditions[0] : { OR: orConditions },
       select: CUSTOMER_BASE,
       orderBy: { name: 'asc' },
       take,

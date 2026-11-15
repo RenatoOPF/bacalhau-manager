@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { io } from 'socket.io-client';
 import { CHANNEL_LABEL, type OrderChannel, type OrderStatus } from '@/lib/api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
-const POLL_INTERVAL = 10_000;
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:3001';
+const POLL_INTERVAL = 120_000;
 
 export interface KitchenOrder {
   id: string;
@@ -118,9 +120,18 @@ export function CozinhaClient({
 
   useEffect(() => {
     fetchOrders();
+    const socket = io(WS_URL, { transports: ['websocket'] });
+    socket.on('connect', () => {
+      socket.emit('kitchen:subscribe');
+      fetchOrders();
+    });
+    socket.on('order:created', fetchOrders);
+    socket.on('order:status', fetchOrders);
+
     const pollInterval = setInterval(fetchOrders, POLL_INTERVAL);
     const tickInterval = setInterval(() => setTick((t) => t + 1), 60_000);
     return () => {
+      socket.disconnect();
       clearInterval(pollInterval);
       clearInterval(tickInterval);
     };
