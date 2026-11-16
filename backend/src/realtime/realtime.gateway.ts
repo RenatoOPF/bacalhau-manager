@@ -133,7 +133,7 @@ export class RealtimeGateway implements OnGatewayConnection {
   private async replayPendingPrints() {
     if (!this.printerSocketId || !this.printConfig.isEnabled()) return;
     try {
-      const since = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const since = new Date(Date.now() - 30 * 60 * 1000);
       const pending = await this.prisma.order.findMany({
         where: {
           createdAt: { gte: since },
@@ -143,18 +143,25 @@ export class RealtimeGateway implements OnGatewayConnection {
         include: { items: true },
         orderBy: { createdAt: 'asc' },
       });
+      let replayed = 0;
       for (const order of pending) {
         if (!this.printerSocketId) break;
-        if (!order.cashierPrintedAt) {
+        // Só reenvia o ticket do caixa se a cozinha TAMBÉM não imprimiu (ou seja,
+        // o pedido foi criado enquanto o agente estava desconectado). Se a cozinha
+        // já imprimiu, o agente já recebeu o pedido na criação — reenviar ao caixa
+        // causaria impressão duplicada quando a impressora do caixa fecha o TCP.
+        if (!order.cashierPrintedAt && !order.kitchenPrintedAt) {
           this.emitPrintCashier(order);
-        }
-        if (!order.kitchenPrintedAt) {
           this.emitPrintKitchen(order);
+          replayed++;
+        } else if (!order.kitchenPrintedAt) {
+          this.emitPrintKitchen(order);
+          replayed++;
         }
       }
-      if (pending.length > 0) {
+      if (replayed > 0) {
         this.logger.log(
-          `[PRINTER] ${pending.length} pedido(s) pendente(s) reenviado(s) ao agente`,
+          `[PRINTER] ${replayed} pedido(s) pendente(s) reenviado(s) ao agente`,
         );
       }
     } catch (err) {

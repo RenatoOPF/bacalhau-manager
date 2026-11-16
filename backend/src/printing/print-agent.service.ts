@@ -28,7 +28,7 @@ export class PrintAgentService implements OnModuleInit, OnModuleDestroy {
       this.socket.emit('printer:register', { key });
     });
     this.socket.on('disconnect', (reason) => this.logger.warn(`Desconectado: ${reason}`));
-    this.socket.on('print:cashier', (order) => this.handleWithRetry(order, 'cashier'));
+    this.socket.on('print:cashier', (order) => this.handleCashier(order));
     this.socket.on('print:kitchen', (order) => this.handleWithRetry(order, 'kitchen'));
   }
 
@@ -36,9 +36,35 @@ export class PrintAgentService implements OnModuleInit, OnModuleDestroy {
     this.socket?.disconnect();
   }
 
+  /**
+   * Impressora do caixa: tentativa única (sem retry).
+   * A impressora ESC/POS do caixa fecha a conexão TCP após enviar o ticket,
+   * fazendo execute() lançar erro mesmo quando o papel já saiu fisicamente.
+   * Confirmamos no backend após a tentativa única para evitar reimpressões;
+   * se houver falha real, o operador reimprime manualmente pelo painel.
+   */
+  private async handleCashier(order: any): Promise<void> {
+    const jobKey = `${order?.id}:cashier`;
+    if (this.inFlight.has(jobKey)) return;
+    this.inFlight.add(jobKey);
+
+    try {
+      await this.printing.printCashierTicket(order);
+      this.logger.log(`Pedido #${order.protocol} — cashier impresso`);
+      this.socket.emit('print:confirmed', { orderId: order.id, target: 'cashier' });
+    } catch (err) {
+      this.logger.warn(
+        `Falha/fechamento TCP ao imprimir pedido #${order.protocol} (cashier) — sem retry para evitar duplicata: ${err instanceof Error ? err.message : err}`,
+      );
+      this.socket.emit('print:confirmed', { orderId: order.id, target: 'cashier' });
+    } finally {
+      this.inFlight.delete(jobKey);
+    }
+  }
+
   private async handleWithRetry(
     order: any,
-    target: 'cashier' | 'kitchen',
+    target: 'kitchen',
   ): Promise<void> {
     const jobKey = `${order?.id}:${target}`;
     if (this.inFlight.has(jobKey)) return;
@@ -47,11 +73,7 @@ export class PrintAgentService implements OnModuleInit, OnModuleDestroy {
     try {
       for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
         try {
-          if (target === 'cashier') {
-            await this.printing.printCashierTicket(order);
-          } else {
-            await this.printing.printKitchenTicket(order);
-          }
+          await this.printing.printKitchenTicket(order);
           this.logger.log(`Pedido #${order.protocol} — ${target} impresso`);
           this.socket.emit('print:confirmed', { orderId: order.id, target });
           return;
